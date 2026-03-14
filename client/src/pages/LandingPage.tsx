@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { viText } from "../locales/vi";
+import { useNavigate } from "react-router-dom";
 
 const featureIcons = [Bot, BookOpenCheck, Mic2] as const;
 
@@ -29,11 +30,12 @@ const staggerContainer = {
 
 function LandingPage() {
   const { common, landing } = viText;
+  const navigate = useNavigate();
 
   return (
     <>
       <section className="bg-[radial-gradient(circle_at_top_left,#f9fdf9_0%,#f3f6f4_46%,#f9faf9_100%)] py-14 md:py-[76px]">
-        <div className="container grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="container grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] xl:grid-cols-[0.9fr_1.1fr]">
           <motion.div
             initial="hidden"
             animate="show"
@@ -79,14 +81,14 @@ function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.55, ease: "easeOut" }}
-            className="rounded-[28px] bg-[#46515a] p-5 shadow-[0_16px_40px_rgba(36,43,49,0.24)]"
+            className="rounded-[28px] bg-[#46515a] p-5 shadow-[0_16px_40px_rgba(36,43,49,0.24)] lg:-mr-6 lg:p-8 xl:-mr-10"
           >
             <img
               src={heroImg}
               alt={landing.hero.imageAlt}
-              className="block w-full rounded-[18px]"
+              className="block w-full rounded-[18px] lg:max-h-[580px] lg:object-cover"
             />
-            <div className="mt-3.5 flex items-center gap-2.5 rounded-[14px] bg-[#f6f8f7] px-3.5 py-2.5 text-xs text-[#3f5d4a]">
+            <div className="mt-3.5 flex items-center gap-2.5 rounded-[14px] bg-[#f6f8f7] px-12 py-2.5 text-xs text-[#3f5d4a]">
               <span className="h-2.5 w-2.5 rounded-full bg-[#3c985f]" />
               <span className="text-balance">
                 {landing.hero.realtimeCaption}
@@ -177,7 +179,9 @@ function LandingPage() {
           <p className="mx-auto mt-4 max-w-[660px] text-[#758389]">
             {landing.cta.description}
           </p>
-          <Button className="mt-7">{common.buttons.createFreeAccount}</Button>
+          <Button className="mt-7" onClick={() => navigate("/dang-ky")}>
+            {common.buttons.createFreeAccount}
+          </Button>
         </motion.div>
       </section>
     </>
