@@ -1,55 +1,42 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import Layout from "./components/Layout";
-import { viText } from "./locales/vi";
+import CoursesPage from "./pages/CoursesPage";
+import DictionaryPage from "./pages/DictionaryPage";
 import LandingPage from "./pages/LandingPage";
-import PlaceholderPage from "./pages/PlaceholderPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ReviewPage from "./pages/ReviewPage";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
+}
 
 function App() {
-  const { placeholderPages } = viText;
-
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<LandingPage />} />
-        <Route
-          path="khoa-hoc"
-          element={
-            <PlaceholderPage
-              title={placeholderPages.courses.title}
-              subtitle={placeholderPages.courses.subtitle}
-            />
-          }
-        />
-        <Route
-          path="tu-dien"
-          element={
-            <PlaceholderPage
-              title={placeholderPages.dictionary.title}
-              subtitle={placeholderPages.dictionary.subtitle}
-            />
-          }
-        />
-        <Route
-          path="danh-gia"
-          element={
-            <PlaceholderPage
-              title={placeholderPages.review.title}
-              subtitle={placeholderPages.review.subtitle}
-            />
-          }
-        />
-        <Route
-          path="dang-nhap"
-          element={
-            <PlaceholderPage
-              title={placeholderPages.signIn.title}
-              subtitle={placeholderPages.signIn.subtitle}
-            />
-          }
-        />
-        <Route path="bat-dau" element={<Navigate to="/dang-nhap" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<LandingPage />} />
+          <Route path="khoa-hoc" element={<CoursesPage />} />
+          <Route path="tu-dien" element={<DictionaryPage />} />
+          <Route path="danh-gia" element={<ReviewPage />} />
+          <Route
+            path="bat-dau"
+            element={<Navigate to="/dang-nhap" replace />}
+          />
+        </Route>
+        <Route path="dang-nhap" element={<LoginPage />} />
+        <Route path="dang-ky" element={<RegisterPage />} />
+      </Routes>
+    </>
   );
 }
 

@@ -81,6 +81,114 @@ export const viText = {
         "Tham gia cùng hơn 50.000 người dùng đang sử dụng ElevenAI để kết nối với cộng đồng, gia đình và đồng nghiệp quốc tế.",
     },
   },
+
+  //==============================================================================================================================
+  coursesPage: {
+    upgrade: {
+      title: "Nâng cấp tài khoản Pro ngay!",
+      description:
+        "Mở khóa toàn bộ thư viện bài học chuyên sâu về y tế và kỹ thuật.",
+      cta: "Nâng cấp ngay",
+    },
+    hero: {
+      title: "Khám phá khóa học",
+      description:
+        "Bắt đầu hành trình giao tiếp không giới hạn. Tìm kiếm lộ trình học phù hợp với mục tiêu cá nhân hoặc công việc của bạn.",
+    },
+    labels: {
+      newest: "Mới nhất",
+      lessons: "bài học",
+      empty:
+        "Chưa có khóa học trong nhóm này. Dữ liệu sẽ được lấy từ API ở bước tiếp theo.",
+    },
+  },
+
+  dictionaryPage: {
+    hero: {
+      title: "Từ điển ngôn ngữ ký hiệu",
+      description:
+        "Tìm kiếm và học các ký hiệu phổ biến nhất thông qua hệ thống video minh họa sinh động.",
+    },
+    search: {
+      placeholder: "Tìm kiếm từ vựng...",
+      button: "Tìm kiếm",
+    },
+    pagination: {
+      previousAriaLabel: "Trang trước",
+      nextAriaLabel: "Trang sau",
+    },
+    labels: {
+      empty: "Chưa có dữ liệu từ điển phù hợp với bộ lọc hiện tại.",
+    },
+  },
+
+  reviewPage: {
+    hero: {
+      title: "Đóng góp ý kiến",
+      description:
+        "Cảm nhận của bạn về ứng dụng là động lực để chúng tôi cải thiện mỗi ngày.",
+    },
+    rating: {
+      prompt: "Trải nghiệm của bạn?",
+      veryBad: "Rất tệ",
+      notGood: "Chưa tốt",
+      normal: "Bình thường",
+      satisfied: "Hài lòng",
+      verySatisfied: "Rất hài lòng",
+    },
+    form: {
+      categoryLabel: "Danh mục phản hồi",
+      categoryPlaceholder: "Chọn danh mục...",
+      detailLabel: "Chi tiết phản hồi",
+      detailPlaceholder:
+        "Hãy cho chúng tôi biết chi tiết hơn về ý kiến của bạn...",
+      submitButton: "Gửi phản hồi",
+    },
+  },
+
+  authPages: {
+    backButton: "Quay lại",
+    socialDivider: "Hoặc tiếp tục với",
+    providers: {
+      google: "Google",
+      apple: "Apple",
+    },
+    login: {
+      title: "Chào mừng trở lại",
+      subtitle: "Vui lòng nhập thông tin để đăng nhập.",
+      emailLabel: "Địa chỉ Email",
+      emailPlaceholder: "ten@congty.com",
+      passwordLabel: "Mật khẩu",
+      passwordPlaceholder: "********",
+      forgotPassword: "Quên mật khẩu?",
+      submitButton: "Đăng nhập",
+      noAccount: "Chưa có tài khoản?",
+      registerNow: "Đăng ký ngay",
+    },
+    register: {
+      title: "Tạo tài khoản của bạn",
+      subtitle: "Tham gia cộng đồng học ngôn ngữ ký hiệu.",
+      nameLabel: "Họ và tên",
+      namePlaceholder: "Nhập họ và tên của bạn",
+      emailLabel: "Địa chỉ Email",
+      emailPlaceholder: "name@example.com",
+      passwordLabel: "Mật khẩu",
+      passwordPlaceholder: "tối thiểu 8 ký tự",
+      confirmPasswordLabel: "Xác nhận mật khẩu",
+      confirmPasswordPlaceholder: "Nhập lại mật khẩu",
+      submitButton: "Tạo tài khoản",
+      hasAccount: "Đã có tài khoản?",
+      signInNow: "Đăng nhập",
+      agreementText:
+        "Bằng cách đăng ký, tôi đồng ý với các điều khoản của Eleven.",
+      termLink: "Điều khoản dịch vụ",
+      privacyLink: "Chính sách bảo mật",
+      showPasswordAria: "Hiện mật khẩu",
+      hidePasswordAria: "Ẩn mật khẩu",
+    },
+  },
+
+  //==============================================================================================================================
   placeholderPages: {
     courses: {
       title: "Khóa học",

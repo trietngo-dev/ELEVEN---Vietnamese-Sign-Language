@@ -54,7 +54,7 @@ function Navbar() {
             {common.buttons.signIn}
           </NavLink>
           <NavLink
-            to="/bat-dau"
+            to="/dang-ky"
             className={buttonVariants({
               size: "sm",
               className: "h-10 px-5 text-[0.88rem]",
