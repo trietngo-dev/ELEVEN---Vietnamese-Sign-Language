@@ -3,19 +3,21 @@ using SignLanguageAI.Models;
 namespace SignLanguageAI.Services
 {
     /// <summary>
-    /// Service to extract and normalize 20,640 features from MediaPipe keypoints
+    /// Service to extract and normalize 30,320 features from MediaPipe keypoints
     /// Performs: Spatial Normalization + Temporal Padding + Flattening
     /// </summary>
     public class FeatureExtractionService
     {
         private readonly ILogger<FeatureExtractionService> _logger;
         private const int MAX_FRAMES = 80;
-        private const int POSE_POINTS = 33;
+        private const int POSE_POINTS = 25;
+        private const int FACE_POINTS = 51;
         private const int HAND_POINTS = 21;
         private const int FEATURES_PER_POSE_POINT = 4; // x, y, z, visibility
+        private const int FEATURES_PER_FACE_POINT = 3; // x, y, z (no visibility)
         private const int FEATURES_PER_HAND_POINT = 3; // x, y, z (no visibility)
-        private const int FEATURES_PER_FRAME = 258;    // 33*4 + 21*3 + 21*3
-        private const int TOTAL_FEATURES = 20640;      // 80 * 258
+        private const int FEATURES_PER_FRAME = 379;    // 25*4 + 51*3 + 21*3 + 21*3
+        private const int TOTAL_FEATURES = 30320;      // 80 * 379
 
         public FeatureExtractionService(ILogger<FeatureExtractionService> logger)
         {
@@ -23,7 +25,7 @@ namespace SignLanguageAI.Services
         }
 
         /// <summary>
-        /// Extract 20,640 normalized features from keypoints input
+        /// Extract 30,320 normalized features from keypoints input
         /// </summary>
         public List<float> ExtractFeatures(KeypointsInput input)
         {
@@ -37,8 +39,8 @@ namespace SignLanguageAI.Services
             {
                 if (!frame.IsValid())
                     throw new ArgumentException(
-                        $"Frame không hợp lệ. Expected: 33 pose, 21 left hand, 21 right hand. " +
-                        $"Got: {frame.Pose.Count} pose, {frame.LeftHand.Count} left, {frame.RightHand.Count} right"
+                        $"Frame không hợp lệ. Expected: 25 pose, 51 face, 21 left hand, 21 right hand. " +
+                        $"Got: {frame.Pose.Count} pose, {frame.Face.Count} face, {frame.LeftHand.Count} left, {frame.RightHand.Count} right"
                     );
             }
 
@@ -48,7 +50,7 @@ namespace SignLanguageAI.Services
             // Step 2: Pad or truncate to exactly 80 frames
             var paddedFrames = PadFrames(normalizedFrames);
 
-            // Step 3: Flatten to 20,640 features
+            // Step 3: Flatten to 30,320 features
             var features = FlattenFrames(paddedFrames);
 
             _logger.LogInformation($"✓ Extracted {features.Count} features from {paddedFrames.Count} frames");
@@ -89,6 +91,18 @@ namespace SignLanguageAI.Services
                 foreach (var point in frame.LeftHand)
                 {
                     normalizedFrame.LeftHand.Add(new Keypoint
+                    {
+                        X = point.X - nosePoint.X,
+                        Y = point.Y - nosePoint.Y,
+                        Z = point.Z - nosePoint.Z,
+                        Visibility = point.Visibility
+                    });
+                }
+
+                // Normalize Face: subtract nose position
+                foreach (var point in frame.Face)
+                {
+                    normalizedFrame.Face.Add(new Keypoint
                     {
                         X = point.X - nosePoint.X,
                         Y = point.Y - nosePoint.Y,
@@ -138,6 +152,9 @@ namespace SignLanguageAI.Services
                     Pose = Enumerable.Range(0, POSE_POINTS)
                         .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
                         .ToList(),
+                    Face = Enumerable.Range(0, FACE_POINTS)
+                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
+                        .ToList(),
                     LeftHand = Enumerable.Range(0, HAND_POINTS)
                         .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
                         .ToList(),
@@ -159,13 +176,14 @@ namespace SignLanguageAI.Services
         }
 
         /// <summary>
-        /// Flatten all frames into 20,640 feature vector
+        /// Flatten all frames into 30,320 feature vector
         /// Structure per frame:
-        ///   - Pose (33 points × 4 values) = 132 features
+        ///   - Pose (25 points × 4 values) = 100 features
+        ///   - Face (51 points × 3 values) = 153 features
         ///   - Left Hand (21 points × 3 values) = 63 features
         ///   - Right Hand (21 points × 3 values) = 63 features
-        ///   = 258 features per frame
-        /// Total: 80 frames × 258 = 20,640 features
+        ///   = 379 features per frame
+        /// Total: 80 frames × 379 = 30,320 features
         /// </summary>
         private List<float> FlattenFrames(List<FrameKeypoints> frames)
         {
@@ -173,13 +191,21 @@ namespace SignLanguageAI.Services
 
             foreach (var frame in frames)
             {
-                // Flatten Pose (33 × 4)
+                // Flatten Pose (25 × 4)
                 foreach (var point in frame.Pose)
                 {
                     features.Add(point.X);
                     features.Add(point.Y);
                     features.Add(point.Z);
                     features.Add(point.Visibility);
+                }
+
+                // Flatten Face (51 × 3)
+                foreach (var point in frame.Face)
+                {
+                    features.Add(point.X);
+                    features.Add(point.Y);
+                    features.Add(point.Z);
                 }
 
                 // Flatten Left Hand (21 × 3)

@@ -2,13 +2,13 @@ namespace SignLanguageAI.Models
 {
     /// <summary>
     /// Request to predict from batch of frames (80 frames already flattened to features)
-    /// Each frame: 258 features (33 pose*4 + 21 hand*3 + 21 hand*3)
-    /// Total: 80 frames * 258 = 20,640 features
+    /// Each frame: 379 features (25 pose*4 + 51 face*3 + 21 hand*3 + 21 hand*3)
+    /// Total: 80 frames * 379 = 30,320 features
     /// </summary>
     public class BatchPredictRequest
     {
         /// <summary>
-        /// List of 80 frames, each frame is 258 features
+        /// List of 80 frames, each frame is 379 features
         /// If less than 80: will be zero-padded
         /// If more than 80: will be truncated
         /// </summary>
@@ -22,7 +22,7 @@ namespace SignLanguageAI.Models
             if (Frames == null || Frames.Count == 0)
                 return false;
 
-            // Each frame should have 258 features (or be zero-padded later)
+            // Each frame should have 379 features (or be zero-padded later)
             return Frames.All(f => f != null && f.Count > 0);
         }
 
