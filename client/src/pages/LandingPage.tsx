@@ -67,7 +67,10 @@ function LandingPage() {
               variants={fadeInUp}
               className="mx-auto mt-7 flex w-full max-w-md flex-col items-center gap-3 sm:flex-row sm:justify-center lg:mx-0 lg:max-w-none lg:justify-start"
             >
-              <Button className="w-full sm:w-auto">
+              <Button
+                onClick={() => navigate("*")}
+                className="w-full sm:w-auto"
+              >
                 {common.buttons.tryTranslator}
               </Button>
               <Button variant="outline" className="w-full sm:w-auto">
