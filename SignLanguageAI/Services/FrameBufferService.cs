@@ -82,7 +82,7 @@ namespace SignLanguageAI.Services
         }
 
         /// <summary>
-        /// Get flattened 20,640 features from current buffer
+        /// Get flattened 30,320 features from current buffer
         /// Only valid when IsReady() returns true
         /// </summary>
         public List<float> GetFlattenedFeatures()

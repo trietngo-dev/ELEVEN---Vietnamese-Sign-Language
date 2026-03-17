@@ -80,7 +80,7 @@ namespace SignLanguageAI.Controllers
         /// <summary>
         /// Dự đoán cử chỉ từ các feature
         /// </summary>
-        /// <param name="request">Request chứa danh sách 20640 feature</param>
+        /// <param name="request">Request chứa danh sách 30,320 feature</param>
         /// <returns>Kết quả dự đoán với ID, nhãn và độ tin cậy</returns>
         [HttpPost("predict")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -103,7 +103,7 @@ namespace SignLanguageAI.Controllers
                     _logger.LogWarning("Predict called with empty features");
                     return BadRequest(new { 
                         error = "Features array cannot be empty",
-                        expectedCount = 20640,
+                        expectedCount = _featureService.GetExpectedFeatureCount(),
                         receivedCount = request.Features?.Count ?? 0
                     });
                 }
@@ -123,26 +123,31 @@ namespace SignLanguageAI.Controllers
 
                 _logger.LogInformation($"Processing prediction request with {request.Features.Count} features");
 
-                var (predictedId, label, confidence, probabilities) = _onnxService.Predict(request.Features);
+                var result = _onnxService.Predict(request.Features);
 
-                var response = new PredictResponse
+                if (result.confidence < 0.70f || string.Equals(result.label, "khonglamgi", StringComparison.OrdinalIgnoreCase))
                 {
-                    PredictedId = predictedId,
-                    Label = label,
-                    Confidence = confidence,
-                    Probabilities = probabilities,
-                    Timestamp = DateTime.UtcNow
-                };
+                    _logger.LogInformation($"Prediction filtered: Label={result.label}, Confidence={result.confidence:F4}");
+                    return Ok(new
+                    {
+                        word = "",
+                        message = "Chưa rõ cử chỉ"
+                    });
+                }
 
-                _logger.LogInformation($"✓ Prediction successful: {label} (ID: {predictedId}, Confidence: {confidence:F4})");
-                return Ok(response);
+                _logger.LogInformation($"✓ Prediction accepted: {result.label} (Confidence: {result.confidence:F4})");
+                return Ok(new
+                {
+                    word = result.label,
+                    confidence = result.confidence
+                });
             }
             catch (ArgumentException ex)
             {
                 _logger.LogWarning($"Validation error: {ex.Message}");
                 return BadRequest(new { 
                     error = ex.Message,
-                    expectedFeatures = 20640,
+                    expectedFeatures = _featureService.GetExpectedFeatureCount(),
                     receivedFeatures = request?.Features?.Count ?? 0
                 });
             }
@@ -229,10 +234,10 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
-        /// Extract 20,640 normalized features from MediaPipe keypoints
+        /// Extract 30,320 normalized features from MediaPipe keypoints
         /// </summary>
         /// <param name="request">80 frames of keypoints (can be less, will be zero-padded)</param>
-        /// <returns>20,640 normalized features ready for prediction</returns>
+        /// <returns>30,320 normalized features ready for prediction</returns>
         [HttpPost("extract-features")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -279,9 +284,9 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
-        /// Predict gesture from batch of 80 flattened frames (20,640 features total)
+        /// Predict gesture from batch of 80 flattened frames (30,320 features total)
         /// </summary>
-        /// <param name="request">80 frames × 258 features each</param>
+        /// <param name="request">80 frames × 379 features each</param>
         /// <returns>Predicted gesture with probabilities</returns>
         [HttpPost("predict-batch")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -321,10 +326,12 @@ namespace SignLanguageAI.Controllers
                         flattenedFeatures.AddRange(frame);
                 }
 
-                // Pad or truncate to exactly 20,640 features
-                while (flattenedFeatures.Count < 20640)
+                var expectedFeatures = _featureService.GetExpectedFeatureCount();
+
+                // Pad or truncate to exactly expected feature length
+                while (flattenedFeatures.Count < expectedFeatures)
                     flattenedFeatures.Add(0f);
-                while (flattenedFeatures.Count > 20640)
+                while (flattenedFeatures.Count > expectedFeatures)
                     flattenedFeatures.RemoveAt(flattenedFeatures.Count - 1);
 
                 _logger.LogInformation($"Processing batch prediction with {flattenedFeatures.Count} features from {request.Frames.Count} frames");
@@ -379,7 +386,7 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frame không hợp lệ",
-                        expected = "33 pose + 21 left hand + 21 right hand = 75 points"
+                        expected = "25 pose + 51 face + 21 left hand + 21 right hand = 118 points"
                     });
                 }
 
