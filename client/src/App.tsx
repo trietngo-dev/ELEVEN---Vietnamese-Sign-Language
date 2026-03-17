@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ReviewPage from "./pages/ReviewPage";
+import SignLanguageTracker from "./components/SignLanguageTracker";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -28,6 +29,7 @@ function App() {
           <Route path="khoa-hoc" element={<CoursesPage />} />
           <Route path="tu-dien" element={<DictionaryPage />} />
           <Route path="danh-gia" element={<ReviewPage />} />
+          <Route path="*" element={<SignLanguageTracker />} />
           <Route
             path="bat-dau"
             element={<Navigate to="/dang-nhap" replace />}
