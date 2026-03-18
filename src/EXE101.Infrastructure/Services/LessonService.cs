@@ -32,10 +32,14 @@ public sealed class LessonService(
         };
     }
 
-    public async Task<LessonResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<LessonDetailResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
-        var entity = await _repository.GetByIdAsync(id, cancellationToken);
-        return entity is null ? null : Map(entity);
+        var entity = await _dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.VideoMediaAsset)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        return entity is null ? null : MapDetail(entity);
     }
 
     public async Task<LessonResponse> CreateAsync(CreateLessonRequest request, CancellationToken cancellationToken = default)
@@ -114,6 +118,38 @@ public sealed class LessonService(
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
         return Map(updated);
+    }
+
+    public async Task<LessonDetailResponse?> UpdateVideoAsync(long id, UpdateLessonVideoRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.VideoMediaId <= 0)
+        {
+            throw new InvalidOperationException("VideoMediaId must be greater than zero.");
+        }
+
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity is null)
+        {
+            return null;
+        }
+
+        var videoExists = await _dbContext.MediaAssets.AsNoTracking().AnyAsync(x => x.Id == request.VideoMediaId, cancellationToken);
+        if (!videoExists)
+        {
+            throw new InvalidOperationException("Video media does not exist.");
+        }
+
+        entity.VideoMediaId = request.VideoMediaId;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _repository.UpdateAsync(entity, cancellationToken);
+
+        var updatedLesson = await _dbContext.Lessons
+            .AsNoTracking()
+            .Include(x => x.VideoMediaAsset)
+            .FirstOrDefaultAsync(x => x.Id == entity.Id, cancellationToken);
+
+        return updatedLesson is null ? null : MapDetail(updatedLesson);
     }
 
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
@@ -203,6 +239,32 @@ public sealed class LessonService(
             ObjectiveText = entity.ObjectiveText,
             CoverMediaId = entity.CoverMediaId,
             VideoMediaId = entity.VideoMediaId,
+            LessonType = entity.LessonType,
+            DifficultyLevel = entity.DifficultyLevel,
+            EstimatedMinutes = entity.EstimatedMinutes,
+            XpReward = entity.XpReward,
+            SortOrder = entity.SortOrder,
+            Status = entity.Status,
+            PublishedAt = entity.PublishedAt,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt
+        };
+    }
+
+    private static LessonDetailResponse MapDetail(Lesson entity)
+    {
+        return new LessonDetailResponse
+        {
+            Id = entity.Id,
+            CourseId = entity.CourseId,
+            ModuleId = entity.ModuleId,
+            Title = entity.Title,
+            Slug = entity.Slug,
+            ShortDescription = entity.ShortDescription,
+            ObjectiveText = entity.ObjectiveText,
+            CoverMediaId = entity.CoverMediaId,
+            VideoMediaId = entity.VideoMediaId,
+            VideoUrl = entity.VideoMediaAsset?.FileUrl,
             LessonType = entity.LessonType,
             DifficultyLevel = entity.DifficultyLevel,
             EstimatedMinutes = entity.EstimatedMinutes,

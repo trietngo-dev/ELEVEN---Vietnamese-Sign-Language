@@ -6,15 +6,20 @@ using EXE101.Domain.Entities;
 using EXE101.Domain.Enums;
 using EXE101.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Supabase;
+using SupabaseClient = Supabase.Client;
 
 namespace EXE101.Infrastructure.Services;
 
 public sealed class MediaAssetService(
     IMediaAssetRepository repository,
-    AppDbContext dbContext) : IMediaAssetService
+    AppDbContext dbContext,
+    IOptions<SupabaseStorageOptions> supabaseStorageOptions) : IMediaAssetService
 {
     private readonly IMediaAssetRepository _repository = repository;
     private readonly AppDbContext _dbContext = dbContext;
+    private readonly SupabaseStorageOptions _supabaseStorageOptions = supabaseStorageOptions.Value;
 
     public async Task<PagedResult<MediaAssetResponse>> GetPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
@@ -64,6 +69,71 @@ public sealed class MediaAssetService(
 
         var created = await _repository.AddAsync(entity, cancellationToken);
         return Map(created);
+    }
+
+    public async Task<UploadMediaAssetResponse> UploadAsync(Stream fileStream, UploadMediaAssetRequest request, CancellationToken cancellationToken = default)
+    {
+        await ValidateOwnerAsync(request.OwnerUserId, cancellationToken);
+
+        if (fileStream is null)
+        {
+            throw new InvalidOperationException("File stream is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FileName))
+        {
+            throw new InvalidOperationException("FileName is required.");
+        }
+
+        if (request.FileSizeBytes <= 0)
+        {
+            throw new InvalidOperationException("FileSizeBytes must be greater than zero.");
+        }
+
+        var mimeType = string.IsNullOrWhiteSpace(request.MimeType)
+            ? "application/octet-stream"
+            : request.MimeType.Trim().ToLowerInvariant();
+
+        var mediaType = ResolveMediaType(mimeType, request.FileName);
+        var bucket = ResolveBucketName(mediaType);
+        var objectPath = BuildObjectPath(request.FileName, mediaType);
+        var fileBytes = await ReadAllBytesAsync(fileStream, cancellationToken);
+
+        var supabaseClient = await CreateSupabaseClientAsync(cancellationToken);
+        await supabaseClient.Storage
+            .From(bucket)
+            .Upload(fileBytes, objectPath, new Supabase.Storage.FileOptions
+            {
+                ContentType = mimeType,
+                Upsert = false
+            });
+
+        var publicUrl = supabaseClient.Storage.From(bucket).GetPublicUrl(objectPath);
+        if (string.IsNullOrWhiteSpace(publicUrl))
+        {
+            throw new InvalidOperationException("Failed to resolve uploaded file public URL.");
+        }
+
+        var entity = new MediaAsset
+        {
+            OwnerUserId = request.OwnerUserId,
+            StorageProvider = "supabase",
+            FileName = Path.GetFileName(request.FileName),
+            FileUrl = publicUrl,
+            MimeType = mimeType,
+            MediaType = mediaType,
+            FileSizeBytes = request.FileSizeBytes,
+            DurationSeconds = request.DurationSeconds,
+            Status = MediaStatus.Uploaded,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var created = await _repository.AddAsync(entity, cancellationToken);
+        return new UploadMediaAssetResponse
+        {
+            Id = created.Id,
+            FileUrl = created.FileUrl
+        };
     }
 
     public async Task<MediaAssetResponse?> UpdateAsync(long id, UpdateMediaAssetRequest request, CancellationToken cancellationToken = default)
@@ -190,5 +260,81 @@ public sealed class MediaAssetService(
             Status = entity.Status,
             CreatedAt = entity.CreatedAt
         };
+    }
+
+    private async Task<SupabaseClient> CreateSupabaseClientAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_supabaseStorageOptions.Url))
+        {
+            throw new InvalidOperationException("SupabaseStorage:Url is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_supabaseStorageOptions.ServiceRoleKey))
+        {
+            throw new InvalidOperationException("SupabaseStorage:ServiceRoleKey is not configured.");
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var client = new SupabaseClient(
+            _supabaseStorageOptions.Url,
+            _supabaseStorageOptions.ServiceRoleKey,
+            new SupabaseOptions
+            {
+                AutoConnectRealtime = false,
+                AutoRefreshToken = false
+            });
+
+        await client.InitializeAsync();
+        return client;
+    }
+
+    private string ResolveBucketName(string mediaType)
+    {
+        return mediaType switch
+        {
+            "video" => _supabaseStorageOptions.VideoBucket,
+            "image" => _supabaseStorageOptions.ImageBucket,
+            _ => throw new InvalidOperationException("Only image and video uploads are supported.")
+        };
+    }
+
+    private static string ResolveMediaType(string mimeType, string fileName)
+    {
+        if (mimeType.StartsWith("video/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "video";
+        }
+
+        if (mimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return "image";
+        }
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".mp4" or ".mov" or ".avi" or ".webm" or ".mkv" => "video",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" => "image",
+            _ => throw new InvalidOperationException("Unsupported file type. Please upload an image or video file.")
+        };
+    }
+
+    private static string BuildObjectPath(string originalFileName, string mediaType)
+    {
+        var fileName = Path.GetFileName(originalFileName).Replace(" ", "-").ToLowerInvariant();
+        return $"{mediaType}/{DateTime.UtcNow:yyyy/MM/dd}/{Guid.NewGuid():N}-{fileName}";
+    }
+
+    private static async Task<byte[]> ReadAllBytesAsync(Stream stream, CancellationToken cancellationToken)
+    {
+        if (stream.CanSeek)
+        {
+            stream.Position = 0;
+        }
+
+        await using var memoryStream = new MemoryStream();
+        await stream.CopyToAsync(memoryStream, cancellationToken);
+        return memoryStream.ToArray();
     }
 }

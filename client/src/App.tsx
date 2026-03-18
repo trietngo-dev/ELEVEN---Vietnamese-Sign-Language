@@ -19,6 +19,7 @@ import AdminFeedback from "./pages/admin/AdminFeedback";
 import { useAuth } from "./context/AuthContext";
 
 import HomePage from "./pages/HomePage";
+import ProfilePage from "./pages/ProfilePage";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -86,12 +87,27 @@ function App() {
           <Route path="khoa-hoc" element={<CoursesPage />} />
           <Route path="tu-dien" element={<DictionaryPage />} />
           <Route path="danh-gia" element={<ReviewPage />} />
-          <Route path="*" element={<SignLanguageTracker />} />
+          <Route
+            path="*"
+            element={
+              <ProtectedRoute>
+                <SignLanguageTracker />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="home-page"
             element={
               <ProtectedRoute>
                 <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="ho-so"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

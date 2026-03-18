@@ -460,13 +460,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Lesson>()
-            .HasOne<MediaAsset>()
+            .HasOne(x => x.CoverMediaAsset)
             .WithMany()
             .HasForeignKey(x => x.CoverMediaId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Lesson>()
-            .HasOne<MediaAsset>()
+            .HasOne(x => x.VideoMediaAsset)
             .WithMany()
             .HasForeignKey(x => x.VideoMediaId)
             .OnDelete(DeleteBehavior.SetNull);

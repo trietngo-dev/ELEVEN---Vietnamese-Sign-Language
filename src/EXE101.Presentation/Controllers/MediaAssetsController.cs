@@ -34,6 +34,32 @@ public sealed class MediaAssetsController(IMediaAssetService mediaAssetService) 
         return CreatedAtAction(nameof(GetMediaAsset), new { id = result.Id }, result);
     }
 
+    [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadMediaAsset(
+        [FromForm] IFormFile file,
+        [FromForm] long? ownerUserId,
+        [FromForm] int? durationSeconds,
+        CancellationToken cancellationToken = default)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw new InvalidOperationException("File is required.");
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await mediaAssetService.UploadAsync(stream, new UploadMediaAssetRequest
+        {
+            OwnerUserId = ownerUserId,
+            FileName = file.FileName,
+            MimeType = file.ContentType,
+            FileSizeBytes = file.Length,
+            DurationSeconds = durationSeconds
+        }, cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpPut("{id:long}")]
     public async Task<IActionResult> UpdateMediaAsset([FromRoute] long id, [FromBody] UpdateMediaAssetRequest request, CancellationToken cancellationToken = default)
     {
