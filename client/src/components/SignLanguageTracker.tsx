@@ -4,14 +4,16 @@ import {
   FilesetResolver,
   DrawingUtils,
 } from "@mediapipe/tasks-vision";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Button } from "./ui/button";
 
-// === CÁC HẰNG SỐ CHUẨN CỦA HỆ THỐNG ===
-const POSE_LANDMARK_COUNT = 25;
+// === CÁC HẰNG SỐ CHUẨN MỚI NHẤT ===
 const HAND_LANDMARK_COUNT = 21;
-const TARGET_FRAME_COUNT = 80;
+const TARGET_FRAME_COUNT = 50;
 
-// 51 điểm vàng khuôn mặt (31 miệng + 20 lông mày)
+const SELECTED_POSE_INDICES = [0, 11, 12, 13, 14, 15, 16, 23, 24]; // 9 điểm
 const SELECTED_FACE_INDICES = [
+  // 51 điểm
   61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317,
   14, 87, 178, 88, 95, 78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 46, 53, 52,
   65, 55, 70, 63, 105, 66, 107, 276, 283, 282, 295, 285, 300, 293, 334, 296,
@@ -22,21 +24,21 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5048";
 const EXTRACT_FEATURES_ENDPOINT = `${API_BASE_URL}/api/gesture/extract-features`;
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
+const TRANSLATE_SENTENCE_ENDPOINT = `${API_BASE_URL}/api/gesture/translate-sentence`;
 const CONFIDENCE_THRESHOLD = 0.7;
 const HAND_SMOOTHING_ALPHA = 0.35;
 const MAX_HAND_HOLD_FRAMES = 4;
 
-// === ĐỊNH NGHĨA KIỂU DỮ LIỆU ===
+// === TYPE MỚI: HOÀN TOÀN BỎ VISIBILITY ===
 type Keypoint = {
   x: number;
   y: number;
   z: number;
-  visibility: number;
 };
 
 type FrameKeypoints = {
   pose: Keypoint[];
-  face: Keypoint[]; // <-- Đã thêm Face vào Payload
+  face: Keypoint[];
   leftHand: Keypoint[];
   rightHand: Keypoint[];
 };
@@ -57,7 +59,12 @@ type PredictApiResponse = {
   probabilities?: Record<string, number>;
 };
 
+type TranslateSentenceResponse = {
+  sentence?: string;
+};
+
 const SignLanguageTracker = () => {
+  const { pathname } = useLocation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isCollectingRef = useRef(false);
@@ -66,33 +73,42 @@ const SignLanguageTracker = () => {
   const prevRightHandRef = useRef<Keypoint[] | null>(null);
   const missingLeftHandFramesRef = useRef(0);
   const missingRightHandFramesRef = useRef(0);
+  const translationSessionRef = useRef(0);
+  const recognizedWordsRef = useRef<string[]>([]);
+
+  const navigate = useNavigate();
 
   const [capturedFrames, setCapturedFrames] = useState(0);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [recognizedWords, setRecognizedWords] = useState<string[]>([]);
+  const [finalSentence, setFinalSentence] = useState("");
   const [uploadStatus, setUploadStatus] = useState(
-    "Sẵn sàng test gửi keypoints",
+    "Sẵn sàng dịch câu liên tục",
   );
   const [backendResult, setBackendResult] = useState<PredictApiResponse | null>(
     null,
   );
+  const [showLandmarks, setShowLandmarks] = useState(false);
 
   const isInitializing = useRef(false);
+  const showLandmarksRef = useRef(false);
+  const stopCameraRef = useRef<() => void>(() => {});
+  const didMountPathEffectRef = useRef(false);
 
-  // === CÁC HÀM TIỆN ÍCH XỬ LÝ SỐ LIỆU ===
   const toFiniteNumber = (value: unknown) => {
     const num = typeof value === "number" ? value : 0;
     return Number.isFinite(num) ? num : 0;
   };
 
+  // Chỉ lấy x, y, z
   const toKeypoint = (point?: {
     x?: number;
     y?: number;
     z?: number;
-    visibility?: number;
   }): Keypoint => ({
     x: toFiniteNumber(point?.x),
     y: toFiniteNumber(point?.y),
     z: toFiniteNumber(point?.z),
-    visibility: toFiniteNumber(point?.visibility),
   });
 
   const smoothKeypoints = (
@@ -107,18 +123,12 @@ const SignLanguageTracker = () => {
         x: prev.x * (1 - alpha) + point.x * alpha,
         y: prev.y * (1 - alpha) + point.y * alpha,
         z: prev.z * (1 - alpha) + point.z * alpha,
-        visibility: prev.visibility * (1 - alpha) + point.visibility * alpha,
       };
     });
   };
 
   const getHandKeypoints = (
-    rawPoints: Array<{
-      x?: number;
-      y?: number;
-      z?: number;
-      visibility?: number;
-    }>,
+    rawPoints: Array<{ x?: number; y?: number; z?: number }>,
     previousRef: MutableRefObject<Keypoint[] | null>,
     missingFrameCountRef: MutableRefObject<number>,
   ): Keypoint[] => {
@@ -148,7 +158,6 @@ const SignLanguageTracker = () => {
     );
   };
 
-  // === HÀM TRÍCH XUẤT LÕI (ĐÃ FIX LẬT GƯƠNG & KHUÔN MẶT) ===
   const extractFrameKeypoints = (
     results: ReturnType<HolisticLandmarker["detectForVideo"]>,
   ): FrameKeypoints => {
@@ -157,14 +166,19 @@ const SignLanguageTracker = () => {
     const leftHand: Keypoint[] = [];
     const rightHand: Keypoint[] = [];
 
-    // 1. POSE (Lấy 25 điểm và Lật trục X)
+    // 1. POSE (9 điểm)
     const rawPose = results.poseLandmarks?.[0] ?? [];
-    for (let i = 0; i < POSE_LANDMARK_COUNT; i += 1) {
-      const p = rawPose[i];
-      pose.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
+    if (rawPose.length > 0) {
+      for (const index of SELECTED_POSE_INDICES) {
+        const p = rawPose[index];
+        pose.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
+      }
+    } else {
+      for (let i = 0; i < SELECTED_POSE_INDICES.length; i += 1)
+        pose.push(toKeypoint(undefined));
     }
 
-    // 2. FACE (Lọc 51 điểm biểu cảm và Lật trục X)
+    // 2. FACE (51 điểm)
     const rawFace = results.faceLandmarks?.[0] ?? [];
     if (rawFace.length > 0) {
       for (const index of SELECTED_FACE_INDICES) {
@@ -172,12 +186,11 @@ const SignLanguageTracker = () => {
         face.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
       }
     } else {
-      for (let i = 0; i < SELECTED_FACE_INDICES.length; i += 1) {
+      for (let i = 0; i < SELECTED_FACE_INDICES.length; i += 1)
         face.push(toKeypoint(undefined));
-      }
     }
 
-    // 3. HANDS (Đổi chéo Tay Trái/Phải và Lật trục X)
+    // 3. HANDS (Swap and Mirror)
     const rawRightAsLeft = (results.rightHandLandmarks?.[0] ?? []).map((p) => ({
       ...p,
       x: 1 - p.x,
@@ -202,10 +215,9 @@ const SignLanguageTracker = () => {
       ),
     );
 
-    // 4. CHUẨN HÓA (Dời gốc tọa độ về Mũi, bỏ qua nếu mất dấu)
+    // 4. CHUẨN HÓA LẤY MŨI LÀM GỐC
     const nose = pose[0] ?? toKeypoint(undefined);
     const normalizeByNose = (point: Keypoint): Keypoint => {
-      // BẢO VỆ SỐ 0: Nếu chi tiết bị khuất, giữ nguyên tọa độ 0
       if (point.x === 0 && point.y === 0 && point.z === 0) return point;
       return {
         ...point,
@@ -223,9 +235,13 @@ const SignLanguageTracker = () => {
     };
   };
 
-  // === HÀM GIAO TIẾP API BACKEND ===
-  const sendFramesToBackend = async (frames: FrameKeypoints[]) => {
-    setUploadStatus("Đang gửi 80 frame sang BE để extract features...");
+  const processSlidingWindow = async (
+    frames: FrameKeypoints[],
+    sessionId: number,
+  ) => {
+    if (frames.length !== TARGET_FRAME_COUNT) {
+      return;
+    }
 
     try {
       const extractResponse = await fetch(EXTRACT_FEATURES_ENDPOINT, {
@@ -248,12 +264,8 @@ const SignLanguageTracker = () => {
         !Array.isArray(extracted.features) ||
         extracted.features.length === 0
       ) {
-        throw new Error("Extracted features is empty");
+        return;
       }
-
-      setUploadStatus(
-        `Đã extract ${extracted.totalFeatures} features, đang predict...`,
-      );
 
       const response = await fetch(PREDICT_ENDPOINT, {
         method: "POST",
@@ -269,56 +281,152 @@ const SignLanguageTracker = () => {
       const data = (await response.json()) as PredictApiResponse;
       setBackendResult(data);
 
+      if (sessionId !== translationSessionRef.current) {
+        return;
+      }
+
       const predictedWord = data.word ?? data.label ?? "";
       const predictedConfidence = data.confidence ?? 0;
 
-      if (!predictedWord) {
-        setUploadStatus(data.message ?? "Chưa rõ cử chỉ");
+      if (!predictedWord || predictedConfidence < CONFIDENCE_THRESHOLD) {
         return;
       }
 
-      if (predictedConfidence < CONFIDENCE_THRESHOLD) {
+      setRecognizedWords((prev) => {
+        if (prev.at(-1) === predictedWord) {
+          return prev;
+        }
+
+        const next = [...prev, predictedWord];
+        recognizedWordsRef.current = next;
         setUploadStatus(
-          `KQ thấp: ${predictedWord} (${(predictedConfidence * 100).toFixed(2)}%). Cần > 70% để hiển thị kết quả chính thức.`,
+          `Đã nhận: ${predictedWord} (${(predictedConfidence * 100).toFixed(1)}%)`,
         );
-        return;
-      }
-
-      setUploadStatus(
-        `KQ: ${predictedWord} - độ tin cậy ${(predictedConfidence * 100).toFixed(2)}%`,
-      );
+        return next;
+      });
     } catch (error) {
-      console.error("Gửi keypoints thất bại:", error);
-      setUploadStatus("Gửi thất bại. Kiểm tra endpoint/backend rồi thử lại");
+      console.error("Predict sliding window thất bại:", error);
+      setUploadStatus("Có lỗi khi dự đoán một cụm frame");
     }
   };
 
-  const startCaptureAndSend = () => {
+  const stopTranslationAndPolish = async (sessionId: number) => {
+    const words = [...recognizedWordsRef.current];
+
+    if (words.length === 0) {
+      setFinalSentence("");
+      setUploadStatus("Không có từ nào để trau chuốt");
+      return;
+    }
+
+    setUploadStatus("Đang trau chuốt câu bằng Gemini...");
+
+    try {
+      const response = await fetch(TRANSLATE_SENTENCE_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ words }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = (await response.json()) as TranslateSentenceResponse;
+      if (sessionId !== translationSessionRef.current) {
+        return;
+      }
+      setFinalSentence((data.sentence ?? "").trim());
+      setUploadStatus("Đã hoàn tất trau chuốt câu");
+    } catch (error) {
+      console.error("Trau chuốt câu thất bại:", error);
+      setUploadStatus("Trau chuốt thất bại. Kiểm tra Gemini API.");
+    }
+  };
+
+  const toggleTranslation = () => {
+    if (isCollectingRef.current) {
+      isCollectingRef.current = false;
+      setIsTranslating(false);
+      translationSessionRef.current += 1;
+      const stoppedSessionId = translationSessionRef.current;
+      frameBufferRef.current = [];
+      setCapturedFrames(0);
+      void stopTranslationAndPolish(stoppedSessionId);
+      return;
+    }
+
+    translationSessionRef.current += 1;
     frameBufferRef.current = [];
     prevLeftHandRef.current = null;
     prevRightHandRef.current = null;
     missingLeftHandFramesRef.current = 0;
     missingRightHandFramesRef.current = 0;
     isCollectingRef.current = true;
+    setIsTranslating(true);
     setCapturedFrames(0);
+    setRecognizedWords([]);
+    recognizedWordsRef.current = [];
+    setFinalSentence("");
     setBackendResult(null);
-    setUploadStatus("Bắt đầu thu 80 frame...");
+    setUploadStatus("Đang dịch liên tục. Hệ thống sẽ chốt mỗi 50 frame.");
   };
 
-  // === KHỞI TẠO CAMERA VÀ MEDIAPIPE ===
+  const toggleLandmarks = () => {
+    setShowLandmarks((prev) => {
+      const next = !prev;
+      showLandmarksRef.current = next;
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (isInitializing.current) return;
     isInitializing.current = true;
+    let isActive = true;
 
     let holisticLandmarker: HolisticLandmarker;
-    let animationId: number;
+    let animationId: number | null = null;
     let cameraStream: MediaStream | null = null;
+
+    const stopCameraAndLoop = () => {
+      if (animationId !== null) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+      }
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+
+    const handlePageLeave = () => {
+      stopCameraAndLoop();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        stopCameraAndLoop();
+      }
+    };
+
+    stopCameraRef.current = stopCameraAndLoop;
 
     const setupHolistic = async () => {
       try {
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
         );
+
+        if (!isActive) {
+          return;
+        }
 
         holisticLandmarker = await HolisticLandmarker.createFromOptions(
           vision,
@@ -333,6 +441,11 @@ const SignLanguageTracker = () => {
           },
         );
 
+        if (!isActive) {
+          holisticLandmarker.close();
+          return;
+        }
+
         console.log("AI Model đã tải thành công!");
         await startCamera();
       } catch (error) {
@@ -342,7 +455,7 @@ const SignLanguageTracker = () => {
 
     const startCamera = async () => {
       try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             width: { ideal: 1920 },
             height: { ideal: 1080 },
@@ -351,19 +464,31 @@ const SignLanguageTracker = () => {
           },
         });
 
+        if (!isActive) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        cameraStream = stream;
+
         if (videoRef.current) {
           videoRef.current.srcObject = cameraStream;
           videoRef.current.onloadedmetadata = () => {
+            if (!isActive) {
+              stopCameraAndLoop();
+              return;
+            }
             videoRef.current?.play();
             predictWebcam();
           };
         }
       } catch (err) {
-        console.error("Không tìm thấy camera hoặc bị từ chối:", err);
+        console.error("Không tìm thấy camera:", err);
       }
     };
 
     const predictWebcam = () => {
+      if (!isActive) return;
       if (!videoRef.current || !canvasRef.current || !holisticLandmarker)
         return;
 
@@ -387,7 +512,6 @@ const SignLanguageTracker = () => {
         canvasRef.current.height,
       );
 
-      // Lật canvas để vẽ (Mirror UI)
       canvasCtx.save();
       canvasCtx.translate(canvasRef.current.width, 0);
       canvasCtx.scale(-1, 1);
@@ -400,39 +524,39 @@ const SignLanguageTracker = () => {
         canvasRef.current.height,
       );
 
-      // Vẽ bộ xương lên UI (Hiển thị đầy đủ mặt cho đẹp)
-      if (results.faceLandmarks?.[0]) {
-        drawingUtils.drawConnectors(
-          results.faceLandmarks[0],
-          HolisticLandmarker.FACE_LANDMARKS_TESSELATION,
-          { color: "#C0C0C070", lineWidth: 1 },
-        );
-      }
-      if (results.poseLandmarks?.[0]) {
-        drawingUtils.drawConnectors(
-          results.poseLandmarks[0],
-          HolisticLandmarker.POSE_CONNECTIONS,
-          { color: "#00FF00", lineWidth: 2 },
-        );
-      }
-      if (results.rightHandLandmarks?.[0]) {
-        drawingUtils.drawConnectors(
-          results.rightHandLandmarks[0],
-          HolisticLandmarker.HAND_CONNECTIONS,
-          { color: "#FF0000", lineWidth: 2 },
-        );
-      }
-      if (results.leftHandLandmarks?.[0]) {
-        drawingUtils.drawConnectors(
-          results.leftHandLandmarks[0],
-          HolisticLandmarker.HAND_CONNECTIONS,
-          { color: "#00BFFF", lineWidth: 2 },
-        );
+      if (showLandmarksRef.current) {
+        if (results.faceLandmarks?.[0]) {
+          drawingUtils.drawConnectors(
+            results.faceLandmarks[0],
+            HolisticLandmarker.FACE_LANDMARKS_TESSELATION,
+            { color: "#C0C0C070", lineWidth: 1 },
+          );
+        }
+        if (results.poseLandmarks?.[0]) {
+          drawingUtils.drawConnectors(
+            results.poseLandmarks[0],
+            HolisticLandmarker.POSE_CONNECTIONS,
+            { color: "#00FF00", lineWidth: 2 },
+          );
+        }
+        if (results.rightHandLandmarks?.[0]) {
+          drawingUtils.drawConnectors(
+            results.rightHandLandmarks[0],
+            HolisticLandmarker.HAND_CONNECTIONS,
+            { color: "#FF0000", lineWidth: 2 },
+          );
+        }
+        if (results.leftHandLandmarks?.[0]) {
+          drawingUtils.drawConnectors(
+            results.leftHandLandmarks[0],
+            HolisticLandmarker.HAND_CONNECTIONS,
+            { color: "#00BFFF", lineWidth: 2 },
+          );
+        }
       }
 
       canvasCtx.restore();
 
-      // Thu thập Data khi bấm nút
       if (isCollectingRef.current) {
         const frameKeypoints = extractFrameKeypoints(results);
         frameBufferRef.current.push(frameKeypoints);
@@ -440,127 +564,179 @@ const SignLanguageTracker = () => {
         const currentFrames = frameBufferRef.current.length;
         setCapturedFrames(currentFrames);
 
-        if (currentFrames >= TARGET_FRAME_COUNT) {
-          isCollectingRef.current = false;
+        if (currentFrames === TARGET_FRAME_COUNT) {
           const payload = frameBufferRef.current.slice(0, TARGET_FRAME_COUNT);
-          void sendFramesToBackend(payload);
+          frameBufferRef.current = [];
+          setCapturedFrames(0);
+          void processSlidingWindow(payload, translationSessionRef.current);
         }
       }
 
       animationId = window.requestAnimationFrame(predictWebcam);
     };
 
+    window.addEventListener("beforeunload", handlePageLeave);
+    window.addEventListener("pagehide", handlePageLeave);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     setupHolistic();
 
     return () => {
       console.log("Cleanup...");
+      isActive = false;
       isInitializing.current = false;
-      cancelAnimationFrame(animationId);
+      window.removeEventListener("beforeunload", handlePageLeave);
+      window.removeEventListener("pagehide", handlePageLeave);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopCameraAndLoop();
+      stopCameraRef.current = () => {};
       holisticLandmarker?.close();
-      if (cameraStream) {
-        cameraStream.getTracks().forEach((track) => track.stop());
-      }
     };
   }, []);
 
-  // === UI RENDER ===
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 16,
-        alignItems: "flex-start",
-        justifyContent: "flex-start",
-        flexWrap: "wrap",
-      }}
-    >
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        style={{ display: "none" }}
-      />
-      <canvas
-        ref={canvasRef}
-        style={{
-          flex: "0 1 560px",
-          width: "560px",
-          maxWidth: "100%",
-          height: "auto",
-          borderRadius: 12,
-          border: "1px solid #e5e7eb",
-        }}
-      />
-      <div
-        style={{
-          flex: "0 1 360px",
-          width: 360,
-          maxWidth: "100%",
-          textAlign: "left",
-        }}
-      >
-        <button
-          type="button"
-          onClick={startCaptureAndSend}
-          disabled={isCollectingRef.current}
-          style={{
-            padding: "8px 14px",
-            borderRadius: 8,
-            border: "1px solid #d1d5db",
-            cursor: isCollectingRef.current ? "not-allowed" : "pointer",
-            backgroundColor: isCollectingRef.current ? "#e5e7eb" : "#111827",
-            color: isCollectingRef.current ? "#6b7280" : "#ffffff",
-          }}
-        >
-          {isCollectingRef.current
-            ? "Đang thu dữ liệu..."
-            : "Test gửi 80 frame"}
-        </button>
-        <p style={{ marginTop: 8, fontSize: 14 }}>
-          Frame đã thu: {capturedFrames}/80
-        </p>
-        <p style={{ marginTop: 4, fontSize: 14 }}>{uploadStatus}</p>
+  useEffect(() => {
+    if (!didMountPathEffectRef.current) {
+      didMountPathEffectRef.current = true;
+      return;
+    }
 
-        {backendResult && (
-          <div
-            style={{
-              marginTop: 8,
-              padding: 12,
-              border: "1px solid #d1d5db",
-              borderRadius: 8,
-              textAlign: "left",
-              backgroundColor: "#f9fafb",
-            }}
-          >
-            <p style={{ margin: 0, fontWeight: 600 }}>Kết quả từ BE</p>
-            <p style={{ margin: "6px 0 0", fontSize: 14 }}>
-              Word: {backendResult.word ?? backendResult.label ?? ""}
-            </p>
-            <p style={{ margin: "4px 0 0", fontSize: 14 }}>
-              Message: {backendResult.message ?? "(không có)"}
-            </p>
-            <p style={{ margin: "4px 0 0", fontSize: 14 }}>
-              Confidence: {((backendResult.confidence ?? 0) * 100).toFixed(2)}%
-            </p>
-            {backendResult.probabilities && (
-              <pre
-                style={{
-                  margin: "8px 0 0",
-                  fontSize: 12,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}
-              >
-                Probabilities:{" "}
-                {JSON.stringify(backendResult.probabilities, null, 2)}
-              </pre>
-            )}
+    stopCameraRef.current();
+    isCollectingRef.current = false;
+    setIsTranslating(false);
+  }, [pathname]);
+
+  const predictedWord = backendResult?.word ?? backendResult?.label ?? "";
+  const predictedConfidence = backendResult?.confidence ?? 0;
+  const confidenceText = `${(predictedConfidence * 100).toFixed(2)}%`;
+
+  const recognizedWordsText =
+    recognizedWords.length > 0
+      ? recognizedWords.join(" -> ")
+      : isTranslating
+        ? "Đang lắng nghe ký hiệu..."
+        : "Chưa có từ nhận diện";
+
+  const displaySentence =
+    finalSentence ||
+    "Câu hoàn chỉnh sẽ hiển thị tại đây sau khi bấm 'Kết thúc & Trau chuốt'.";
+
+  return (
+    <div className="mx-auto grid w-full max-w-[1300px] gap-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-0.5 py-2.5">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+            <span className="text-sm font-semibold text-[#5b6068]">
+              Quay lại
+            </span>
+          </Button>
+          <span className="text-[#d2d6dc]">|</span>
+          <h2 className="m-0 text-2xl font-bold leading-[1.15] text-[#202734]">
+            Dịch thuật trực tiếp
+          </h2>
+        </div>
+
+        <div className="inline-flex items-center gap-2 rounded-full bg-[#575548] px-3.5 py-2 text-[13px] font-semibold text-[#f4f4ef]">
+          <span className="inline-block h-2 w-2 rounded-full bg-[#f8cb4d]" />
+          AI đang quan sát
+        </div>
+      </div>
+
+      <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="relative min-h-[540px] overflow-hidden rounded-[18px] border-2 border-[#2f9ef4] bg-gradient-to-br from-[#d39a70]/90 via-[#ad7a54]/90 to-[#c4966f]/90">
+          <video ref={videoRef} autoPlay playsInline muted className="hidden" />
+
+          <canvas
+            ref={canvasRef}
+            className="block h-full min-h-[420px] w-full object-cover"
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-black/[0.03] to-black/30" />
+
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[clamp(320px,56vw,500px)] w-[clamp(260px,42vw,420px)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border-2 border-dashed border-white/75 bg-white/5 shadow-[0_12px_28px_rgba(0,0,0,0.2)]" />
+
+          <div className="absolute right-3.5 top-1/2 z-[4] flex -translate-y-1/2 flex-col gap-3">
+            <button
+              type="button"
+              onClick={toggleTranslation}
+              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${
+                isCollectingRef.current
+                  ? "cursor-pointer bg-[#fef3c7]"
+                  : "cursor-pointer bg-white"
+              }`}
+              title={
+                isCollectingRef.current
+                  ? "Kết thúc & Trau chuốt"
+                  : "Bắt đầu dịch câu"
+              }
+            >
+              {isCollectingRef.current
+                ? "Kết thúc & Trau chuốt"
+                : "Bắt đầu dịch câu"}
+            </button>
+
+            <button
+              type="button"
+              disabled
+              className="h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] bg-white text-xs font-bold text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.14)]"
+            >
+              Mic
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleLandmarks}
+              className={`h-[52px] w-[150px] cursor-pointer rounded-xl border border-[#d4d8d5] text-[11px] font-bold shadow-[0_8px_22px_rgba(0,0,0,0.14)] ${
+                showLandmarks
+                  ? "bg-[#3f7f57] text-white"
+                  : "bg-white text-[#3f7f57]"
+              }`}
+              title={
+                showLandmarks ? "Ẩn đường lấy tọa độ" : "Hiện đường lấy tọa độ"
+              }
+            >
+              {showLandmarks ? "Ẩn landmark" : "Hiện landmark"}
+            </button>
           </div>
-        )}
-        <p style={{ marginTop: 4, fontSize: 12, color: "#4b5563" }}>
-          Pipeline: {EXTRACT_FEATURES_ENDPOINT} {" -> "} {PREDICT_ENDPOINT}
-        </p>
+        </div>
+
+        <div className="h-fit rounded-[14px] border border-[#dfe4e8] bg-[#f3f5f6] px-[18px] pb-5 pt-4 text-[#243041] lg:min-h-[540px]">
+          <div className="flex items-center justify-between gap-2">
+            <p className="m-0 text-xs font-bold uppercase tracking-[0.8px] text-[#74906f]">
+              Bản dịch (ngôn ngữ ký hiệu sang văn bản)
+            </p>
+            <span className="text-sm font-semibold text-[#648d67]">
+              Phát âm
+            </span>
+          </div>
+
+          <p className="mt-3.5 text-base font-semibold leading-[1.5] text-[#415163]">
+            {recognizedWordsText}
+          </p>
+
+          <p className="mt-3.5 rounded-xl bg-white/80 p-3 text-[clamp(24px,2vw,34px)] font-bold leading-[1.2] text-[#1f2e43]">
+            {displaySentence}
+          </p>
+
+          <div className="mt-3.5 inline-flex items-center rounded-full bg-[#e0ece2] px-2.5 py-1 text-xs font-bold text-[#648d67]">
+            {isTranslating ? "LIVE" : "IDLE"}
+          </div>
+
+          <p className="mt-3 text-sm text-[#4b5667]">
+            Frame đã thu: {capturedFrames}/{TARGET_FRAME_COUNT} | Trạng thái:{" "}
+            {uploadStatus}
+          </p>
+
+          {backendResult && (
+            <p className="mt-1 text-[13px] text-[#4b5667]">
+              Kết quả BE: {predictedWord || "(không có)"} | Confidence:{" "}
+              {confidenceText}
+            </p>
+          )}
+
+          <p className="mt-1 text-[13px] text-[#4b5667]">
+            Landmark overlay: {showLandmarks ? "Đang hiển thị" : "Đã ẩn"}
+          </p>
+        </div>
       </div>
     </div>
   );

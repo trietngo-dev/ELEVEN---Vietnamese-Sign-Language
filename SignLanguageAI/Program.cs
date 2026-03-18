@@ -22,6 +22,9 @@ namespace SignLanguageAI
             // Register Frame Buffer Service
             builder.Services.AddSingleton<FrameBufferService>();
 
+            // Register Gemini translation service
+            builder.Services.AddHttpClient<GeminiTranslationService>();
+
             // Add CORS for frontend
             builder.Services.AddCors(options =>
             {

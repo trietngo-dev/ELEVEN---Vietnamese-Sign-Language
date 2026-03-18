@@ -1,16 +1,13 @@
 namespace SignLanguageAI.Models
 {
     /// <summary>
-    /// Request to predict from batch of frames (80 frames already flattened to features)
-    /// Each frame: 379 features (25 pose*4 + 51 face*3 + 21 hand*3 + 21 hand*3)
-    /// Total: 80 frames * 379 = 30,320 features
+    /// Request to predict from batch of flattened frames.
+    /// Protocol: 50 frames x 306 features/frame = 15,300 features.
     /// </summary>
     public class BatchPredictRequest
     {
         /// <summary>
-        /// List of 80 frames, each frame is 379 features
-        /// If less than 80: will be zero-padded
-        /// If more than 80: will be truncated
+        /// List of 50 frames, each frame is 306 features.
         /// </summary>
         public List<List<float>> Frames { get; set; } = new();
 
@@ -22,8 +19,9 @@ namespace SignLanguageAI.Models
             if (Frames == null || Frames.Count == 0)
                 return false;
 
-            // Each frame should have 379 features (or be zero-padded later)
-            return Frames.All(f => f != null && f.Count > 0);
+            const int expectedFrames = 50;
+            const int expectedFeaturesPerFrame = 306;
+            return Frames.Count == expectedFrames && Frames.All(f => f != null && f.Count == expectedFeaturesPerFrame);
         }
 
         /// <summary>
@@ -36,12 +34,12 @@ namespace SignLanguageAI.Models
     }
 
     /// <summary>
-    /// Request to predict from keypoints (80 frames of MediaPipe keypoints)
+    /// Request to predict from keypoints (50 frames of MediaPipe keypoints)
     /// </summary>
     public class BatchKeypointsRequest
     {
         /// <summary>
-        /// 80 frames of raw keypoints from MediaPipe
+        /// 50 frames of raw keypoints from MediaPipe
         /// </summary>
         public List<FrameKeypoints> Frames { get; set; } = new();
 

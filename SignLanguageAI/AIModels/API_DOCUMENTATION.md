@@ -27,7 +27,7 @@ Lấy thông tin chi tiết về model (input/output names, số lượng featur
 {
   "inputName": "float_input",
   "outputName": "output_label",
-  "expectedFeatureLength": 30320,
+  "expectedFeatureLength": 15300,
   "labels": {
     "0": "xin_chao",
     "1": "cam_on",
@@ -48,7 +48,7 @@ Dự đoán cử chỉ từ dữ liệu features
 
 ```json
 {
-  "features": [0.12, 0.33, -0.04, ... (đúng 30320 giá trị) ... ]
+  "features": [0.12, 0.33, -0.04, ... (đúng 15300 giá trị) ... ]
 }
 ```
 
@@ -56,9 +56,8 @@ Dự đoán cử chỉ từ dữ liệu features
 
 ```json
 {
-  "predictedId": 1,
-  "label": "cam_on",
-  "confidence": 1.0
+  "word": "cam_on",
+  "confidence": 0.93
 }
 ```
 
@@ -66,7 +65,7 @@ Dự đoán cử chỉ từ dữ liệu features
 
 ```json
 {
-  "error": "Model cần đúng 30320 features, nhưng nhận 100."
+  "error": "Model cần đúng 15300 features, nhưng nhận 100."
 }
 ```
 
@@ -94,9 +93,9 @@ Dự đoán cử chỉ từ dữ liệu features
 
 ### Step 3: Test Predict (with sample data)
 
-1. You need to get a real sample vector from Python (exactly 30320 features)
+1. You need to get a real sample vector from Python (exactly 15300 features)
 2. Click on POST `/api/gesture/predict`
-3. Input sample body (fill with your 30320 features):
+3. Input sample body (fill with your 15300 features):
 
 ```json
 {
@@ -111,7 +110,7 @@ Dự đoán cử chỉ từ dữ liệu features
 The API handles several types of errors:
 
 1. **Missing Features** - Empty or null features list
-2. **Wrong Feature Count** - Doesn't match expected 30320
+2. **Wrong Feature Count** - Doesn't match expected 15300
 3. **ONNX Load Error** - Model file not found or corrupted
 4. **Label Mapping Error** - label_mapping.json invalid
 5. **Prediction Error** - Internal ONNX runtime error
@@ -120,7 +119,7 @@ All errors return detailed messages to help with debugging.
 
 ## Important Notes for Frontend Developer
 
-1. **Max Input Size**: Exactly 30,320 floats (80 frames × 379 features per frame)
+1. **Max Input Size**: Exactly 15,300 floats (50 frames × 306 features per frame)
 2. **Feature Format**: Must be POST as JSON array of floats
 3. **Labels**: Use the label mapping from `/model-info` endpoint
 4. **Confidence**: Currently returns 1.0 for all predictions (can be enhanced with probability output from model)

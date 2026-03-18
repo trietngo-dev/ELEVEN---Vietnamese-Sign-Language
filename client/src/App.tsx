@@ -9,6 +9,13 @@ import RegisterPage from "./pages/RegisterPage";
 import ReviewPage from "./pages/ReviewPage";
 import SignLanguageTracker from "./components/SignLanguageTracker";
 
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminCourses from "./pages/admin/AdminCourses";
+import AdminVocabulary from "./pages/admin/AdminVocabulary";
+import AdminFeedback from "./pages/admin/AdminFeedback";
+
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -35,6 +42,17 @@ function App() {
             element={<Navigate to="/dang-nhap" replace />}
           />
         </Route>
+        
+        {/* Admin Routes */}
+        <Route path="admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="courses" element={<AdminCourses />} />
+          <Route path="vocabulary" element={<AdminVocabulary />} />
+          <Route path="feedback" element={<AdminFeedback />} />
+        </Route>
+
         <Route path="dang-nhap" element={<LoginPage />} />
         <Route path="dang-ky" element={<RegisterPage />} />
       </Routes>
