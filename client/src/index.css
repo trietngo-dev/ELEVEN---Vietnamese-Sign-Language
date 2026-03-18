@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 201 22% 21%;
+    --card: 0 0% 100%;
+    --card-foreground: 201 22% 21%;
+    --primary: 141 44% 33%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 120 24% 97%;
+    --secondary-foreground: 201 22% 21%;
+    --muted: 138 24% 96%;
+    --muted-foreground: 196 9% 54%;
+    --accent: 48 75% 57%;
+    --accent-foreground: 201 22% 21%;
+    --border: 156 20% 92%;
+    --input: 156 20% 92%;
+    --ring: 141 44% 33%;
+    --radius: 0.9rem;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: "Quicksand", "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+
+  img {
+    max-width: 100%;
+  }
+}
