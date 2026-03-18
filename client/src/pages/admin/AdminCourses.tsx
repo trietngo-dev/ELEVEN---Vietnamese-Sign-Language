@@ -1,50 +1,68 @@
-import React from "react";
-import {
-  Plus,
-  Edit,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  BookOpen,
-} from "lucide-react";
-import LessonVideoUploader from "./LessonVideoUploader";
+import React, { useState, useEffect } from "react";
+import { Plus, CheckCircle2, PlayCircle, Clock3, MoreVertical, Edit2, Trash2, Eye, ChevronLeft, ChevronRight, BookOpen, Edit } from "lucide-react";
+import AddCourseModal from "./AddCourseModal";
+import EditCourseModal from "./EditCourseModal";
+import CourseDetailModal from "./CourseDetailModal";
+import { tokenStorage } from "../../lib/auth";
+import CourseImage from "../../components/CourseImage";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 const AdminCourses: React.FC = () => {
-  const courses = [
-    {
-      title: "Giao tiếp cơ bản",
-      lessons: 12,
-      category: "Cơ bản",
-      status: "Đã xuất bản",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuBIR6sHouD5uN95RaWEDVMH7vqAzb6CpPV2ysVzdn53TpKnssRsLcl6YAFXWGlCSWiZDgI9smtuS8yfvhB661MK1S8x0HIL6AjRWPN599wQQUBr36tmyYIP4O2-sN-yvDe2uFVaTr9vqgjqpftQ7NR57g0YAqB81GVNTah90BK57e8jyK1FICBRz-1zzBt7RC1XdA85j0GdfGNhviVSXjohROvn_ZgwxumCQKW0uHl37Kqnq_HOlHwvTbPxQGDjds-nWF5qHQenE8RU",
-    },
-    {
-      title: "Ngôn ngữ ký hiệu y tế",
-      lessons: 20,
-      category: "Chuyên ngành",
-      status: "Đã xuất bản",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuBD0JzaR6vlsWo50eONtZ9uGuzcBVrrJxPnL5KmQBrJ431EeSDGT_xKLe9YOcLOkyGW7u_HQyrtA1dYkzbug0lOYaFZAS-oLAdG-KT4QDaTefQkYEMbuCuhJYIgVTSnYj9btOcUOLzOqqmz1U0ZKLWDawueufr183qDkjJ6ryNxfY5pU0xRb-1ST0Fek-o8QQhxzZxF0dWC3UVKJy0ycpkVMbwtvwFTk_u0nli31W0_g2TTwAKe4JSWhncwOJVYthzSS_WMGCHTNdL3",
-    },
-    {
-      title: "Từ vựng công sở",
-      lessons: 15,
-      category: "Nâng cao",
-      status: "Bản nháp",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuCtHVK6085I8jDVguE_yeqQmGUIxfLJK_t9UZPf1tNUPINCawXz3VKO44YddmNxZT-CB4M-NKsc9OPHPGZpc16dYQewuACvMZDt_GYON7aTgSwvwdwTGG6YYhogZ1LuAWRzxpCqpBwqkelZ7jowMJt8G8hcXhsGbwS_yX73UU5iZub17tM-keWg8lrkHRlXPmKUoa2fiAi-cBHpKrWqjuvW0huWPdJ3TPVCf_7CesLEKVlunW036Zzcss8Pxl4h4wjVjcElGdjvfcGK",
-      draft: true,
-    },
-    {
-      title: "Giao tiếp hằng ngày",
-      lessons: 10,
-      category: "Phổ thông",
-      status: "Đã xuất bản",
-      image:
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuA2Jxq9kT85JOaDByhbkEekQ-eeXvSCdjak7oyx5hXBjZr5rwtLEM41tvt1en_38gmCc86m7ARpY3Q_Oe0K3h4m_uxs0zeKnhwcTxjkne4J33_CYpXob_J0S-ymJn_64zX7ic1bNj7KFXCHo-pl-1_UoeKCOjjoaFFM6XHqcatGB2vbNKBQDUrcb0GIPnTQ1TLBa8XeH74CvTHAgcXMtRX_izjM8FlgvkN84c1a1CQvH7qSJ-TNCsPNafHc0WiDGV5GzKMsu-OpVFP6",
-    },
-  ];
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingCourse, setEditingCourse] = useState<any>(null);
+  const [viewingCourse, setViewingCourse] = useState<any>(null);
+
+  const fetchCourses = async () => {
+    try {
+      setIsLoading(true);
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const res = await fetch(`${API_BASE_URL}/api/courses`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setCourses(data.items || []);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách khóa học", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  const handleTogglePublish = async (course: any) => {
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers = {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } as Record<string, string> : {})
+      };
+      
+      const endpoint = course.status === 1 
+        ? `${API_BASE_URL}/api/courses/${course.id}/unpublish` 
+        : `${API_BASE_URL}/api/courses/${course.id}/publish`;
+        
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ updatedBy: 1 })
+      });
+      
+      if (res.ok) {
+        fetchCourses();
+      } else {
+        alert("Lỗi khi thay đổi trạng thái xuất bản");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8">
@@ -74,8 +92,8 @@ const AdminCourses: React.FC = () => {
       {/* Stats Bar */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: "Tổng khóa học", value: "24", icon: <BookOpen size={16} /> },
-          { label: "Đang hoạt động", value: "18", color: "text-[#3c6c44]" },
+          { label: "Tổng khóa học", value: courses.length.toString(), icon: <BookOpen size={16} /> },
+          { label: "Đang hoạt động", value: courses.filter(c => c.status === 1).length.toString(), color: "text-[#3c6c44]" },
           { label: "Học viên mới", value: "+128" },
           { label: "Tỷ lệ hoàn thành", value: "86%" },
         ].map((stat, i) => (
@@ -93,28 +111,28 @@ const AdminCourses: React.FC = () => {
         ))}
       </div>
 
-      <LessonVideoUploader lessonId={1} />
-
       {/* Course Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {courses.map((course, i) => (
+        {isLoading ? (
+          <div className="col-span-full py-10 flex justify-center text-slate-500">Đang tải dữ liệu...</div>
+        ) : courses.map((course, i) => (
           <div
-            key={i}
-            className={`bg-white rounded-2xl overflow-hidden border border-slate-100 group flex flex-col shadow-sm transition-all hover:shadow-md ${course.draft ? "opacity-80" : ""}`}
+            key={course.id || i}
+            className={`bg-white rounded-2xl overflow-hidden border border-slate-100 group flex flex-col shadow-sm transition-all hover:shadow-md ${course.status === 0 ? "opacity-80" : ""}`}
           >
-            <div className="relative aspect-video overflow-hidden">
-              <img
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                src={course.image}
-                alt={course.title}
+            <div className="relative h-48 sm:h-52 bg-slate-100 overflow-hidden group">
+              <CourseImage 
+                title={course.title} 
+                coverMediaId={course.coverMediaId} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
               />
-              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-bold text-[#3c6c44] uppercase">
-                {course.category}
+              <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-semibold text-[#3c6c44] shadow-sm uppercase tracking-wide">
+                {course.level || "CƠ BẢN"}
               </div>
               <div
-                className={`absolute top-3 right-3 px-2 py-1 rounded-lg text-[10px] font-bold text-white uppercase ${course.draft ? "bg-slate-400" : "bg-green-500"}`}
+                className={`absolute top-3 right-3 px-2 py-1 rounded-lg text-[10px] font-bold text-white uppercase ${course.status === 0 ? "bg-slate-400" : "bg-green-500"}`}
               >
-                {course.status}
+                {course.status === 0 ? "Bản nháp" : (course.status === 1 ? "Đã xuất bản" : "Lưu trữ")}
               </div>
             </div>
             <div className="p-5 flex flex-col flex-1">
@@ -123,13 +141,26 @@ const AdminCourses: React.FC = () => {
               </h3>
               <p className="text-sm text-slate-500 mt-2 flex items-center gap-1">
                 <BookOpen size={14} />
-                {course.lessons} bài học
+                ID: {course.id}
               </p>
               <div className="mt-auto pt-6 flex gap-2">
-                <button className="flex-1 bg-[#3c6c44] text-white py-2 rounded-xl text-xs font-bold hover:bg-[#3c6c44]/90 transition-colors flex items-center justify-center gap-1">
-                  <Edit size={14} /> Chỉnh sửa
+                <button 
+                  onClick={() => setEditingCourse(course)}
+                  className="flex-1 bg-[#3c6c44] text-white py-2 rounded-xl text-xs font-bold hover:bg-[#3c6c44]/90 transition-colors flex items-center justify-center gap-1 cursor-pointer pointer-events-auto"
+                >
+                  <Edit size={14} /> Sửa
                 </button>
-                <button className="p-2 border border-slate-200 text-[#3c6c44] rounded-xl hover:bg-slate-50">
+                <button 
+                  onClick={() => handleTogglePublish(course)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 cursor-pointer pointer-events-auto ${course.status === 1 ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-blue-100 text-blue-700 hover:bg-blue-200'}`}
+                >
+                   {course.status === 1 ? "Huỷ XB" : "XBản"}
+                </button>
+                <button 
+                  onClick={() => setViewingCourse(course)}
+                  className="p-2 border border-slate-200 text-[#3c6c44] rounded-xl hover:bg-slate-50 cursor-pointer pointer-events-auto"
+                  title="Xem chi tiết"
+                >
                   <Eye size={16} />
                 </button>
               </div>
@@ -138,7 +169,10 @@ const AdminCourses: React.FC = () => {
         ))}
 
         {/* Add New Placeholder */}
-        <button className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-slate-50 transition-all group min-h-[300px]">
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 hover:bg-slate-50 transition-all group min-h-[300px]"
+        >
           <div className="w-14 h-14 rounded-full bg-[#3c6c44]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
             <Plus size={28} className="text-[#3c6c44]" />
           </div>
@@ -177,6 +211,31 @@ const AdminCourses: React.FC = () => {
           </button>
         </div>
       </div>
+
+      <AddCourseModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSuccess={() => {
+          setIsModalOpen(false);
+          fetchCourses();
+        }} 
+      />
+      
+      <EditCourseModal 
+        isOpen={!!editingCourse}
+        course={editingCourse}
+        onClose={() => setEditingCourse(null)}
+        onSuccess={() => {
+          setEditingCourse(null);
+          fetchCourses();
+        }}
+      />
+
+      <CourseDetailModal 
+        isOpen={!!viewingCourse}
+        course={viewingCourse}
+        onClose={() => setViewingCourse(null)}
+      />
     </div>
   );
 };

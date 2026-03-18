@@ -67,12 +67,14 @@ function Navbar() {
                   {user?.role}
                 </span>
               </div>
-              <div
-                className="h-10 w-10 cursor-pointer rounded-full border-2 border-slate-100 bg-cover bg-center"
-                style={{
-                  backgroundImage: `url('https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff')`,
-                }}
-              ></div>
+              <NavLink to="/ho-so" className="shrink-0 transition-transform hover:scale-105">
+                <div
+                  className="h-10 w-10 cursor-pointer rounded-full border-2 border-slate-100 bg-cover bg-center shadow-sm"
+                  style={{
+                    backgroundImage: `url('https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff')`,
+                  }}
+                ></div>
+              </NavLink>
               <button
                 onClick={logout}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-50 hover:text-red-600 transition-colors"
