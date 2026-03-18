@@ -12,17 +12,20 @@ namespace SignLanguageAI.Controllers
         private readonly OnnxGestureService _onnxService;
         private readonly FeatureExtractionService _featureService;
         private readonly FrameBufferService _frameBufferService;
+        private readonly GeminiTranslationService _geminiTranslationService;
         private readonly ILogger<GestureController> _logger;
 
         public GestureController(
             OnnxGestureService onnxService, 
             FeatureExtractionService featureService,
             FrameBufferService frameBufferService,
+            GeminiTranslationService geminiTranslationService,
             ILogger<GestureController> logger)
         {
             _onnxService = onnxService;
             _featureService = featureService;
             _frameBufferService = frameBufferService;
+            _geminiTranslationService = geminiTranslationService;
             _logger = logger;
         }
 
@@ -171,6 +174,56 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
+        /// Translate isolated recognized words into a natural Vietnamese sentence using Gemini.
+        /// </summary>
+        /// <param name="request">List of recognized words from continuous sliding-window inference</param>
+        [HttpPost("translate-sentence")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> TranslateSentence([FromBody] TranslateSentenceRequest? request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest(new { error = "Request body is required" });
+                }
+
+                var words = request.Words ?? new List<string>();
+                if (words.Count == 0)
+                {
+                    return Ok(new TranslateSentenceResponse
+                    {
+                        Sentence = string.Empty
+                    });
+                }
+
+                var sentence = await _geminiTranslationService.TranslateWordsAsync(words, HttpContext.RequestAborted);
+
+                return Ok(new TranslateSentenceResponse
+                {
+                    Sentence = sentence
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Gemini translation configuration error");
+                return StatusCode(500, new { error = ex.Message });
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Gemini translation HTTP error");
+                return StatusCode(500, new { error = "Gemini translation failed", detail = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while translating sentence");
+                return StatusCode(500, new { error = "Server error", detail = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Kiểm tra trạng thái API
         /// </summary>
         [HttpGet("health")]
@@ -228,7 +281,8 @@ namespace SignLanguageAI.Controllers
                     modelInfo = "/api/gesture/model-info",
                     predict = "/api/gesture/predict",
                     extractFeatures = "/api/gesture/extract-features",
-                    predictBatch = "/api/gesture/predict-batch"
+                    predictBatch = "/api/gesture/predict-batch",
+                    translateSentence = "/api/gesture/translate-sentence"
                 }
             });
         }
