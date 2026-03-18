@@ -8,12 +8,11 @@ namespace SignLanguageAI.Models
         public float X { get; set; }            // X coordinate
         public float Y { get; set; }            // Y coordinate
         public float Z { get; set; }            // Z coordinate (depth)
-        public float Visibility { get; set; }   // Confidence/Visibility [0-1]
     }
 
     /// <summary>
     /// Represents all keypoints for a single frame
-    /// MediaPipe structure: Pose (25) + Face (51) + LeftHand (21) + RightHand (21) = 118 points
+    /// Protocol structure: Pose (9) + Face (51) + LeftHand (21) + RightHand (21) = 102 points
     /// </summary>
     public class FrameKeypoints
     {

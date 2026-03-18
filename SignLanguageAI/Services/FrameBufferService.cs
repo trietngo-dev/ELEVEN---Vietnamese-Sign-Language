@@ -3,15 +3,15 @@ using SignLanguageAI.Models;
 namespace SignLanguageAI.Services
 {
     /// <summary>
-    /// Service to manage 80-frame circular buffer for real-time gesture recognition
-    /// Maintains a sliding window of 80 frames and provides features on demand
+    /// Service to manage 50-frame circular buffer for real-time gesture recognition
+    /// Maintains a sliding window of 50 frames and provides features on demand
     /// </summary>
     public class FrameBufferService
     {
         private readonly Queue<FrameKeypoints> _buffer;
         private readonly FeatureExtractionService _featureService;
         private readonly ILogger<FrameBufferService> _logger;
-        private readonly int _maxFrames = 80;
+        private readonly int _maxFrames = 50;
         private readonly object _lockObject = new object();
 
         public FrameBufferService(FeatureExtractionService featureService, ILogger<FrameBufferService> logger)
@@ -49,7 +49,7 @@ namespace SignLanguageAI.Services
         }
 
         /// <summary>
-        /// Check if buffer has enough frames for prediction (80 frames)
+        /// Check if buffer has enough frames for prediction (50 frames)
         /// </summary>
         public bool IsReady()
         {
@@ -71,7 +71,7 @@ namespace SignLanguageAI.Services
         }
 
         /// <summary>
-        /// Get all buffered frames as list (up to 80)
+        /// Get all buffered frames as list (up to 50)
         /// </summary>
         public List<FrameKeypoints> GetBufferedFrames()
         {
@@ -82,7 +82,7 @@ namespace SignLanguageAI.Services
         }
 
         /// <summary>
-        /// Get flattened 30,320 features from current buffer
+        /// Get flattened 15,300 features from current buffer
         /// Only valid when IsReady() returns true
         /// </summary>
         public List<float> GetFlattenedFeatures()

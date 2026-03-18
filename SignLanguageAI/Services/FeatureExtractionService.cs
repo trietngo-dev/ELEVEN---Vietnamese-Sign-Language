@@ -3,7 +3,7 @@ using SignLanguageAI.Models;
 namespace SignLanguageAI.Services
 {
     /// <summary>
-    /// Service to extract and normalize 30,320 features from MediaPipe keypoints
+    /// Service to extract and normalize 15,300 features from MediaPipe keypoints
     /// Performs: Spatial Normalization + Temporal Padding + Flattening
     /// </summary>
     public class FeatureExtractionService
@@ -55,7 +55,7 @@ namespace SignLanguageAI.Services
             // Step 2: Pad or truncate to exactly 50 frames
             var paddedFrames = PadFrames(normalizedFrames);
 
-            // Step 3: Flatten to 30,320 features
+            // Step 3: Flatten to 15,300 features
             var features = FlattenFrames(paddedFrames);
 
             _logger.LogInformation($"✓ Extracted {features.Count} features from {paddedFrames.Count} frames");
@@ -80,51 +80,73 @@ namespace SignLanguageAI.Services
                 var nosePoint = frame.Pose[0];
                 var normalizedFrame = new FrameKeypoints();
 
+                static bool IsZeroPoint(Keypoint p) => p.X == 0f && p.Y == 0f && p.Z == 0f;
+
                 // Normalize Pose: subtract nose position from all pose points
                 foreach (var point in frame.Pose)
                 {
+                    if (IsZeroPoint(point))
+                    {
+                        normalizedFrame.Pose.Add(new Keypoint { X = 0f, Y = 0f, Z = 0f });
+                        continue;
+                    }
+
                     normalizedFrame.Pose.Add(new Keypoint
                     {
                         X = point.X - nosePoint.X,
                         Y = point.Y - nosePoint.Y,
-                        Z = point.Z - nosePoint.Z,
-                        Visibility = point.Visibility
+                        Z = point.Z - nosePoint.Z
                     });
                 }
 
                 // Normalize Left Hand: subtract nose position
                 foreach (var point in frame.LeftHand)
                 {
+                    if (IsZeroPoint(point))
+                    {
+                        normalizedFrame.LeftHand.Add(new Keypoint { X = 0f, Y = 0f, Z = 0f });
+                        continue;
+                    }
+
                     normalizedFrame.LeftHand.Add(new Keypoint
                     {
                         X = point.X - nosePoint.X,
                         Y = point.Y - nosePoint.Y,
-                        Z = point.Z - nosePoint.Z,
-                        Visibility = point.Visibility
+                        Z = point.Z - nosePoint.Z
                     });
                 }
 
                 // Normalize Face: subtract nose position
                 foreach (var point in frame.Face)
                 {
+                    if (IsZeroPoint(point))
+                    {
+                        normalizedFrame.Face.Add(new Keypoint { X = 0f, Y = 0f, Z = 0f });
+                        continue;
+                    }
+
                     normalizedFrame.Face.Add(new Keypoint
                     {
                         X = point.X - nosePoint.X,
                         Y = point.Y - nosePoint.Y,
-                        Z = point.Z - nosePoint.Z,
-                        Visibility = point.Visibility
+                        Z = point.Z - nosePoint.Z
                     });
                 }
 
                 // Normalize Right Hand: subtract nose position
                 foreach (var point in frame.RightHand)
                 {
+                    if (IsZeroPoint(point))
+                    {
+                        normalizedFrame.RightHand.Add(new Keypoint { X = 0f, Y = 0f, Z = 0f });
+                        continue;
+                    }
+
                     normalizedFrame.RightHand.Add(new Keypoint
                     {
                         X = point.X - nosePoint.X,
                         Y = point.Y - nosePoint.Y,
-                        Z = point.Z - nosePoint.Z,
-                        Visibility = point.Visibility
+                        Z = point.Z - nosePoint.Z
                     });
                 }
 
@@ -155,16 +177,16 @@ namespace SignLanguageAI.Services
                 var emptyFrame = new FrameKeypoints
                 {
                     Pose = Enumerable.Range(0, POSE_POINTS)
-                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
+                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0 })
                         .ToList(),
                     Face = Enumerable.Range(0, FACE_POINTS)
-                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
+                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0 })
                         .ToList(),
                     LeftHand = Enumerable.Range(0, HAND_POINTS)
-                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
+                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0 })
                         .ToList(),
                     RightHand = Enumerable.Range(0, HAND_POINTS)
-                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0, Visibility = 0 })
+                        .Select(_ => new Keypoint { X = 0, Y = 0, Z = 0 })
                         .ToList()
                 };
                 padded.Add(emptyFrame);

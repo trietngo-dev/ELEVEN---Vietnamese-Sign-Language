@@ -80,7 +80,7 @@ namespace SignLanguageAI.Controllers
         /// <summary>
         /// Dự đoán cử chỉ từ các feature
         /// </summary>
-        /// <param name="request">Request chứa danh sách 30,320 feature</param>
+        /// <param name="request">Request chứa danh sách 15,300 feature</param>
         /// <returns>Kết quả dự đoán với ID, nhãn và độ tin cậy</returns>
         [HttpPost("predict")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -234,10 +234,10 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
-        /// Extract 30,320 normalized features from MediaPipe keypoints
+        /// Extract 15,300 normalized features from MediaPipe keypoints
         /// </summary>
-        /// <param name="request">80 frames of keypoints (can be less, will be zero-padded)</param>
-        /// <returns>30,320 normalized features ready for prediction</returns>
+        /// <param name="request">50 frames of keypoints (can be less, will be zero-padded)</param>
+        /// <returns>15,300 normalized features ready for prediction</returns>
         [HttpPost("extract-features")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -303,8 +303,21 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frames không được rỗng",
-                        expectedFrames = 80,
+                        expectedFrames = 50,
                         receivedFrames = request?.Frames?.Count ?? 0
+                    });
+                }
+
+                if (!request.IsValid())
+                {
+                    return BadRequest(new
+                    {
+                        error = "Protocol mismatch. Expected exactly 50 frames and 306 features per frame.",
+                        expectedFrames = 50,
+                        expectedFeaturesPerFrame = 306,
+                        expectedTotalFeatures = _featureService.GetExpectedFeatureCount(),
+                        receivedFrames = request.Frames.Count,
+                        receivedFrameSizes = request.Frames.Select(f => f?.Count ?? 0).ToList()
                     });
                 }
 
@@ -318,21 +331,20 @@ namespace SignLanguageAI.Controllers
                     });
                 }
 
-                // Flatten batch frames into single feature array
-                var flattenedFeatures = new List<float>();
+                // Flatten batch frames into a single 1D feature array in protocol order.
+                // Each frame is already flattened as [Pose, Face, LeftHand, RightHand] with 306 values.
+                var flattenedFeatures = new List<float>(request.Frames.Count * 306);
                 foreach (var frame in request.Frames)
-                {
-                    if (frame != null)
-                        flattenedFeatures.AddRange(frame);
-                }
+                    flattenedFeatures.AddRange(frame);
 
                 var expectedFeatures = _featureService.GetExpectedFeatureCount();
 
-                // Pad or truncate to exactly expected feature length
-                while (flattenedFeatures.Count < expectedFeatures)
-                    flattenedFeatures.Add(0f);
-                while (flattenedFeatures.Count > expectedFeatures)
-                    flattenedFeatures.RemoveAt(flattenedFeatures.Count - 1);
+                if (flattenedFeatures.Count != expectedFeatures)
+                {
+                    throw new ArgumentException(
+                        $"Protocol mismatch. Expected {expectedFeatures} features (50x306), got {flattenedFeatures.Count}."
+                    );
+                }
 
                 _logger.LogInformation($"Processing batch prediction with {flattenedFeatures.Count} features from {request.Frames.Count} frames");
 
@@ -386,7 +398,7 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frame không hợp lệ",
-                        expected = "25 pose + 51 face + 21 left hand + 21 right hand = 118 points"
+                        expected = "9 pose + 51 face + 21 left hand + 21 right hand = 102 points"
                     });
                 }
 
