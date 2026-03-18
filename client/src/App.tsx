@@ -16,6 +16,10 @@ import AdminCourses from "./pages/admin/AdminCourses";
 import AdminVocabulary from "./pages/admin/AdminVocabulary";
 import AdminFeedback from "./pages/admin/AdminFeedback";
 
+import { useAuth } from "./context/AuthContext";
+
+import HomePage from "./pages/HomePage";
+
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -26,25 +30,82 @@ function ScrollToTop() {
   return null;
 }
 
+const ProtectedRoute = ({
+  children,
+  adminOnly = false,
+}: {
+  children: React.ReactNode;
+  adminOnly?: boolean;
+}) => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) return <div>Loading...</div>;
+
+  if (!isAuthenticated) {
+    return <Navigate to="/dang-nhap" replace />;
+  }
+
+  if (adminOnly && user?.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+
+  if (isAuthenticated) {
+    return (
+      <Navigate
+        to={user?.role === "admin" ? "/admin/dashboard" : "/home-page"}
+        replace
+      />
+    );
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <>
       <ScrollToTop />
       <Routes>
         <Route element={<Layout />}>
-          <Route index element={<LandingPage />} />
+          <Route
+            index
+            element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            }
+          />
           <Route path="khoa-hoc" element={<CoursesPage />} />
           <Route path="tu-dien" element={<DictionaryPage />} />
           <Route path="danh-gia" element={<ReviewPage />} />
           <Route path="*" element={<SignLanguageTracker />} />
           <Route
-            path="bat-dau"
-            element={<Navigate to="/dang-nhap" replace />}
+            path="home-page"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
           />
         </Route>
-        
+
         {/* Admin Routes */}
-        <Route path="admin" element={<AdminLayout />}>
+        <Route
+          path="admin"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
@@ -53,8 +114,22 @@ function App() {
           <Route path="feedback" element={<AdminFeedback />} />
         </Route>
 
-        <Route path="dang-nhap" element={<LoginPage />} />
-        <Route path="dang-ky" element={<RegisterPage />} />
+        <Route
+          path="dang-nhap"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="dang-ky"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
       </Routes>
     </>
   );

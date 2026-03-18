@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
-import { Apple, Eye, EyeOff, Lock, Mail, UserRound } from "lucide-react";
+import { Apple, Eye, EyeOff, Lock, Mail, UserRound, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import brand from "../assets/brand.jpg";
 import AuthNavbar from "../components/AuthNavbar";
 import { Button } from "../components/ui/button";
 import { viText } from "../locales/vi";
+import { useAuth } from "../context/AuthContext";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 18 },
@@ -24,7 +25,37 @@ const container = {
 
 function RegisterPage() {
   const { common, authPages } = viText;
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
   const [showPassword, setShowPassword] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Mật khẩu không khớp!");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await register({ fullName, email, password });
+      navigate("/dang-nhap");
+    } catch (err: any) {
+      setError(err.message || "Đăng ký thất bại. Vui lòng thử lại sau.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-svh bg-[#f8faf9]">
@@ -59,8 +90,18 @@ function RegisterPage() {
             <p className="mt-2 text-[#7c8790]">{authPages.register.subtitle}</p>
           </motion.div>
 
+          {error && (
+            <motion.div 
+              variants={fadeInUp}
+              className="mt-6 rounded-xl bg-red-50 p-4 text-center text-sm font-medium text-red-600 border border-red-100"
+            >
+              {error}
+            </motion.div>
+          )}
+
           <motion.form
             variants={container}
+            onSubmit={handleSubmit}
             className="mx-auto mt-8 w-full max-w-[520px]"
           >
             <motion.div variants={fadeInUp}>
@@ -75,7 +116,10 @@ function RegisterPage() {
                 <input
                   id="register-name"
                   type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   placeholder={authPages.register.namePlaceholder}
+                  required
                   className="w-full border-none bg-transparent text-[0.95rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                 />
               </div>
@@ -93,7 +137,10 @@ function RegisterPage() {
                 <input
                   id="register-email"
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder={authPages.register.emailPlaceholder}
+                  required
                   className="w-full border-none bg-transparent text-[0.95rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                 />
               </div>
@@ -111,7 +158,10 @@ function RegisterPage() {
                 <input
                   id="register-password"
                   type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder={authPages.register.passwordPlaceholder}
+                  required
                   className="w-full border-none bg-transparent text-[0.95rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                 />
                 <button
@@ -145,15 +195,26 @@ function RegisterPage() {
                 <input
                   id="register-confirm-password"
                   type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder={authPages.register.confirmPasswordPlaceholder}
+                  required
                   className="w-full border-none bg-transparent text-[0.95rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                 />
               </div>
             </motion.div>
 
             <motion.div variants={fadeInUp} className="mt-6">
-              <Button className="h-14 w-full bg-[#3b7948] text-[1.08rem] font-bold shadow-[0_10px_24px_rgba(59,121,72,0.28)] hover:translate-y-0 hover:bg-[#336b40]">
-                {authPages.register.submitButton}
+              <Button 
+                type="submit"
+                disabled={isSubmitting}
+                className="h-14 w-full bg-[#3b7948] text-[1.08rem] font-bold shadow-[0_10px_24px_rgba(59,121,72,0.28)] hover:translate-y-0 hover:bg-[#336b40]"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  authPages.register.submitButton
+                )}
               </Button>
             </motion.div>
 
@@ -165,6 +226,7 @@ function RegisterPage() {
               <input
                 id="register-agreement"
                 type="checkbox"
+                required
                 className="mt-0.5 h-4 w-4 rounded border-[#bfcfc4] accent-[#3b7948]"
               />
               <span>
@@ -241,3 +303,4 @@ function RegisterPage() {
 }
 
 export default RegisterPage;
+
