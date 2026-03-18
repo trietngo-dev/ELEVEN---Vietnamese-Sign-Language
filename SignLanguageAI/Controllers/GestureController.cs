@@ -252,7 +252,7 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frames không được rỗng",
-                        expectedFrames = 80,
+                        expectedFrames = 50,
                         receivedFrames = request?.Frames?.Count ?? 0
                     });
                 }
@@ -284,9 +284,9 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
-        /// Predict gesture from batch of 80 flattened frames (30,320 features total)
+        /// Predict gesture from batch of 50 flattened frames (15,300 features total)
         /// </summary>
-        /// <param name="request">80 frames × 379 features each</param>
+        /// <param name="request">50 frames × 306 features each</param>
         /// <returns>Predicted gesture with probabilities</returns>
         [HttpPost("predict-batch")]
         [ProducesResponseType(StatusCodes.Status200OK)]

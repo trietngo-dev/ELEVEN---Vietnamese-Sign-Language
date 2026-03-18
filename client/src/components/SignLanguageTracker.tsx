@@ -5,13 +5,13 @@ import {
   DrawingUtils,
 } from "@mediapipe/tasks-vision";
 
-// === CÁC HẰNG SỐ CHUẨN CỦA HỆ THỐNG ===
-const POSE_LANDMARK_COUNT = 25;
+// === CÁC HẰNG SỐ CHUẨN MỚI NHẤT ===
 const HAND_LANDMARK_COUNT = 21;
-const TARGET_FRAME_COUNT = 80;
+const TARGET_FRAME_COUNT = 50;
 
-// 51 điểm vàng khuôn mặt (31 miệng + 20 lông mày)
+const SELECTED_POSE_INDICES = [0, 11, 12, 13, 14, 15, 16, 23, 24]; // 9 điểm
 const SELECTED_FACE_INDICES = [
+  // 51 điểm
   61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317,
   14, 87, 178, 88, 95, 78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 46, 53, 52,
   65, 55, 70, 63, 105, 66, 107, 276, 283, 282, 295, 285, 300, 293, 334, 296,
@@ -26,17 +26,16 @@ const CONFIDENCE_THRESHOLD = 0.7;
 const HAND_SMOOTHING_ALPHA = 0.35;
 const MAX_HAND_HOLD_FRAMES = 4;
 
-// === ĐỊNH NGHĨA KIỂU DỮ LIỆU ===
+// === TYPE MỚI: HOÀN TOÀN BỎ VISIBILITY ===
 type Keypoint = {
   x: number;
   y: number;
   z: number;
-  visibility: number;
 };
 
 type FrameKeypoints = {
   pose: Keypoint[];
-  face: Keypoint[]; // <-- Đã thêm Face vào Payload
+  face: Keypoint[];
   leftHand: Keypoint[];
   rightHand: Keypoint[];
 };
@@ -77,22 +76,20 @@ const SignLanguageTracker = () => {
 
   const isInitializing = useRef(false);
 
-  // === CÁC HÀM TIỆN ÍCH XỬ LÝ SỐ LIỆU ===
   const toFiniteNumber = (value: unknown) => {
     const num = typeof value === "number" ? value : 0;
     return Number.isFinite(num) ? num : 0;
   };
 
+  // Chỉ lấy x, y, z
   const toKeypoint = (point?: {
     x?: number;
     y?: number;
     z?: number;
-    visibility?: number;
   }): Keypoint => ({
     x: toFiniteNumber(point?.x),
     y: toFiniteNumber(point?.y),
     z: toFiniteNumber(point?.z),
-    visibility: toFiniteNumber(point?.visibility),
   });
 
   const smoothKeypoints = (
@@ -107,18 +104,12 @@ const SignLanguageTracker = () => {
         x: prev.x * (1 - alpha) + point.x * alpha,
         y: prev.y * (1 - alpha) + point.y * alpha,
         z: prev.z * (1 - alpha) + point.z * alpha,
-        visibility: prev.visibility * (1 - alpha) + point.visibility * alpha,
       };
     });
   };
 
   const getHandKeypoints = (
-    rawPoints: Array<{
-      x?: number;
-      y?: number;
-      z?: number;
-      visibility?: number;
-    }>,
+    rawPoints: Array<{ x?: number; y?: number; z?: number }>,
     previousRef: MutableRefObject<Keypoint[] | null>,
     missingFrameCountRef: MutableRefObject<number>,
   ): Keypoint[] => {
@@ -148,7 +139,6 @@ const SignLanguageTracker = () => {
     );
   };
 
-  // === HÀM TRÍCH XUẤT LÕI (ĐÃ FIX LẬT GƯƠNG & KHUÔN MẶT) ===
   const extractFrameKeypoints = (
     results: ReturnType<HolisticLandmarker["detectForVideo"]>,
   ): FrameKeypoints => {
@@ -157,14 +147,19 @@ const SignLanguageTracker = () => {
     const leftHand: Keypoint[] = [];
     const rightHand: Keypoint[] = [];
 
-    // 1. POSE (Lấy 25 điểm và Lật trục X)
+    // 1. POSE (9 điểm)
     const rawPose = results.poseLandmarks?.[0] ?? [];
-    for (let i = 0; i < POSE_LANDMARK_COUNT; i += 1) {
-      const p = rawPose[i];
-      pose.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
+    if (rawPose.length > 0) {
+      for (const index of SELECTED_POSE_INDICES) {
+        const p = rawPose[index];
+        pose.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
+      }
+    } else {
+      for (let i = 0; i < SELECTED_POSE_INDICES.length; i += 1)
+        pose.push(toKeypoint(undefined));
     }
 
-    // 2. FACE (Lọc 51 điểm biểu cảm và Lật trục X)
+    // 2. FACE (51 điểm)
     const rawFace = results.faceLandmarks?.[0] ?? [];
     if (rawFace.length > 0) {
       for (const index of SELECTED_FACE_INDICES) {
@@ -172,12 +167,11 @@ const SignLanguageTracker = () => {
         face.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
       }
     } else {
-      for (let i = 0; i < SELECTED_FACE_INDICES.length; i += 1) {
+      for (let i = 0; i < SELECTED_FACE_INDICES.length; i += 1)
         face.push(toKeypoint(undefined));
-      }
     }
 
-    // 3. HANDS (Đổi chéo Tay Trái/Phải và Lật trục X)
+    // 3. HANDS (Swap and Mirror)
     const rawRightAsLeft = (results.rightHandLandmarks?.[0] ?? []).map((p) => ({
       ...p,
       x: 1 - p.x,
@@ -202,10 +196,9 @@ const SignLanguageTracker = () => {
       ),
     );
 
-    // 4. CHUẨN HÓA (Dời gốc tọa độ về Mũi, bỏ qua nếu mất dấu)
+    // 4. CHUẨN HÓA LẤY MŨI LÀM GỐC
     const nose = pose[0] ?? toKeypoint(undefined);
     const normalizeByNose = (point: Keypoint): Keypoint => {
-      // BẢO VỆ SỐ 0: Nếu chi tiết bị khuất, giữ nguyên tọa độ 0
       if (point.x === 0 && point.y === 0 && point.z === 0) return point;
       return {
         ...point,
@@ -223,9 +216,8 @@ const SignLanguageTracker = () => {
     };
   };
 
-  // === HÀM GIAO TIẾP API BACKEND ===
   const sendFramesToBackend = async (frames: FrameKeypoints[]) => {
-    setUploadStatus("Đang gửi 80 frame sang BE để extract features...");
+    setUploadStatus("Đang gửi 50 frame sang BE để extract features...");
 
     try {
       const extractResponse = await fetch(EXTRACT_FEATURES_ENDPOINT, {
@@ -302,10 +294,9 @@ const SignLanguageTracker = () => {
     isCollectingRef.current = true;
     setCapturedFrames(0);
     setBackendResult(null);
-    setUploadStatus("Bắt đầu thu 80 frame...");
+    setUploadStatus("Bắt đầu thu 50 frame...");
   };
 
-  // === KHỞI TẠO CAMERA VÀ MEDIAPIPE ===
   useEffect(() => {
     if (isInitializing.current) return;
     isInitializing.current = true;
@@ -359,7 +350,7 @@ const SignLanguageTracker = () => {
           };
         }
       } catch (err) {
-        console.error("Không tìm thấy camera hoặc bị từ chối:", err);
+        console.error("Không tìm thấy camera:", err);
       }
     };
 
@@ -387,7 +378,6 @@ const SignLanguageTracker = () => {
         canvasRef.current.height,
       );
 
-      // Lật canvas để vẽ (Mirror UI)
       canvasCtx.save();
       canvasCtx.translate(canvasRef.current.width, 0);
       canvasCtx.scale(-1, 1);
@@ -400,7 +390,6 @@ const SignLanguageTracker = () => {
         canvasRef.current.height,
       );
 
-      // Vẽ bộ xương lên UI (Hiển thị đầy đủ mặt cho đẹp)
       if (results.faceLandmarks?.[0]) {
         drawingUtils.drawConnectors(
           results.faceLandmarks[0],
@@ -432,7 +421,6 @@ const SignLanguageTracker = () => {
 
       canvasCtx.restore();
 
-      // Thu thập Data khi bấm nút
       if (isCollectingRef.current) {
         const frameKeypoints = extractFrameKeypoints(results);
         frameBufferRef.current.push(frameKeypoints);
@@ -463,7 +451,6 @@ const SignLanguageTracker = () => {
     };
   }, []);
 
-  // === UI RENDER ===
   return (
     <div
       style={{
@@ -515,10 +502,10 @@ const SignLanguageTracker = () => {
         >
           {isCollectingRef.current
             ? "Đang thu dữ liệu..."
-            : "Test gửi 80 frame"}
+            : "Test gửi 50 frame"}
         </button>
         <p style={{ marginTop: 8, fontSize: 14 }}>
-          Frame đã thu: {capturedFrames}/80
+          Frame đã thu: {capturedFrames}/50
         </p>
         <p style={{ marginTop: 4, fontSize: 14 }}>{uploadStatus}</p>
 
@@ -558,9 +545,6 @@ const SignLanguageTracker = () => {
             )}
           </div>
         )}
-        <p style={{ marginTop: 4, fontSize: 12, color: "#4b5563" }}>
-          Pipeline: {EXTRACT_FEATURES_ENDPOINT} {" -> "} {PREDICT_ENDPOINT}
-        </p>
       </div>
     </div>
   );

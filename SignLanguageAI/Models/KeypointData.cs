@@ -18,8 +18,8 @@ namespace SignLanguageAI.Models
     public class FrameKeypoints
     {
         /// <summary>
-        /// Body pose keypoints (25 points)
-        /// Including: head, shoulders, arms, torso, legs, hands landmarks
+        /// Body pose keypoints (9 points - upper body only)
+        /// Including: head, shoulders, arms, torso only (NO legs/ankles)
         /// </summary>
         public List<Keypoint> Pose { get; set; } = new();
 
@@ -41,22 +41,21 @@ namespace SignLanguageAI.Models
         public List<Keypoint> RightHand { get; set; } = new();
 
         /// <summary>
-        /// Validates structure: 25 pose + 51 face + 21 left + 21 right = 118 total
+        /// Validates structure: 9 pose + 51 face + 21 left + 21 right = 102 total
         /// </summary>
         public bool IsValid()
         {
-            return Pose.Count == 25 && Face.Count == 51 && LeftHand.Count == 21 && RightHand.Count == 21;
+            return Pose.Count == 9 && Face.Count == 51 && LeftHand.Count == 21 && RightHand.Count == 21;
         }
 
         /// <summary>
-        /// Get total feature count for this frame (should be 379)
-        /// Each point: x, y, z, visibility = 4 values
-        /// We use x,y,z,visibility for pose and x,y,z for face/hands:
-        /// 25*4 + 51*3 + 21*3 + 21*3 = 100 + 153 + 63 + 63 = 379
+        /// Get total feature count for this frame (should be 306)
+        /// All points use x,y,z only (no visibility):
+        /// 9*3 + 51*3 + 21*3 + 21*3 = 27 + 153 + 63 + 63 = 306
         /// </summary>
         public int GetFeatureCount()
         {
-            return (Pose.Count * 4) + (Face.Count * 3) + (LeftHand.Count * 3) + (RightHand.Count * 3);
+            return (Pose.Count * 3) + (Face.Count * 3) + (LeftHand.Count * 3) + (RightHand.Count * 3);
         }
     }
 
@@ -67,7 +66,7 @@ namespace SignLanguageAI.Models
     public class KeypointsInput
     {
         /// <summary>
-        /// List of frame keypoints (usually 80 frames)
+        /// List of frame keypoints (usually 50 frames)
         /// </summary>
         public List<FrameKeypoints> Frames { get; set; } = new();
 
@@ -83,11 +82,11 @@ namespace SignLanguageAI.Models
         }
 
         /// <summary>
-        /// Get total expected features (usually 80 * 379 = 30,320)
+        /// Get total expected features (usually 50 * 306 = 15,300)
         /// </summary>
         public int GetExpectedFeatureCount()
         {
-            return Frames.Count * 379;
+            return Frames.Count * 306;
         }
     }
 
