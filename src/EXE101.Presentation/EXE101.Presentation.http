@@ -1,0 +1,793 @@
+@Host = http://localhost:5000
+
+###
+
+GET {{Host}}/api/roles?page=1&pageSize=20
+Accept: application/json
+
+###
+
+GET {{Host}}/api/roles/1
+Accept: application/json
+
+###
+
+POST {{Host}}/api/roles
+Content-Type: application/json
+
+{
+  "code": "admin",
+  "name": "Administrator",
+  "description": "System administrator"
+}
+
+###
+
+PUT {{Host}}/api/roles/1
+Content-Type: application/json
+
+{
+  "code": "moderator",
+  "name": "Moderator",
+  "description": "Updated role"
+}
+
+###
+
+DELETE {{Host}}/api/roles/1
+Accept: application/json
+
+###
+
+GET {{Host}}/api/users?page=1&pageSize=20
+Accept: application/json
+
+###
+
+GET {{Host}}/api/users/1
+Accept: application/json
+
+###
+
+POST {{Host}}/api/users
+Content-Type: application/json
+
+{
+  "roleId": 1,
+  "email": "user1@example.com",
+  "password": "User@123456",
+  "fullName": "User One",
+  "status": "Active"
+}
+
+###
+
+PUT {{Host}}/api/users/1
+Content-Type: application/json
+
+{
+  "roleId": 1,
+  "email": "user1.updated@example.com",
+  "fullName": "User One Updated",
+  "status": "Suspended"
+}
+
+###
+
+DELETE {{Host}}/api/users/1
+Accept: application/json
+
+###
+
+PATCH {{Host}}/api/users/1/status
+Content-Type: application/json
+
+{
+  "status": "Active"
+}
+
+###
+
+POST {{Host}}/api/users/register
+Content-Type: application/json
+
+{
+  "email": "register.user@example.com",
+  "password": "User@123456",
+  "fullName": "Register User"
+}
+
+###
+
+POST {{Host}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "register.user@example.com",
+  "password": "User@123456"
+}
+
+###
+
+POST {{Host}}/api/users/1/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "User@123456",
+  "newPassword": "User@654321"
+}
+
+###
+
+POST {{Host}}/api/users/verify-email
+Content-Type: application/json
+
+{
+  "userId": 1
+}
+
+###
+
+PATCH {{Host}}/api/users/1/avatar
+Content-Type: application/json
+
+{
+  "avatarMediaId": 99
+}
+
+###
+
+POST {{Host}}/api/auth_accounts/link
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "provider": "Google",
+  "providerUserId": "google_10001",
+  "providerEmail": "google.user@example.com"
+}
+
+###
+
+GET {{Host}}/api/auth_accounts/user/1
+Accept: application/json
+
+###
+
+DELETE {{Host}}/api/auth_accounts/user/1/provider/Google
+Accept: application/json
+
+###
+
+POST {{Host}}/api/user_profiles
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "phone": "0901234567",
+  "dateOfBirth": "2000-01-01",
+  "gender": "male",
+  "bio": "Love sign language",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "preferredSignVariant": "vsl",
+  "currentStreakDays": 5,
+  "totalXp": 120
+}
+
+###
+
+PUT {{Host}}/api/user_profiles/1
+Content-Type: application/json
+
+{
+  "phone": "0909999999",
+  "dateOfBirth": "2000-01-01",
+  "gender": "male",
+  "bio": "Updated bio",
+  "timezone": "Asia/Ho_Chi_Minh",
+  "preferredSignVariant": "vsl",
+  "currentStreakDays": 7,
+  "totalXp": 180
+}
+
+###
+
+GET {{Host}}/api/user_profiles/1
+Accept: application/json
+
+###
+
+GET {{Host}}/api/user_settings/1
+Accept: application/json
+
+###
+
+PUT {{Host}}/api/user_settings/1
+Content-Type: application/json
+
+{
+  "notificationsEnabled": true,
+  "marketingEmailsEnabled": false,
+  "translationAutoSpeak": true,
+  "playbackSpeed": 1.25,
+  "dailyGoalMinutes": 25,
+  "theme": "light"
+}
+
+###
+
+POST {{Host}}/api/media_assets
+Content-Type: application/json
+
+{
+  "ownerUserId": 1,
+  "storageProvider": "s3",
+  "fileName": "lesson-01-cover.jpg",
+  "fileUrl": "https://cdn.example.com/media/lesson-01-cover.jpg",
+  "mimeType": "image/jpeg",
+  "mediaType": "image",
+  "fileSizeBytes": 254321,
+  "durationSeconds": null,
+  "width": 1280,
+  "height": 720,
+  "status": "Ready"
+}
+
+###
+
+GET {{Host}}/api/media_assets?page=1&pageSize=20
+Accept: application/json
+
+###
+
+GET {{Host}}/api/media_assets/1
+Accept: application/json
+
+###
+
+PUT {{Host}}/api/media_assets/1
+Content-Type: application/json
+
+{
+  "storageProvider": "s3",
+  "fileName": "lesson-01-video.mp4",
+  "fileUrl": "https://cdn.example.com/media/lesson-01-video.mp4",
+  "mimeType": "video/mp4",
+  "mediaType": "video",
+  "fileSizeBytes": 10485760,
+  "durationSeconds": 310,
+  "width": 1920,
+  "height": 1080,
+  "status": "Ready"
+}
+
+###
+
+DELETE {{Host}}/api/media_assets/1
+Accept: application/json
+
+###
+
+POST {{Host}}/api/course_categories
+Content-Type: application/json
+
+{
+  "name": "Beginner Basics",
+  "slug": "beginner-basics",
+  "description": "Entry-level course category",
+  "colorHex": "#12A594",
+  "iconMediaId": 1
+}
+
+###
+
+GET {{Host}}/api/course_categories?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/vocabulary_categories
+Content-Type: application/json
+
+{
+  "name": "Daily Communication",
+  "slug": "daily-communication",
+  "description": "Common daily words",
+  "displayOrder": 1
+}
+
+###
+
+GET {{Host}}/api/vocabulary_categories?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/courses
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "title": "Vietnamese Sign Foundations",
+  "slug": "vietnamese-sign-foundations",
+  "summary": "Core gestures and expressions",
+  "description": "Complete beginner pathway",
+  "level": "beginner",
+  "coverMediaId": 1,
+  "trailerMediaId": 2,
+  "isPremium": false,
+  "createdBy": 1
+}
+
+###
+
+PUT {{Host}}/api/courses/1
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "title": "Vietnamese Sign Foundations - Updated",
+  "slug": "vietnamese-sign-foundations",
+  "summary": "Updated summary",
+  "description": "Updated description",
+  "level": "beginner",
+  "coverMediaId": 1,
+  "trailerMediaId": 2,
+  "isPremium": true,
+  "updatedBy": 1
+}
+
+###
+
+POST {{Host}}/api/courses/1/publish
+Content-Type: application/json
+
+{
+  "updatedBy": 1
+}
+
+###
+
+POST {{Host}}/api/courses/1/unpublish
+Content-Type: application/json
+
+{
+  "updatedBy": 1
+}
+
+###
+
+GET {{Host}}/api/courses/1
+Accept: application/json
+
+###
+
+GET {{Host}}/api/courses?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/course_modules
+Content-Type: application/json
+
+{
+  "courseId": 1,
+  "title": "Module 1 - Greetings",
+  "description": "Introductory signs",
+  "sortOrder": 1,
+  "isPreview": true
+}
+
+###
+
+POST {{Host}}/api/lessons
+Content-Type: application/json
+
+{
+  "courseId": 1,
+  "moduleId": 1,
+  "title": "Greeting Basics",
+  "slug": "greeting-basics",
+  "shortDescription": "Learn hello and goodbye",
+  "objectiveText": "Use core greetings in context",
+  "coverMediaId": 1,
+  "videoMediaId": 3,
+  "lessonType": "video",
+  "difficultyLevel": "easy",
+  "estimatedMinutes": 15,
+  "xpReward": 20,
+  "sortOrder": 1
+}
+
+###
+
+POST {{Host}}/api/vocabularies
+Content-Type: application/json
+
+{
+  "categoryId": 1,
+  "code": "VOC_HELLO",
+  "termVi": "Xin chao",
+  "description": "Basic greeting",
+  "usageExample": "Xin chao ban",
+  "difficultyLevel": "easy",
+  "handHintText": "Open palm wave",
+  "isFeatured": true,
+  "createdBy": 1
+}
+
+###
+
+POST {{Host}}/api/vocabulary_media
+Content-Type: application/json
+
+{
+  "vocabularyId": 1,
+  "mediaId": 1,
+  "usageType": "thumbnail",
+  "isPrimary": true,
+  "sortOrder": 1
+}
+
+###
+
+POST {{Host}}/api/lesson_vocabularies
+Content-Type: application/json
+
+{
+  "lessonId": 1,
+  "vocabularyId": 1,
+  "sortOrder": 1,
+  "isRequired": true,
+  "expectedAccuracy": 85.5
+}
+
+###
+
+POST {{Host}}/api/enrollments/enroll
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "courseId": 1
+}
+
+###
+
+GET {{Host}}/api/enrollments/user/1
+Accept: application/json
+
+###
+
+PATCH {{Host}}/api/enrollments/1/current-progress
+Content-Type: application/json
+
+{
+  "currentModuleId": 1,
+  "currentLessonId": 1,
+  "progressPercent": 35.5
+}
+
+###
+
+POST {{Host}}/api/enrollments/1/complete
+Content-Type: application/json
+
+{
+  "progressPercent": 100
+}
+
+###
+
+POST {{Host}}/api/user_lesson_progress
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "lessonId": 1,
+  "status": "InProgress",
+  "startedAt": "2026-03-18T10:00:00Z",
+  "completedAt": null,
+  "lastPositionSeconds": 120,
+  "attemptsCount": 2,
+  "bestAccuracy": 87.5,
+  "bestScore": 92.2,
+  "totalTimeSeconds": 600,
+  "xpEarned": 25
+}
+
+###
+
+POST {{Host}}/api/lesson_attempts
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "lessonId": 1,
+  "practiceSessionId": null,
+  "startedAt": "2026-03-18T10:10:00Z",
+  "finishedAt": "2026-03-18T10:20:00Z",
+  "accuracy": 85.2,
+  "durationSeconds": 600,
+  "xpEarned": 15,
+  "passed": true,
+  "completionSource": "practice"
+}
+
+###
+
+POST {{Host}}/api/user_vocabulary_progress
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "vocabularyId": 1,
+  "status": "InProgress",
+  "firstLearnedAt": "2026-03-18T09:00:00Z",
+  "lastPracticedAt": "2026-03-18T10:00:00Z",
+  "masteryLevel": 55.5,
+  "totalPracticeCount": 8,
+  "correctCount": 6,
+  "bestConfidence": 88.8,
+  "isSaved": true
+}
+
+###
+
+POST {{Host}}/api/translation_sessions
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "inputMode": "sign",
+  "outputMode": "text",
+  "signVariantUsed": "vsl"
+}
+
+###
+
+POST {{Host}}/api/translation_segments
+Content-Type: application/json
+
+{
+  "sessionId": 1,
+  "segmentOrder": 1,
+  "recognizedText": "xin chao",
+  "confidence": 86.2,
+  "matchedVocabularyId": null,
+  "startedAt": "2026-03-18T11:00:00Z",
+  "endedAt": "2026-03-18T11:00:03Z",
+  "audioMediaId": null,
+  "rawPredictionJson": "{\"label\":\"xin_chao\",\"confidence\":0.862}"
+}
+
+###
+
+PUT {{Host}}/api/translation_sessions/1
+Content-Type: application/json
+
+{
+  "status": "Completed",
+  "finalText": "Xin chao",
+  "finalAudioMediaId": null,
+  "averageConfidence": 84.5,
+  "endedAt": "2026-03-18T11:02:00Z"
+}
+
+###
+
+POST {{Host}}/api/practice_sessions
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "courseId": 1,
+  "lessonId": 1,
+  "vocabularyId": 1,
+  "mode": "ai-pronunciation",
+  "promptText": "Thuc hien dau hieu: Xin chao",
+  "totalItems": 10
+}
+
+###
+
+POST {{Host}}/api/practice_attempts
+Content-Type: application/json
+
+{
+  "practiceSessionId": 1,
+  "expectedVocabularyId": 1,
+  "recognizedVocabularyId": 1,
+  "expectedText": "xin chao",
+  "recognizedText": "xin chao",
+  "confidence": 90.1,
+  "isCorrect": true,
+  "responseTimeMs": 2200,
+  "feedbackText": "Good gesture clarity",
+  "sortOrder": 1
+}
+
+###
+
+PUT {{Host}}/api/practice_sessions/1
+Content-Type: application/json
+
+{
+  "status": "Completed",
+  "totalItems": 10,
+  "correctItems": 8,
+  "accuracy": 80,
+  "endedAt": "2026-03-18T11:20:00Z",
+  "notes": "Improved after repetition"
+}
+
+###
+
+POST {{Host}}/api/subscription_plans
+Content-Type: application/json
+
+{
+  "code": "PRO_MONTHLY",
+  "name": "Pro Monthly",
+  "billingCycle": "monthly",
+  "priceVnd": 199000,
+  "dailyTranslationLimit": 200,
+  "aiPracticeLimit": 300,
+  "courseAccessScope": "all",
+  "canSaveHistory": true,
+  "certificateEnabled": true,
+  "prioritySupport": true,
+  "isActive": true,
+  "displayOrder": 1
+}
+
+###
+
+GET {{Host}}/api/subscription_plans?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/user_subscriptions
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "planId": 1,
+  "status": "Active",
+  "startAt": "2026-03-18T00:00:00Z",
+  "endAt": "2026-04-18T00:00:00Z",
+  "autoRenew": true,
+  "source": "web"
+}
+
+###
+
+GET {{Host}}/api/user_subscriptions?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/payment_transactions
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "userSubscriptionId": 1,
+  "amountVnd": 199000,
+  "currency": "VND",
+  "paymentMethod": "bank_transfer",
+  "paymentProvider": "vnpay",
+  "providerTransactionRef": "TXN-20260318-0001",
+  "status": "Paid",
+  "paidAt": "2026-03-18T00:05:00Z"
+}
+
+###
+
+GET {{Host}}/api/payment_transactions?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/notifications
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "title": "Trial Ending Soon",
+  "message": "Your trial will end in 2 days.",
+  "type": "subscription",
+  "isRead": false,
+  "actionUrl": "/billing/plans"
+}
+
+###
+
+GET {{Host}}/api/notifications?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/feedback_categories
+Content-Type: application/json
+
+{
+  "name": "App Experience",
+  "description": "General app feedback",
+  "isActive": true
+}
+
+###
+
+POST {{Host}}/api/feedbacks
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "categoryId": 1,
+  "rating": 5,
+  "subject": "Great learning flow",
+  "content": "Practice + translation pipeline is very smooth"
+}
+
+###
+
+POST {{Host}}/api/badges
+Content-Type: application/json
+
+{
+  "code": "STREAK_7",
+  "name": "7-Day Streak",
+  "description": "Practice for 7 consecutive days",
+  "badgeType": "Streak",
+  "iconMediaId": 1,
+  "criteriaJson": "{\"days\":7}"
+}
+
+###
+
+POST {{Host}}/api/user_badges
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "badgeId": 1,
+  "awardedAt": "2026-03-18T12:00:00Z"
+}
+
+###
+
+POST {{Host}}/api/user_activity_logs
+Content-Type: application/json
+
+{
+  "userId": 1,
+  "actionType": "LessonCompleted",
+  "entityType": "lesson",
+  "entityId": 1,
+  "metadataJson": "{\"xp\":20}"
+}
+
+###
+
+GET {{Host}}/api/user_activity_logs?page=1&pageSize=20
+Accept: application/json
+
+###
+
+POST {{Host}}/api/admin_action_logs
+Content-Type: application/json
+
+{
+  "adminUserId": 1,
+  "actionType": "PublishCourse",
+  "entityType": "course",
+  "entityId": 1,
+  "description": "Published course after QA review"
+}
+
+###
+
+GET {{Host}}/api/admin_action_logs?page=1&pageSize=20
+Accept: application/json

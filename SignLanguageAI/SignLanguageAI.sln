@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SignLanguageAI", "SignLanguageAI.csproj", "{757F6B2D-5EBE-02A5-5A8F-178D52B3658A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{757F6B2D-5EBE-02A5-5A8F-178D52B3658A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{757F6B2D-5EBE-02A5-5A8F-178D52B3658A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{757F6B2D-5EBE-02A5-5A8F-178D52B3658A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{757F6B2D-5EBE-02A5-5A8F-178D52B3658A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E1D70097-ADFF-47D4-8D9D-AC3A91480B78}
+	EndGlobalSection
+EndGlobal
