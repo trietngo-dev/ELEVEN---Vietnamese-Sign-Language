@@ -5,7 +5,7 @@ import { cn } from "../lib/utils";
 import brand from "../assets/brand.jpg";
 
 import { useAuth } from "../context/AuthContext";
-import { LogOut, User } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 function Navbar() {
   const { common, navbar } = viText;
@@ -15,7 +15,13 @@ function Navbar() {
     <header className="sticky top-0 z-50 border-b border-[#e7ece9] bg-white/95 backdrop-blur">
       <div className="container flex min-h-[82px] flex-wrap items-center justify-center gap-4 py-3 lg:justify-between lg:py-0">
         <NavLink
-          to={isAuthenticated ? (user?.role === "admin" ? "/admin/dashboard" : "/home-page") : "/"}
+          to={
+            isAuthenticated
+              ? user?.role === "admin"
+                ? "/admin/dashboard"
+                : "/home-page"
+              : "/"
+          }
           className="inline-flex items-center gap-2.5"
           aria-label={navbar.brandAriaLabel}
         >
@@ -54,13 +60,20 @@ function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-4">
               <div className="hidden md:flex flex-col items-end">
-                <span className="text-sm font-bold text-[#1e3039]">{user?.fullName}</span>
-                <span className="text-[0.7rem] text-[#7b8680] uppercase tracking-wider">{user?.role}</span>
+                <span className="text-sm font-bold text-[#1e3039]">
+                  {user?.fullName}
+                </span>
+                <span className="text-[0.7rem] text-[#7b8680] uppercase tracking-wider">
+                  {user?.role}
+                </span>
               </div>
-              <div className="h-10 w-10 cursor-pointer rounded-full border-2 border-slate-100 bg-cover bg-center"
-                style={{ backgroundImage: `url('https://ui-avatars.com/api/?name=${user?.fullName || 'User'}&background=3c6d44&color=fff')` }}
+              <div
+                className="h-10 w-10 cursor-pointer rounded-full border-2 border-slate-100 bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff')`,
+                }}
               ></div>
-              <button 
+              <button
                 onClick={logout}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full text-slate-500 hover:bg-slate-50 hover:text-red-600 transition-colors"
                 title="Đăng xuất"

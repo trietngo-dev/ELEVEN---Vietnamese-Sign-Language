@@ -47,3 +47,18 @@ public sealed class MediaAssetResponse
     public MediaStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
 }
+
+public sealed class UploadMediaAssetRequest
+{
+    public long? OwnerUserId { get; set; }
+    public string FileName { get; set; } = string.Empty;
+    public string MimeType { get; set; } = string.Empty;
+    public long FileSizeBytes { get; set; }
+    public int? DurationSeconds { get; set; }
+}
+
+public sealed class UploadMediaAssetResponse
+{
+    public long Id { get; set; }
+    public string FileUrl { get; set; } = string.Empty;
+}

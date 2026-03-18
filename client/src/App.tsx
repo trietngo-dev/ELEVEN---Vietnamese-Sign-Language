@@ -86,7 +86,14 @@ function App() {
           <Route path="khoa-hoc" element={<CoursesPage />} />
           <Route path="tu-dien" element={<DictionaryPage />} />
           <Route path="danh-gia" element={<ReviewPage />} />
-          <Route path="*" element={<SignLanguageTracker />} />
+          <Route
+            path="*"
+            element={
+              <ProtectedRoute>
+                <SignLanguageTracker />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="home-page"
             element={
