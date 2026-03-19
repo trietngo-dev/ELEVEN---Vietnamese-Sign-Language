@@ -80,6 +80,8 @@ const SignLanguageTracker = () => {
 
   const [capturedFrames, setCapturedFrames] = useState(0);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isCountingDown, setIsCountingDown] = useState(false);
+  const [countdown, setCountdown] = useState(3);
   const [isPolishing, setIsPolishing] = useState(false);
   const [recognizedWords, setRecognizedWords] = useState<string[]>([]);
   const [finalSentence, setFinalSentence] = useState("");
@@ -92,6 +94,7 @@ const SignLanguageTracker = () => {
   // const [showLandmarks, setShowLandmarks] = useState(false);
 
   const isInitializing = useRef(false);
+  const countdownTimerRef = useRef<any>(null);
   const showLandmarksRef = useRef(false);
   const stopCameraRef = useRef<() => void>(() => { });
   const didMountPathEffectRef = useRef(false);
@@ -352,8 +355,13 @@ const SignLanguageTracker = () => {
   };
 
   const toggleTranslation = () => {
-    if (isCollectingRef.current) {
+    if (isCollectingRef.current || isCountingDown) {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+      }
       isCollectingRef.current = false;
+      setIsCountingDown(false);
       setIsTranslating(false);
       translationSessionRef.current += 1;
       const stoppedSessionId = translationSessionRef.current;
@@ -363,20 +371,38 @@ const SignLanguageTracker = () => {
       return;
     }
 
+    // Start Countdown
+    setIsTranslating(true);
+    setIsCountingDown(true);
+    setCountdown(3);
+
+    countdownTimerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
+          setIsCountingDown(false);
+          isCollectingRef.current = true;
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
     translationSessionRef.current += 1;
     frameBufferRef.current = [];
     prevLeftHandRef.current = null;
     prevRightHandRef.current = null;
     missingLeftHandFramesRef.current = 0;
     missingRightHandFramesRef.current = 0;
-    isCollectingRef.current = true;
-    setIsTranslating(true);
     setCapturedFrames(0);
     setRecognizedWords([]);
     recognizedWordsRef.current = [];
     setFinalSentence("");
     setBackendResult(null);
-    setUploadStatus("Đang dịch liên tục. Hệ thống sẽ chốt mỗi 50 frame.");
+    setUploadStatus("Đang chờ bắt đầu...");
   };
 
   // const toggleLandmarks = () => {
@@ -657,6 +683,19 @@ const SignLanguageTracker = () => {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-black/[0.03] to-black/30" />
 
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-[clamp(320px,56vw,500px)] w-[clamp(260px,42vw,420px)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border-2 border-dashed border-white/75 bg-white/5 shadow-[0_12px_28px_rgba(0,0,0,0.2)]" />
+
+          {isCountingDown && (
+            <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+              <div className="flex animate-pulse flex-col items-center">
+                <span className="text-[120px] font-black text-white drop-shadow-[0_0_30px_rgba(0,0,0,0.5)]">
+                  {countdown > 0 ? countdown : "GO!"}
+                </span>
+                <span className="text-2xl font-bold tracking-widest text-white drop-shadow-md uppercase">
+                  Chuẩn bị...
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="absolute right-3.5 top-1/2 z-[4] flex -translate-y-1/2 flex-col gap-3">
             <button
