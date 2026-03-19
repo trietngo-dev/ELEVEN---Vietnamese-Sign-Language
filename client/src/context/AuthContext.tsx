@@ -1,0 +1,81 @@
+import React, { createContext, useContext, useState, useEffect } from "react";
+import type { LoginRequest, RegisterRequest } from "../lib/auth";
+import { authApi, tokenStorage } from "../lib/auth";
+
+interface AuthContextType {
+  user: any | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (data: LoginRequest) => Promise<any>;
+  register: (data: RegisterRequest) => Promise<void>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const storedUser = tokenStorage.getUser();
+    const token = tokenStorage.getToken();
+    
+    if (storedUser && token) {
+      setUser(storedUser);
+      setIsAuthenticated(true);
+    }
+    setIsLoading(false);
+  }, []);
+
+  const login = async (data: LoginRequest) => {
+    try {
+      const response = await authApi.login(data);
+      const userData = {
+        id: response.userId,
+        email: response.email,
+        fullName: response.fullName,
+        role: response.roleCode
+      };
+      
+      tokenStorage.setToken(response.accessToken);
+      tokenStorage.setUser(userData);
+      
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const register = async (data: RegisterRequest) => {
+    try {
+      await authApi.register(data);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    tokenStorage.clearToken();
+    tokenStorage.clearUser();
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};

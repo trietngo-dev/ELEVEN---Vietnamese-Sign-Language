@@ -22,4 +22,7 @@ public sealed class Lesson
     public DateTime? PublishedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+
+    public MediaAsset? CoverMediaAsset { get; set; }
+    public MediaAsset? VideoMediaAsset { get; set; }
 }

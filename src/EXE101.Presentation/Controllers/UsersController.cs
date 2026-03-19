@@ -19,10 +19,14 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Policy = "AdminOnly")]
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById([FromRoute] long id, CancellationToken cancellationToken = default)
     {
+        if (!IsAdmin() && GetCurrentUserId() != id)
+        {
+            return Forbid();
+        }
+
         var result = await userService.GetByIdAsync(id, cancellationToken);
         if (result is null)
         {
@@ -40,10 +44,14 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
-    [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
+        if (!IsAdmin() && GetCurrentUserId() != id)
+        {
+            return Forbid();
+        }
+
         var result = await userService.UpdateAsync(id, request, cancellationToken);
         if (result is null)
         {

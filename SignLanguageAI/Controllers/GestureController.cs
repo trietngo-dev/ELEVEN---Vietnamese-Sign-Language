@@ -12,17 +12,20 @@ namespace SignLanguageAI.Controllers
         private readonly OnnxGestureService _onnxService;
         private readonly FeatureExtractionService _featureService;
         private readonly FrameBufferService _frameBufferService;
+        private readonly GeminiTranslationService _geminiTranslationService;
         private readonly ILogger<GestureController> _logger;
 
         public GestureController(
             OnnxGestureService onnxService, 
             FeatureExtractionService featureService,
             FrameBufferService frameBufferService,
+            GeminiTranslationService geminiTranslationService,
             ILogger<GestureController> logger)
         {
             _onnxService = onnxService;
             _featureService = featureService;
             _frameBufferService = frameBufferService;
+            _geminiTranslationService = geminiTranslationService;
             _logger = logger;
         }
 
@@ -80,7 +83,7 @@ namespace SignLanguageAI.Controllers
         /// <summary>
         /// Dự đoán cử chỉ từ các feature
         /// </summary>
-        /// <param name="request">Request chứa danh sách 30,320 feature</param>
+        /// <param name="request">Request chứa danh sách 15,300 feature</param>
         /// <returns>Kết quả dự đoán với ID, nhãn và độ tin cậy</returns>
         [HttpPost("predict")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -171,6 +174,56 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
+        /// Translate isolated recognized words into a natural Vietnamese sentence using Gemini.
+        /// </summary>
+        /// <param name="request">List of recognized words from continuous sliding-window inference</param>
+        [HttpPost("translate-sentence")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> TranslateSentence([FromBody] TranslateSentenceRequest? request)
+        {
+            try
+            {
+                if (request == null)
+                {
+                    return BadRequest(new { error = "Request body is required" });
+                }
+
+                var words = request.Words ?? new List<string>();
+                if (words.Count == 0)
+                {
+                    return Ok(new TranslateSentenceResponse
+                    {
+                        Sentence = string.Empty
+                    });
+                }
+
+                var sentence = await _geminiTranslationService.TranslateWordsAsync(words, HttpContext.RequestAborted);
+
+                return Ok(new TranslateSentenceResponse
+                {
+                    Sentence = sentence
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Gemini translation configuration error");
+                return StatusCode(500, new { error = ex.Message });
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Gemini translation HTTP error");
+                return StatusCode(500, new { error = "Gemini translation failed", detail = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error while translating sentence");
+                return StatusCode(500, new { error = "Server error", detail = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Kiểm tra trạng thái API
         /// </summary>
         [HttpGet("health")]
@@ -228,16 +281,17 @@ namespace SignLanguageAI.Controllers
                     modelInfo = "/api/gesture/model-info",
                     predict = "/api/gesture/predict",
                     extractFeatures = "/api/gesture/extract-features",
-                    predictBatch = "/api/gesture/predict-batch"
+                    predictBatch = "/api/gesture/predict-batch",
+                    translateSentence = "/api/gesture/translate-sentence"
                 }
             });
         }
 
         /// <summary>
-        /// Extract 30,320 normalized features from MediaPipe keypoints
+        /// Extract 15,300 normalized features from MediaPipe keypoints
         /// </summary>
-        /// <param name="request">80 frames of keypoints (can be less, will be zero-padded)</param>
-        /// <returns>30,320 normalized features ready for prediction</returns>
+        /// <param name="request">50 frames of keypoints (can be less, will be zero-padded)</param>
+        /// <returns>15,300 normalized features ready for prediction</returns>
         [HttpPost("extract-features")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -252,7 +306,7 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frames không được rỗng",
-                        expectedFrames = 80,
+                        expectedFrames = 50,
                         receivedFrames = request?.Frames?.Count ?? 0
                     });
                 }
@@ -284,9 +338,9 @@ namespace SignLanguageAI.Controllers
         }
 
         /// <summary>
-        /// Predict gesture from batch of 80 flattened frames (30,320 features total)
+        /// Predict gesture from batch of 50 flattened frames (15,300 features total)
         /// </summary>
-        /// <param name="request">80 frames × 379 features each</param>
+        /// <param name="request">50 frames × 306 features each</param>
         /// <returns>Predicted gesture with probabilities</returns>
         [HttpPost("predict-batch")]
         [ProducesResponseType(StatusCodes.Status200OK)]
@@ -303,8 +357,21 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frames không được rỗng",
-                        expectedFrames = 80,
+                        expectedFrames = 50,
                         receivedFrames = request?.Frames?.Count ?? 0
+                    });
+                }
+
+                if (!request.IsValid())
+                {
+                    return BadRequest(new
+                    {
+                        error = "Protocol mismatch. Expected exactly 50 frames and 306 features per frame.",
+                        expectedFrames = 50,
+                        expectedFeaturesPerFrame = 306,
+                        expectedTotalFeatures = _featureService.GetExpectedFeatureCount(),
+                        receivedFrames = request.Frames.Count,
+                        receivedFrameSizes = request.Frames.Select(f => f?.Count ?? 0).ToList()
                     });
                 }
 
@@ -318,21 +385,20 @@ namespace SignLanguageAI.Controllers
                     });
                 }
 
-                // Flatten batch frames into single feature array
-                var flattenedFeatures = new List<float>();
+                // Flatten batch frames into a single 1D feature array in protocol order.
+                // Each frame is already flattened as [Pose, Face, LeftHand, RightHand] with 306 values.
+                var flattenedFeatures = new List<float>(request.Frames.Count * 306);
                 foreach (var frame in request.Frames)
-                {
-                    if (frame != null)
-                        flattenedFeatures.AddRange(frame);
-                }
+                    flattenedFeatures.AddRange(frame);
 
                 var expectedFeatures = _featureService.GetExpectedFeatureCount();
 
-                // Pad or truncate to exactly expected feature length
-                while (flattenedFeatures.Count < expectedFeatures)
-                    flattenedFeatures.Add(0f);
-                while (flattenedFeatures.Count > expectedFeatures)
-                    flattenedFeatures.RemoveAt(flattenedFeatures.Count - 1);
+                if (flattenedFeatures.Count != expectedFeatures)
+                {
+                    throw new ArgumentException(
+                        $"Protocol mismatch. Expected {expectedFeatures} features (50x306), got {flattenedFeatures.Count}."
+                    );
+                }
 
                 _logger.LogInformation($"Processing batch prediction with {flattenedFeatures.Count} features from {request.Frames.Count} frames");
 
@@ -386,7 +452,7 @@ namespace SignLanguageAI.Controllers
                     return BadRequest(new
                     {
                         error = "Frame không hợp lệ",
-                        expected = "25 pose + 51 face + 21 left hand + 21 right hand = 118 points"
+                        expected = "9 pose + 51 face + 21 left hand + 21 right hand = 102 points"
                     });
                 }
 

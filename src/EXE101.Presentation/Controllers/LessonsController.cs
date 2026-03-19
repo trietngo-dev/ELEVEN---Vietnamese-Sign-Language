@@ -46,6 +46,18 @@ public sealed class LessonsController(ILessonService service) : ControllerBase
         return Ok(result);
     }
 
+    [HttpPatch("{id:long}/video")]
+    public async Task<IActionResult> UpdateVideo([FromRoute] long id, [FromBody] UpdateLessonVideoRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await service.UpdateVideoAsync(id, request, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(new { message = $"Lesson with id {id} was not found." });
+        }
+
+        return Ok(result);
+    }
+
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete([FromRoute] long id, CancellationToken cancellationToken = default)
     {

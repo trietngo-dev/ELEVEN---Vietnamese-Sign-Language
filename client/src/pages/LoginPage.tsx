@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
-import { Apple, Lock, Mail } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Apple, Lock, Mail, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import brand from "../assets/brand.jpg";
 import AuthNavbar from "../components/AuthNavbar";
 import { Button } from "../components/ui/button";
 import { viText } from "../locales/vi";
+import { useAuth } from "../context/AuthContext";
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 18 },
@@ -23,6 +25,32 @@ const container = {
 
 function LoginPage() {
   const { common, authPages } = viText;
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      const user = await login({ email, password });
+      if (user?.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/home-page");
+      }
+    } catch (err: any) {
+      setError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-svh bg-[#f8faf9]">
@@ -57,8 +85,18 @@ function LoginPage() {
             <p className="mt-2 text-[#7c8790]">{authPages.login.subtitle}</p>
           </motion.div>
 
+          {error && (
+            <motion.div 
+              variants={fadeInUp}
+              className="mt-6 rounded-xl bg-red-50 p-4 text-center text-sm font-medium text-red-600 border border-red-100"
+            >
+              {error}
+            </motion.div>
+          )}
+
           <motion.form
             variants={container}
+            onSubmit={handleSubmit}
             className="mx-auto mt-8 w-full max-w-[520px]"
           >
             <motion.div variants={fadeInUp}>
@@ -73,7 +111,10 @@ function LoginPage() {
                 <input
                   id="login-email"
                   type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder={authPages.login.emailPlaceholder}
+                  required
                   className="w-full border-none bg-transparent text-[0.95rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                 />
               </div>
@@ -99,15 +140,26 @@ function LoginPage() {
                 <input
                   id="login-password"
                   type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder={authPages.login.passwordPlaceholder}
+                  required
                   className="w-full border-none bg-transparent text-[0.95rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                 />
               </div>
             </motion.div>
 
             <motion.div variants={fadeInUp} className="mt-6">
-              <Button className="h-14 w-full bg-[#3b7948] text-[1.12rem] font-bold shadow-[0_10px_24px_rgba(59,121,72,0.28)] hover:translate-y-0 hover:bg-[#336b40]">
-                {authPages.login.submitButton}
+              <Button 
+                type="submit"
+                disabled={isSubmitting}
+                className="h-14 w-full bg-[#3b7948] text-[1.12rem] font-bold shadow-[0_10px_24px_rgba(59,121,72,0.28)] hover:translate-y-0 hover:bg-[#336b40]"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  authPages.login.submitButton
+                )}
               </Button>
             </motion.div>
 
@@ -166,3 +218,4 @@ function LoginPage() {
 }
 
 export default LoginPage;
+
