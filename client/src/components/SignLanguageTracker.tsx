@@ -21,7 +21,7 @@ const SELECTED_FACE_INDICES = [
 ];
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5048";
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 const EXTRACT_FEATURES_ENDPOINT = `${API_BASE_URL}/api/gesture/extract-features`;
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
 const TRANSLATE_SENTENCE_ENDPOINT = `${API_BASE_URL}/api/gesture/translate-sentence`;
@@ -80,6 +80,7 @@ const SignLanguageTracker = () => {
 
   const [capturedFrames, setCapturedFrames] = useState(0);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isPolishing, setIsPolishing] = useState(false);
   const [recognizedWords, setRecognizedWords] = useState<string[]>([]);
   const [finalSentence, setFinalSentence] = useState("");
   const [uploadStatus, setUploadStatus] = useState(
@@ -88,11 +89,11 @@ const SignLanguageTracker = () => {
   const [backendResult, setBackendResult] = useState<PredictApiResponse | null>(
     null,
   );
-  const [showLandmarks, setShowLandmarks] = useState(false);
+  // const [showLandmarks, setShowLandmarks] = useState(false);
 
   const isInitializing = useRef(false);
   const showLandmarksRef = useRef(false);
-  const stopCameraRef = useRef<() => void>(() => {});
+  const stopCameraRef = useRef<() => void>(() => { });
   const didMountPathEffectRef = useRef(false);
 
   const toFiniteNumber = (value: unknown) => {
@@ -311,7 +312,9 @@ const SignLanguageTracker = () => {
   };
 
   const stopTranslationAndPolish = async (sessionId: number) => {
-    const words = [...recognizedWordsRef.current];
+    const words = [...recognizedWordsRef.current].filter(
+      (w) => !w.toLowerCase().includes("ngoiim"),
+    );
 
     if (words.length === 0) {
       setFinalSentence("");
@@ -319,6 +322,7 @@ const SignLanguageTracker = () => {
       return;
     }
 
+    setIsPolishing(true);
     setUploadStatus("Đang trau chuốt câu bằng Gemini...");
 
     try {
@@ -342,6 +346,8 @@ const SignLanguageTracker = () => {
     } catch (error) {
       console.error("Trau chuốt câu thất bại:", error);
       setUploadStatus("Trau chuốt thất bại. Kiểm tra Gemini API.");
+    } finally {
+      setIsPolishing(false);
     }
   };
 
@@ -373,13 +379,13 @@ const SignLanguageTracker = () => {
     setUploadStatus("Đang dịch liên tục. Hệ thống sẽ chốt mỗi 50 frame.");
   };
 
-  const toggleLandmarks = () => {
-    setShowLandmarks((prev) => {
-      const next = !prev;
-      showLandmarksRef.current = next;
-      return next;
-    });
-  };
+  // const toggleLandmarks = () => {
+  //   setShowLandmarks((prev) => {
+  //     const next = !prev;
+  //     showLandmarksRef.current = next;
+  //     return next;
+  //   });
+  // };
 
   useEffect(() => {
     if (isInitializing.current) return;
@@ -589,7 +595,7 @@ const SignLanguageTracker = () => {
       window.removeEventListener("pagehide", handlePageLeave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopCameraAndLoop();
-      stopCameraRef.current = () => {};
+      stopCameraRef.current = () => { };
       holisticLandmarker?.close();
     };
   }, []);
@@ -609,16 +615,14 @@ const SignLanguageTracker = () => {
   const predictedConfidence = backendResult?.confidence ?? 0;
   const confidenceText = `${(predictedConfidence * 100).toFixed(2)}%`;
 
-  const recognizedWordsText =
-    recognizedWords.length > 0
-      ? recognizedWords.join(" -> ")
-      : isTranslating
-        ? "Đang lắng nghe ký hiệu..."
-        : "Chưa có từ nhận diện";
+  const visibleWords = recognizedWords.filter(
+    (w) => !w.toLowerCase().includes("ngoiim"),
+  );
+
 
   const displaySentence =
     finalSentence ||
-    "Câu hoàn chỉnh sẽ hiển thị tại đây sau khi bấm 'Kết thúc & Trau chuốt'.";
+    "Câu hoàn chỉnh sẽ hiển thị tại đây!";
 
   return (
     <div className="mx-auto grid w-full max-w-[1300px] gap-3.5">
@@ -658,11 +662,10 @@ const SignLanguageTracker = () => {
             <button
               type="button"
               onClick={toggleTranslation}
-              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${
-                isCollectingRef.current
-                  ? "cursor-pointer bg-[#fef3c7]"
-                  : "cursor-pointer bg-white"
-              }`}
+              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${isCollectingRef.current
+                ? "cursor-pointer bg-[#fef3c7]"
+                : "cursor-pointer bg-white"
+                }`}
               title={
                 isCollectingRef.current
                   ? "Kết thúc & Trau chuốt"
@@ -672,29 +675,6 @@ const SignLanguageTracker = () => {
               {isCollectingRef.current
                 ? "Kết thúc & Trau chuốt"
                 : "Bắt đầu dịch câu"}
-            </button>
-
-            <button
-              type="button"
-              disabled
-              className="h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] bg-white text-xs font-bold text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.14)]"
-            >
-              Mic
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleLandmarks}
-              className={`h-[52px] w-[150px] cursor-pointer rounded-xl border border-[#d4d8d5] text-[11px] font-bold shadow-[0_8px_22px_rgba(0,0,0,0.14)] ${
-                showLandmarks
-                  ? "bg-[#3f7f57] text-white"
-                  : "bg-white text-[#3f7f57]"
-              }`}
-              title={
-                showLandmarks ? "Ẩn đường lấy tọa độ" : "Hiện đường lấy tọa độ"
-              }
-            >
-              {showLandmarks ? "Ẩn landmark" : "Hiện landmark"}
             </button>
           </div>
         </div>
@@ -709,9 +689,22 @@ const SignLanguageTracker = () => {
             </span>
           </div>
 
-          <p className="mt-3.5 text-base font-semibold leading-[1.5] text-[#415163]">
-            {recognizedWordsText}
-          </p>
+          <div className="mt-3.5 flex flex-wrap gap-2 min-h-[28px]">
+            {visibleWords.length > 0 ? (
+              visibleWords.map((w, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center rounded-full bg-[#e0ece2] px-3 py-1 text-sm font-bold text-[#648d67]"
+                >
+                  {w}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm font-semibold text-[#9ab0a2] italic">
+                {isTranslating ? "Đang lắng nghe ký hiệu..." : "Chưa có từ nhận diện"}
+              </span>
+            )}
+          </div>
 
           <p className="mt-3.5 rounded-xl bg-white/80 p-3 text-[clamp(24px,2vw,34px)] font-bold leading-[1.2] text-[#1f2e43]">
             {displaySentence}
@@ -732,10 +725,6 @@ const SignLanguageTracker = () => {
               {confidenceText}
             </p>
           )}
-
-          <p className="mt-1 text-[13px] text-[#4b5667]">
-            Landmark overlay: {showLandmarks ? "Đang hiển thị" : "Đã ẩn"}
-          </p>
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
 import { tokenStorage } from "../lib/auth";
 import CourseImage from "../components/CourseImage";
+import { Link } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -104,12 +105,14 @@ function CoursesPage() {
             </div>
           </div>
 
-          <Button
-            size="sm"
-            className="mt-3 h-9 bg-[#efca4c] px-5 text-[0.8rem] font-bold text-[#4b3c14] shadow-none hover:translate-y-0 hover:bg-[#e7c13f] md:mt-0"
-          >
-            {coursesPage.upgrade.cta}
-          </Button>
+          <Link to="/nang-cap">
+            <Button
+              size="sm"
+              className="mt-3 h-9 bg-[#efca4c] px-5 text-[0.8rem] font-bold text-[#4b3c14] shadow-none hover:translate-y-0 hover:bg-[#e7c13f] md:mt-0"
+            >
+              {coursesPage.upgrade.cta}
+            </Button>
+          </Link>
         </motion.div>
 
         <motion.header
@@ -214,10 +217,12 @@ function CoursesPage() {
                   {course.description || course.summary || "Chưa có mô tả"}
                 </p>
 
-                <Button className="mt-5 h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
-                  {common.buttons.startLearning}
-                  <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
+                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5">
+                  <Button className="h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
+                    {common.buttons.startLearning}
+                    <ArrowRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </Link>
               </div>
             </motion.article>
           ))}

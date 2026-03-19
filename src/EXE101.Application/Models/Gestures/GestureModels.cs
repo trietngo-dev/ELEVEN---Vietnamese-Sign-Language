@@ -8,12 +8,11 @@ public sealed class Keypoint
     public float X { get; set; }
     public float Y { get; set; }
     public float Z { get; set; }
-    public float Visibility { get; set; }
 }
 
 /// <summary>
 /// Represents all keypoints for one frame.
-/// Pose (25) + Face (51) + LeftHand (21) + RightHand (21) = 118 points.
+/// Pose (9) + Face (51) + LeftHand (21) + RightHand (21) = 102 points (306 features).
 /// </summary>
 public sealed class FrameKeypoints
 {
@@ -23,7 +22,7 @@ public sealed class FrameKeypoints
     public List<Keypoint> RightHand { get; set; } = new();
 
     public bool IsValid()
-        => Pose.Count == 25 && Face.Count == 51 && LeftHand.Count == 21 && RightHand.Count == 21;
+        => Pose.Count == 9 && Face.Count == 51 && LeftHand.Count == 21 && RightHand.Count == 21;
 }
 
 public sealed class KeypointsInput
@@ -75,4 +74,9 @@ public sealed class BatchPredictResponse
     public Dictionary<int, float> Probabilities { get; set; } = new();
     public int FrameCount { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class TranslateSentenceRequest
+{
+    public List<string> Words { get; set; } = new();
 }
