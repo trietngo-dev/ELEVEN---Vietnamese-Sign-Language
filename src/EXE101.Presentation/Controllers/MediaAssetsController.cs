@@ -37,7 +37,7 @@ public sealed class MediaAssetsController(IMediaAssetService mediaAssetService) 
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
     public async Task<IActionResult> UploadMediaAsset(
-        [FromForm] IFormFile file,
+        IFormFile file,
         [FromForm] long? ownerUserId,
         [FromForm] int? durationSeconds,
         CancellationToken cancellationToken = default)
