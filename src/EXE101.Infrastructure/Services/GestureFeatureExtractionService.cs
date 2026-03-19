@@ -9,11 +9,11 @@ namespace EXE101.Infrastructure.Services;
 /// </summary>
 public sealed class GestureFeatureExtractionService(ILogger<GestureFeatureExtractionService> logger) : IFeatureExtractionService
 {
-    private const int MaxFrames = 80;
-    private const int PosePoints = 25;
+    private const int MaxFrames = 50;
+    private const int PosePoints = 9;
     private const int FacePoints = 51;
     private const int HandPoints = 21;
-    private const int TotalFeatures = 30320;
+    private const int TotalFeatures = 15300; // 50 * (9*3 + 51*3 + 21*3 + 21*3) = 50 * 306 = 15300
 
     public List<float> ExtractFeatures(KeypointsInput input)
     {
@@ -24,7 +24,7 @@ public sealed class GestureFeatureExtractionService(ILogger<GestureFeatureExtrac
 
         if (input.Frames.Any(frame => !frame.IsValid()))
         {
-            throw new ArgumentException("Invalid frame structure. Expected 25 pose, 51 face, 21 left hand, 21 right hand.");
+            throw new ArgumentException("Invalid frame structure. Expected 9 pose, 51 face, 21 left hand, 21 right hand.");
         }
 
         var normalizedFrames = NormalizeFrames(input.Frames);
@@ -51,10 +51,10 @@ public sealed class GestureFeatureExtractionService(ILogger<GestureFeatureExtrac
             var nose = frame.Pose[0];
             var normalizedFrame = new FrameKeypoints
             {
-                Pose = frame.Pose.Select(point => NormalizePoint(point, nose, keepVisibility: true)).ToList(),
-                Face = frame.Face.Select(point => NormalizePoint(point, nose, keepVisibility: false)).ToList(),
-                LeftHand = frame.LeftHand.Select(point => NormalizePoint(point, nose, keepVisibility: false)).ToList(),
-                RightHand = frame.RightHand.Select(point => NormalizePoint(point, nose, keepVisibility: false)).ToList()
+                Pose = frame.Pose.Select(point => NormalizePoint(point, nose)).ToList(),
+                Face = frame.Face.Select(point => NormalizePoint(point, nose)).ToList(),
+                LeftHand = frame.LeftHand.Select(point => NormalizePoint(point, nose)).ToList(),
+                RightHand = frame.RightHand.Select(point => NormalizePoint(point, nose)).ToList()
             };
 
             normalized.Add(normalizedFrame);
@@ -63,14 +63,13 @@ public sealed class GestureFeatureExtractionService(ILogger<GestureFeatureExtrac
         return normalized;
     }
 
-    private static Keypoint NormalizePoint(Keypoint point, Keypoint nose, bool keepVisibility)
+    private static Keypoint NormalizePoint(Keypoint point, Keypoint nose)
     {
         return new Keypoint
         {
             X = point.X - nose.X,
             Y = point.Y - nose.Y,
-            Z = point.Z - nose.Z,
-            Visibility = keepVisibility ? point.Visibility : 0
+            Z = point.Z - nose.Z
         };
     }
 
@@ -108,7 +107,6 @@ public sealed class GestureFeatureExtractionService(ILogger<GestureFeatureExtrac
                 features.Add(point.X);
                 features.Add(point.Y);
                 features.Add(point.Z);
-                features.Add(point.Visibility);
             }
 
             foreach (var point in frame.Face)

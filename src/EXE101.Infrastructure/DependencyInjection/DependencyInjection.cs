@@ -92,6 +92,7 @@ public static class DependencyInjection
         services.AddSingleton<IGesturePredictionService, GesturePredictionService>();
         services.AddSingleton<IFeatureExtractionService, GestureFeatureExtractionService>();
         services.AddSingleton<IFrameBufferService, GestureFrameBufferService>();
+        services.AddHttpClient<IGeminiTranslationService, GeminiTranslationService>();
 
         return services;
     }

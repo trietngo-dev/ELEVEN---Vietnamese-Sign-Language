@@ -224,7 +224,7 @@ public sealed class GestureController(
                 return BadRequest(new
                 {
                     error = "Frame is invalid",
-                    expected = "25 pose + 51 face + 21 left hand + 21 right hand"
+                    expected = "9 pose + 51 face + 21 left hand + 21 right hand (306 features total)"
                 });
             }
 
@@ -261,5 +261,28 @@ public sealed class GestureController(
             logger.LogError(ex, "Add frame error");
             return StatusCode(500, new { error = ex.Message });
         }
+    }
+
+    [HttpPost("translate-sentence")]
+    public async Task<IActionResult> TranslateSentence(
+        [FromBody] TranslateSentenceRequest request,
+        [FromServices] IGeminiTranslationService geminiTranslationService)
+    {
+        if (request?.Words == null || request.Words.Count == 0)
+        {
+            return BadRequest(new { error = "Words array cannot be empty" });
+        }
+
+        var filteredWords = request.Words
+            .Where(w => !string.Equals(w, "ngoiim", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (filteredWords.Count == 0)
+        {
+            return Ok(new { sentence = "" });
+        }
+
+        var sentence = await geminiTranslationService.PolishSentenceAsync(filteredWords);
+        return Ok(new { sentence });
     }
 }

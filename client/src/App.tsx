@@ -20,6 +20,9 @@ import { useAuth } from "./context/AuthContext";
 
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
+import PricingPage from "./pages/PricingPage";
+import CourseDetailPage from "./pages/CourseDetailPage";
+import LessonDetailPage from "./pages/LessonDetailPage";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -108,6 +111,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="nang-cap"
+            element={
+              <ProtectedRoute>
+                <PricingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="khoa-hoc/:id"
+            element={
+              <ProtectedRoute>
+                <CourseDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="bai-hoc/:id"
+            element={
+              <ProtectedRoute>
+                <LessonDetailPage />
               </ProtectedRoute>
             }
           />
