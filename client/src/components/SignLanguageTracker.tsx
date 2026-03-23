@@ -96,8 +96,9 @@ const SignLanguageTracker = () => {
   const isInitializing = useRef(false);
   const countdownTimerRef = useRef<any>(null);
   const showLandmarksRef = useRef(false);
-  const stopCameraRef = useRef<() => void>(() => {});
+  const stopCameraRef = useRef<() => void>(() => { });
   const didMountPathEffectRef = useRef(false);
+  const consecutiveIdleFramesRef = useRef(0); // Đếm số frame không có bàn tay
 
   const toFiniteNumber = (value: unknown) => {
     const num = typeof value === "number" ? value : 0;
@@ -174,8 +175,7 @@ const SignLanguageTracker = () => {
     const rawPose = results.poseLandmarks?.[0] ?? [];
     if (rawPose.length > 0) {
       for (const index of SELECTED_POSE_INDICES) {
-        const p = rawPose[index];
-        pose.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
+        pose.push(toKeypoint(rawPose[index]));
       }
     } else {
       for (let i = 0; i < SELECTED_POSE_INDICES.length; i += 1)
@@ -186,34 +186,27 @@ const SignLanguageTracker = () => {
     const rawFace = results.faceLandmarks?.[0] ?? [];
     if (rawFace.length > 0) {
       for (const index of SELECTED_FACE_INDICES) {
-        const p = rawFace[index];
-        face.push(toKeypoint(p ? { ...p, x: 1 - p.x } : undefined));
+        face.push(toKeypoint(rawFace[index]));
       }
     } else {
       for (let i = 0; i < SELECTED_FACE_INDICES.length; i += 1)
         face.push(toKeypoint(undefined));
     }
 
-    // 3. HANDS (Swap and Mirror)
-    const rawRightAsLeft = (results.rightHandLandmarks?.[0] ?? []).map((p) => ({
-      ...p,
-      x: 1 - p.x,
-    }));
+    // 3. HANDS (Lấy trực tiếp vì ảnh đã được lật gương từ trước)
+    const rawLeft = results.leftHandLandmarks?.[0] ?? [];
     leftHand.push(
       ...getHandKeypoints(
-        rawRightAsLeft,
+        rawLeft,
         prevLeftHandRef,
         missingLeftHandFramesRef,
       ),
     );
 
-    const rawLeftAsRight = (results.leftHandLandmarks?.[0] ?? []).map((p) => ({
-      ...p,
-      x: 1 - p.x,
-    }));
+    const rawRight = results.rightHandLandmarks?.[0] ?? [];
     rightHand.push(
       ...getHandKeypoints(
-        rawLeftAsRight,
+        rawRight,
         prevRightHandRef,
         missingRightHandFramesRef,
       ),
@@ -528,34 +521,45 @@ const SignLanguageTracker = () => {
       if (!canvasCtx) return;
       const drawingUtils = new DrawingUtils(canvasCtx);
 
-      canvasRef.current.width = videoRef.current.videoWidth;
-      canvasRef.current.height = videoRef.current.videoHeight;
+      const vw = videoRef.current.videoWidth;
+      const vh = videoRef.current.videoHeight;
+      const size = Math.min(vw, vh);
+      const offsetX = (vw - size) / 2;
+      const offsetY = (vh - size) / 2;
 
+      // Cập nhật kích thước canvas thành hình vuông
+      canvasRef.current.width = size;
+      canvasRef.current.height = size;
+
+      // Lật (Mirror) canvas ctx TRƯỚC khi vẽ video để mô phỏng giống `cv2.flip(frame, 1)` của Python.
+      // Điều này giúp ảnh đưa vào MediaPipe hoàn toàn giống lúc train.
+      canvasCtx.save();
+      canvasCtx.translate(size, 0);
+      canvasCtx.scale(-1, 1);
+
+      // Vẽ phân đoạn video vuông (Crop)
+      canvasCtx.drawImage(
+        videoRef.current,
+        offsetX,
+        offsetY,
+        size,
+        size, // vị trí video gốc
+        0,
+        0,
+        size,
+        size // đích trên canvas
+      );
+
+      canvasCtx.restore();
+
+      // Đưa canvas vuông đã lật này vào MediaPipe
       const startTimeMs = performance.now();
       const results = holisticLandmarker.detectForVideo(
-        videoRef.current,
+        canvasRef.current,
         startTimeMs,
       );
 
-      canvasCtx.clearRect(
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height,
-      );
-
-      canvasCtx.save();
-      canvasCtx.translate(canvasRef.current.width, 0);
-      canvasCtx.scale(-1, 1);
-
-      canvasCtx.drawImage(
-        videoRef.current,
-        0,
-        0,
-        canvasRef.current.width,
-        canvasRef.current.height,
-      );
-
+      // Vẽ landmarks (nếu cần hiển thị debug)
       if (showLandmarksRef.current) {
         if (results.faceLandmarks?.[0]) {
           drawingUtils.drawConnectors(
@@ -590,17 +594,37 @@ const SignLanguageTracker = () => {
       canvasCtx.restore();
 
       if (isCollectingRef.current) {
-        const frameKeypoints = extractFrameKeypoints(results);
-        frameBufferRef.current.push(frameKeypoints);
+        const hasLeftHand = results.leftHandLandmarks && results.leftHandLandmarks.length > 0;
+        const hasRightHand = results.rightHandLandmarks && results.rightHandLandmarks.length > 0;
 
-        const currentFrames = frameBufferRef.current.length;
-        setCapturedFrames(currentFrames);
+        if (!hasLeftHand && !hasRightHand) {
+          consecutiveIdleFramesRef.current += 1;
+        } else {
+          consecutiveIdleFramesRef.current = 0;
+        }
 
-        if (currentFrames === TARGET_FRAME_COUNT) {
-          const payload = frameBufferRef.current.slice(0, TARGET_FRAME_COUNT);
+        // Nếu nghỉ quá 20 frame (khoảng ~0.6 giây), ta hủy bỏ buffer hiện tại không thu nữa
+        if (consecutiveIdleFramesRef.current > 20 && frameBufferRef.current.length > 0) {
           frameBufferRef.current = [];
           setCapturedFrames(0);
-          void processSlidingWindow(payload, translationSessionRef.current);
+        }
+
+        // Nếu không có tay (và buffer đang trống) -> Không bắt đầu gom frame
+        if (!(!hasLeftHand && !hasRightHand && frameBufferRef.current.length === 0)) {
+          const frameKeypoints = extractFrameKeypoints(results);
+          frameBufferRef.current.push(frameKeypoints);
+
+          const currentFrames = frameBufferRef.current.length;
+          setCapturedFrames(currentFrames);
+
+          if (currentFrames >= TARGET_FRAME_COUNT) {
+            const payload = frameBufferRef.current.slice(0, TARGET_FRAME_COUNT);
+            // Sliding Window: Giữ lại 15 frame cũ (overlap) cho lần gom tiếp theo, thay vì xóa trắng
+            frameBufferRef.current = frameBufferRef.current.slice(TARGET_FRAME_COUNT - 15);
+            setCapturedFrames(frameBufferRef.current.length);
+
+            void processSlidingWindow(payload, translationSessionRef.current);
+          }
         }
       }
 
@@ -621,7 +645,7 @@ const SignLanguageTracker = () => {
       window.removeEventListener("pagehide", handlePageLeave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopCameraAndLoop();
-      stopCameraRef.current = () => {};
+      stopCameraRef.current = () => { };
       holisticLandmarker?.close();
     };
   }, []);
@@ -670,17 +694,17 @@ const SignLanguageTracker = () => {
       </div>
 
       <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="relative min-h-[540px] overflow-hidden rounded-[18px] border-2 border-[#2f9ef4] bg-gradient-to-br from-[#d39a70]/90 via-[#ad7a54]/90 to-[#c4966f]/90">
+        <div className="relative min-h-[500px] max-h-[75vh] flex items-center justify-center overflow-hidden rounded-[18px] border-2 border-[#2f9ef4] bg-[#111111]">
           <video ref={videoRef} autoPlay playsInline muted className="hidden" />
 
           <canvas
             ref={canvasRef}
-            className="block h-full min-h-[420px] w-full object-cover"
+            className="block h-full w-full object-contain object-center drop-shadow-lg"
           />
 
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-black/[0.03] to-black/30" />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
 
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[clamp(320px,56vw,500px)] w-[clamp(260px,42vw,420px)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border-2 border-dashed border-white/75 bg-white/5 shadow-[0_12px_28px_rgba(0,0,0,0.2)]" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[clamp(280px,50vw,480px)] w-[clamp(280px,50vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-[24px] border border-dashed border-white/50 bg-white/5 drop-shadow-md" />
 
           {isCountingDown && (
             <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
@@ -699,11 +723,10 @@ const SignLanguageTracker = () => {
             <button
               type="button"
               onClick={toggleTranslation}
-              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${
-                isCollectingRef.current
-                  ? "cursor-pointer bg-[#fef3c7]"
-                  : "cursor-pointer bg-white"
-              }`}
+              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${isCollectingRef.current
+                ? "cursor-pointer bg-[#fef3c7]"
+                : "cursor-pointer bg-white"
+                }`}
               title={
                 isCollectingRef.current
                   ? "Kết thúc & Trau chuốt"
@@ -753,11 +776,11 @@ const SignLanguageTracker = () => {
           <div className="mt-3.5 inline-flex items-center rounded-full bg-[#e0ece2] px-2.5 py-1 text-xs font-bold text-[#648d67]">
             {isTranslating ? "LIVE" : "IDLE"}
           </div>
-
+          {/* 
           <p className="mt-3 text-sm text-[#4b5667]">
             Frame đã thu: {capturedFrames}/{TARGET_FRAME_COUNT} | Trạng thái:{" "}
             {uploadStatus}
-          </p>
+          </p> */}
         </div>
       </div>
     </div>
