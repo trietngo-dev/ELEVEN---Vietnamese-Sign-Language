@@ -34,7 +34,7 @@ function LandingPage() {
 
   return (
     <>
-      <section className="bg-[radial-gradient(circle_at_top_left,#f9fdf9_0%,#f3f6f4_46%,#f9faf9_100%)] py-14 md:py-[76px]">
+      <section className="bg-[radial-gradient(circle_at_top_left,#f9fdf9_0%,#f3f6f4_46%,#f9faf9_100%)] py-16 md:py-[96px]">
         <div className="container grid items-center gap-10 lg:grid-cols-[0.95fr_1.05fr] xl:grid-cols-[0.9fr_1.1fr]">
           <motion.div
             initial="hidden"

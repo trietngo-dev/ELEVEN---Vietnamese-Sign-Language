@@ -88,7 +88,7 @@ function DictionaryPage() {
           <h1 className="text-[clamp(1.95rem,3vw,2.85rem)] font-bold leading-[1.1] text-[#182333]">
             {dictionaryPage.hero.title}
           </h1>
-          <p className="mx-auto mt-3 max-w-[560px] text-[#79858e]">
+          <p className="mx-auto mt-3 m-w-[760px] text-[#79858e]">
             {dictionaryPage.hero.description}
           </p>
         </motion.header>
@@ -96,7 +96,7 @@ function DictionaryPage() {
         <motion.div
           variants={fadeInUp}
           transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
-          className="mx-auto mt-8 flex max-w-[760px] flex-col gap-3 rounded-[22px] bg-white p-3 shadow-[0_10px_30px_rgba(24,35,51,0.08)] sm:flex-row sm:items-center"
+          className="mx-auto mt-8 flex min-w-[760px] flex-col gap-3 rounded-[22px] bg-white p-3 shadow-[0_10px_30px_rgba(24,35,51,0.08)] sm:flex-row sm:items-center"
         >
           <label className="flex h-12 flex-1 items-center gap-2.5 rounded-full border border-[#e8eeea] px-4 text-[#6d7a84] focus-within:border-[#9ebea7]">
             <Search className="h-4.5 w-4.5 text-[#5e8169]" />

@@ -96,7 +96,7 @@ const SignLanguageTracker = () => {
   const isInitializing = useRef(false);
   const countdownTimerRef = useRef<any>(null);
   const showLandmarksRef = useRef(false);
-  const stopCameraRef = useRef<() => void>(() => { });
+  const stopCameraRef = useRef<() => void>(() => {});
   const didMountPathEffectRef = useRef(false);
 
   const toFiniteNumber = (value: unknown) => {
@@ -621,7 +621,7 @@ const SignLanguageTracker = () => {
       window.removeEventListener("pagehide", handlePageLeave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopCameraAndLoop();
-      stopCameraRef.current = () => { };
+      stopCameraRef.current = () => {};
       holisticLandmarker?.close();
     };
   }, []);
@@ -645,10 +645,8 @@ const SignLanguageTracker = () => {
     (w) => !w.toLowerCase().includes("ngoiim"),
   );
 
-
   const displaySentence =
-    finalSentence ||
-    "Câu hoàn chỉnh sẽ hiển thị tại đây!";
+    finalSentence || "Câu hoàn chỉnh sẽ hiển thị tại đây!";
 
   return (
     <div className="mx-auto grid w-full max-w-[1300px] gap-3.5">
@@ -701,10 +699,11 @@ const SignLanguageTracker = () => {
             <button
               type="button"
               onClick={toggleTranslation}
-              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${isCollectingRef.current
-                ? "cursor-pointer bg-[#fef3c7]"
-                : "cursor-pointer bg-white"
-                }`}
+              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${
+                isCollectingRef.current
+                  ? "cursor-pointer bg-[#fef3c7]"
+                  : "cursor-pointer bg-white"
+              }`}
               title={
                 isCollectingRef.current
                   ? "Kết thúc & Trau chuốt"
@@ -740,7 +739,9 @@ const SignLanguageTracker = () => {
               ))
             ) : (
               <span className="text-sm font-semibold text-[#9ab0a2] italic">
-                {isTranslating ? "Đang lắng nghe ký hiệu..." : "Chưa có từ nhận diện"}
+                {isTranslating
+                  ? "Đang lắng nghe ký hiệu..."
+                  : "Chưa có từ nhận diện"}
               </span>
             )}
           </div>
@@ -757,13 +758,6 @@ const SignLanguageTracker = () => {
             Frame đã thu: {capturedFrames}/{TARGET_FRAME_COUNT} | Trạng thái:{" "}
             {uploadStatus}
           </p>
-
-          {backendResult && (
-            <p className="mt-1 text-[13px] text-[#4b5667]">
-              Kết quả BE: {predictedWord || "(không có)"} | Confidence:{" "}
-              {confidenceText}
-            </p>
-          )}
         </div>
       </div>
     </div>
