@@ -23,6 +23,7 @@ import ProfilePage from "./pages/ProfilePage";
 import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
+import AdminRevenue from "./pages/admin/AdminRevenue";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -155,6 +156,7 @@ function App() {
           <Route path="courses" element={<AdminCourses />} />
           <Route path="vocabulary" element={<AdminVocabulary />} />
           <Route path="feedback" element={<AdminFeedback />} />
+          <Route path="revenue" element={<AdminRevenue />} />
         </Route>
 
         <Route

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, CheckCircle2, PlayCircle, Clock3, MoreVertical, Edit2, Trash2, Eye, ChevronLeft, ChevronRight, BookOpen, Edit } from "lucide-react";
+import { Plus, Eye, ChevronLeft, ChevronRight, BookOpen, Edit } from "lucide-react";
 import AddCourseModal from "./AddCourseModal";
 import EditCourseModal from "./EditCourseModal";
 import CourseDetailModal from "./CourseDetailModal";
