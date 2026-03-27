@@ -24,6 +24,7 @@ import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
 import AdminRevenue from "./pages/admin/AdminRevenue";
+import AvaterScene from "./components/AvatarScene";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -140,6 +141,14 @@ function App() {
             }
           />
         </Route>
+        <Route
+          path="avatar-scene"
+          element={
+            <ProtectedRoute>
+              <AvaterScene />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Routes */}
         <Route
