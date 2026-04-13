@@ -1,8 +1,12 @@
-import { ArrowLeft, Play, Maximize, Bot, Bookmark, Share2, Info, ListChecks, Trophy } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Maximize, Bot, Bookmark, Share2, Info, ListChecks, Trophy, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import AIPracticePopup from "../components/AIPracticePopup";
+import videoXinChao from "../assets/videoCourse/W00489.mp4";
 
 export default function LessonDetailPage() {
   const navigate = useNavigate();
+  const [showAI, setShowAI] = useState(false);
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
@@ -18,14 +22,31 @@ export default function LessonDetailPage() {
           {/* Main Content Area */}
           <div className="flex flex-col gap-6">
             
-            {/* Video Player Mockup */}
-            <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-slate-100 shadow-sm border border-slate-200 flex items-center justify-center">
-              <img src="https://images.unsplash.com/photo-1544604533-f725666f3630?q=80&w=1200&auto=format&fit=crop" className="opacity-80 mix-blend-multiply w-full h-full object-cover" alt="Video thumbnail" />
-              
-              {/* Play Button */}
-              <button className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-[#3c6d44] flex items-center justify-center text-white shadow-xl shadow-[#3c6d44]/30 hover:scale-105 transition-transform">
-                <Play size={28} className="ml-1 fill-current" />
-              </button>
+            {/* Video Player */}
+            <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
+              <video 
+                src={videoXinChao} 
+                controls 
+                className="w-full h-full object-contain"
+              />
+
+              {/* AI Overlay Box */}
+              {showAI && (
+                <div className="absolute top-4 right-4 w-[280px] h-[400px] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 z-50 flex flex-col animate-in fade-in zoom-in duration-150">
+                  <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-slate-100 shadow-sm z-10">
+                    <span className="text-sm font-bold text-slate-700 flex items-center gap-2"><Bot size={16} className="text-[#3c6d44]"/> Trợ lý AI Điểm Trình</span>
+                    <button onClick={() => setShowAI(false)} className="text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full p-1 transition-colors">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="flex-1 relative bg-slate-900 flex flex-col">
+                    {/* KHU VỰC HIỂN THỊ AIPracticePopup (Chỉ Camera -> Review) */}
+                    <AIPracticePopup 
+                      word="Xin chào" 
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Controls */}
               <div className="absolute bottom-6 left-6 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full px-4 py-2 text-white">
@@ -43,14 +64,17 @@ export default function LessonDetailPage() {
             {/* Title & Actions Row */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4">
               <div>
-                <h1 className="text-4xl font-extrabold text-[#1f2937] mb-3">Cảm ơn</h1>
+                <h1 className="text-4xl font-extrabold text-[#1f2937] mb-3">Xin chào</h1>
                 <div className="flex items-center gap-3">
-                  <span className="bg-[#fef3c7] text-[#71540a] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Phiên âm: /kảm ơn/</span>
+                  <span className="bg-[#fef3c7] text-[#71540a] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Phiên âm: /sin tɕaw/</span>
                   <span className="text-sm font-medium text-slate-400">Cấp độ: Cơ bản</span>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all">
+                <button 
+                  onClick={() => setShowAI(true)}
+                  className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all"
+                >
                   <Bot size={18}/> Tương tác với AI
                 </button>
                 <button className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all">

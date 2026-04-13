@@ -11,9 +11,8 @@ import { Button } from "./ui/button";
 const HAND_LANDMARK_COUNT = 21;
 const TARGET_FRAME_COUNT = 50;
 
-const SELECTED_POSE_INDICES = [0, 11, 12, 13, 14, 15, 16, 23, 24]; // 9 điểm
+const SELECTED_POSE_INDICES = [0, 11, 12, 13, 14, 15, 16, 23, 24];
 const SELECTED_FACE_INDICES = [
-  // 51 điểm
   61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317,
   14, 87, 178, 88, 95, 78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 46, 53, 52,
   65, 55, 70, 63, 105, 66, 107, 276, 283, 282, 295, 285, 300, 293, 334, 296,
@@ -22,7 +21,6 @@ const SELECTED_FACE_INDICES = [
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
-const EXTRACT_FEATURES_ENDPOINT = `${API_BASE_URL}/api/gesture/extract-features`;
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
 const TRANSLATE_SENTENCE_ENDPOINT = `${API_BASE_URL}/api/gesture/translate-sentence`;
 const CONFIDENCE_THRESHOLD = 0.7;
@@ -34,20 +32,6 @@ type Keypoint = {
   x: number;
   y: number;
   z: number;
-};
-
-type FrameKeypoints = {
-  pose: Keypoint[];
-  face: Keypoint[];
-  leftHand: Keypoint[];
-  rightHand: Keypoint[];
-};
-
-type ExtractFeaturesResponse = {
-  features: number[];
-  frameCount: number;
-  totalFeatures: number;
-  status: string;
 };
 
 type PredictApiResponse = {
@@ -68,7 +52,7 @@ const SignLanguageTracker = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isCollectingRef = useRef(false);
-  const frameBufferRef = useRef<FrameKeypoints[]>([]);
+  const frameBufferRef = useRef<number[][]>([]);
   const prevLeftHandRef = useRef<Keypoint[] | null>(null);
   const prevRightHandRef = useRef<Keypoint[] | null>(null);
   const missingLeftHandFramesRef = useRef(0);
@@ -96,7 +80,7 @@ const SignLanguageTracker = () => {
   const isInitializing = useRef(false);
   const countdownTimerRef = useRef<any>(null);
   const showLandmarksRef = useRef(false);
-  const stopCameraRef = useRef<() => void>(() => { });
+  const stopCameraRef = useRef<() => void>(() => {});
   const didMountPathEffectRef = useRef(false);
   const consecutiveIdleFramesRef = useRef(0); // Đếm số frame không có bàn tay
 
@@ -165,75 +149,58 @@ const SignLanguageTracker = () => {
 
   const extractFrameKeypoints = (
     results: ReturnType<HolisticLandmarker["detectForVideo"]>,
-  ): FrameKeypoints => {
-    const pose: Keypoint[] = [];
-    const face: Keypoint[] = [];
-    const leftHand: Keypoint[] = [];
-    const rightHand: Keypoint[] = [];
+  ): number[] => {
+    const flatKeypoints: number[] = [];
 
-    // 1. POSE (9 điểm)
+    const pushKeypoint = (point?: { x: number; y: number; z: number }) => {
+      if (point) {
+        flatKeypoints.push(point.x, point.y, point.z);
+      } else {
+        flatKeypoints.push(0, 0, 0);
+      }
+    };
+
+    // 1. POSE (9 điểm -> 27 số)
     const rawPose = results.poseLandmarks?.[0] ?? [];
-    if (rawPose.length > 0) {
-      for (const index of SELECTED_POSE_INDICES) {
-        pose.push(toKeypoint(rawPose[index]));
-      }
-    } else {
-      for (let i = 0; i < SELECTED_POSE_INDICES.length; i += 1)
-        pose.push(toKeypoint(undefined));
+    for (const index of SELECTED_POSE_INDICES) {
+      pushKeypoint(rawPose.length > 0 ? rawPose[index] : undefined);
     }
 
-    // 2. FACE (51 điểm)
+    // 2. FACE (51 điểm -> 153 số)
     const rawFace = results.faceLandmarks?.[0] ?? [];
-    if (rawFace.length > 0) {
-      for (const index of SELECTED_FACE_INDICES) {
-        face.push(toKeypoint(rawFace[index]));
-      }
-    } else {
-      for (let i = 0; i < SELECTED_FACE_INDICES.length; i += 1)
-        face.push(toKeypoint(undefined));
+    for (const index of SELECTED_FACE_INDICES) {
+      pushKeypoint(rawFace.length > 0 ? rawFace[index] : undefined);
     }
 
-    // 3. HANDS (Lấy trực tiếp vì ảnh đã được lật gương từ trước)
+    // 3. LEFT HAND (21 điểm -> 63 số)
     const rawLeft = results.leftHandLandmarks?.[0] ?? [];
-    leftHand.push(
-      ...getHandKeypoints(
-        rawLeft,
-        prevLeftHandRef,
-        missingLeftHandFramesRef,
-      ),
+    const leftHandPoints = getHandKeypoints(
+      rawLeft,
+      prevLeftHandRef,
+      missingLeftHandFramesRef,
     );
+    leftHandPoints.forEach((point) => pushKeypoint(point));
 
+    // 4. RIGHT HAND (21 điểm -> 63 số)
     const rawRight = results.rightHandLandmarks?.[0] ?? [];
-    rightHand.push(
-      ...getHandKeypoints(
-        rawRight,
-        prevRightHandRef,
-        missingRightHandFramesRef,
-      ),
+    const rightHandPoints = getHandKeypoints(
+      rawRight,
+      prevRightHandRef,
+      missingRightHandFramesRef,
     );
+    rightHandPoints.forEach((point) => pushKeypoint(point));
 
-    // 4. CHUẨN HÓA LẤY MŨI LÀM GỐC
-    const nose = pose[0] ?? toKeypoint(undefined);
-    const normalizeByNose = (point: Keypoint): Keypoint => {
-      if (point.x === 0 && point.y === 0 && point.z === 0) return point;
-      return {
-        ...point,
-        x: point.x - nose.x,
-        y: point.y - nose.y,
-        z: point.z - nose.z,
-      };
-    };
+    if (flatKeypoints.length !== 306) {
+      console.warn(
+        `[CẢNH BÁO] Số điểm trích xuất sai: ${flatKeypoints.length} (Kỳ vọng: 306)`,
+      );
+    }
 
-    return {
-      pose: pose.map(normalizeByNose),
-      face: face.map(normalizeByNose),
-      leftHand: leftHand.map(normalizeByNose),
-      rightHand: rightHand.map(normalizeByNose),
-    };
+    return flatKeypoints;
   };
 
   const processSlidingWindow = async (
-    frames: FrameKeypoints[],
+    frames: number[][],
     sessionId: number,
   ) => {
     if (frames.length !== TARGET_FRAME_COUNT) {
@@ -241,33 +208,15 @@ const SignLanguageTracker = () => {
     }
 
     try {
-      const extractResponse = await fetch(EXTRACT_FEATURES_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames }),
-      });
-
-      if (!extractResponse.ok) {
-        const errorText = await extractResponse.text();
-        throw new Error(
-          `Extract features failed HTTP ${extractResponse.status}: ${errorText}`,
-        );
-      }
-
-      const extracted =
-        (await extractResponse.json()) as ExtractFeaturesResponse;
-
-      if (
-        !Array.isArray(extracted.features) ||
-        extracted.features.length === 0
-      ) {
+      const features = frames.flat();
+      if (features.length === 0) {
         return;
       }
 
       const response = await fetch(PREDICT_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ features: extracted.features }),
+        body: JSON.stringify({ features }),
       });
 
       if (!response.ok) {
@@ -547,7 +496,7 @@ const SignLanguageTracker = () => {
         0,
         0,
         size,
-        size // đích trên canvas
+        size, // đích trên canvas
       );
 
       canvasCtx.restore();
@@ -594,8 +543,10 @@ const SignLanguageTracker = () => {
       canvasCtx.restore();
 
       if (isCollectingRef.current) {
-        const hasLeftHand = results.leftHandLandmarks && results.leftHandLandmarks.length > 0;
-        const hasRightHand = results.rightHandLandmarks && results.rightHandLandmarks.length > 0;
+        const hasLeftHand =
+          results.leftHandLandmarks && results.leftHandLandmarks.length > 0;
+        const hasRightHand =
+          results.rightHandLandmarks && results.rightHandLandmarks.length > 0;
 
         if (!hasLeftHand && !hasRightHand) {
           consecutiveIdleFramesRef.current += 1;
@@ -604,13 +555,22 @@ const SignLanguageTracker = () => {
         }
 
         // Nếu nghỉ quá 20 frame (khoảng ~0.6 giây), ta hủy bỏ buffer hiện tại không thu nữa
-        if (consecutiveIdleFramesRef.current > 20 && frameBufferRef.current.length > 0) {
+        if (
+          consecutiveIdleFramesRef.current > 20 &&
+          frameBufferRef.current.length > 0
+        ) {
           frameBufferRef.current = [];
           setCapturedFrames(0);
         }
 
         // Nếu không có tay (và buffer đang trống) -> Không bắt đầu gom frame
-        if (!(!hasLeftHand && !hasRightHand && frameBufferRef.current.length === 0)) {
+        if (
+          !(
+            !hasLeftHand &&
+            !hasRightHand &&
+            frameBufferRef.current.length === 0
+          )
+        ) {
           const frameKeypoints = extractFrameKeypoints(results);
           frameBufferRef.current.push(frameKeypoints);
 
@@ -620,7 +580,9 @@ const SignLanguageTracker = () => {
           if (currentFrames >= TARGET_FRAME_COUNT) {
             const payload = frameBufferRef.current.slice(0, TARGET_FRAME_COUNT);
             // Sliding Window: Giữ lại 15 frame cũ (overlap) cho lần gom tiếp theo, thay vì xóa trắng
-            frameBufferRef.current = frameBufferRef.current.slice(TARGET_FRAME_COUNT - 15);
+            frameBufferRef.current = frameBufferRef.current.slice(
+              TARGET_FRAME_COUNT - 15,
+            );
             setCapturedFrames(frameBufferRef.current.length);
 
             void processSlidingWindow(payload, translationSessionRef.current);
@@ -645,7 +607,7 @@ const SignLanguageTracker = () => {
       window.removeEventListener("pagehide", handlePageLeave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopCameraAndLoop();
-      stopCameraRef.current = () => { };
+      stopCameraRef.current = () => {};
       holisticLandmarker?.close();
     };
   }, []);
@@ -661,9 +623,8 @@ const SignLanguageTracker = () => {
     setIsTranslating(false);
   }, [pathname]);
 
-  const predictedWord = backendResult?.word ?? backendResult?.label ?? "";
-  const predictedConfidence = backendResult?.confidence ?? 0;
-  const confidenceText = `${(predictedConfidence * 100).toFixed(2)}%`;
+  const latestPredictedWord = backendResult?.word ?? backendResult?.label ?? "";
+  const latestPredictedConfidence = backendResult?.confidence ?? 0;
 
   const visibleWords = recognizedWords.filter(
     (w) => !w.toLowerCase().includes("ngoiim"),
@@ -723,10 +684,11 @@ const SignLanguageTracker = () => {
             <button
               type="button"
               onClick={toggleTranslation}
-              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${isCollectingRef.current
-                ? "cursor-pointer bg-[#fef3c7]"
-                : "cursor-pointer bg-white"
-                }`}
+              className={`h-[52px] w-[150px] rounded-xl border border-[#d4d8d5] px-2 text-[11px] font-bold leading-tight text-[#3f7f57] shadow-[0_8px_22px_rgba(0,0,0,0.18)] ${
+                isCollectingRef.current
+                  ? "cursor-pointer bg-[#fef3c7]"
+                  : "cursor-pointer bg-white"
+              }`}
               title={
                 isCollectingRef.current
                   ? "Kết thúc & Trau chuốt"
@@ -774,13 +736,18 @@ const SignLanguageTracker = () => {
           </p>
 
           <div className="mt-3.5 inline-flex items-center rounded-full bg-[#e0ece2] px-2.5 py-1 text-xs font-bold text-[#648d67]">
-            {isTranslating ? "LIVE" : "IDLE"}
+            {isPolishing ? "POLISHING" : isTranslating ? "LIVE" : "IDLE"}
           </div>
-          {/* 
           <p className="mt-3 text-sm text-[#4b5667]">
             Frame đã thu: {capturedFrames}/{TARGET_FRAME_COUNT} | Trạng thái:{" "}
             {uploadStatus}
-          </p> */}
+          </p>
+          {latestPredictedWord ? (
+            <p className="mt-2 text-xs text-[#4b5667]">
+              Kết quả gần nhất: {latestPredictedWord} (
+              {(latestPredictedConfidence * 100).toFixed(2)}%)
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
