@@ -9,13 +9,19 @@ namespace EXE101.Infrastructure.Services;
 
 public sealed class GesturePredictionService : IGesturePredictionService
 {
+    private const int SequenceLength = 50;
+    private const int FeaturesPerFrame = 306;
+    private const int TotalFeatures = SequenceLength * FeaturesPerFrame;
+    private const float ConfidenceThreshold = 0.7f;
+    private const string RequiredInputName = "input";
+
     private readonly ILogger<GesturePredictionService> _logger;
     private readonly IConfiguration _configuration;
     private readonly string _contentRootPath;
     private readonly object _lockObject = new();
 
     private InferenceSession? _session;
-    private Dictionary<int, string>? _labelMap;
+    private Dictionary<string, string>? _classMap;
     private string? _inputName;
     private string? _outputName;
     private int _expectedFeatureLength;
@@ -64,7 +70,21 @@ public sealed class GesturePredictionService : IGesturePredictionService
         get
         {
             EnsureInitialized();
-            return _labelMap ?? new Dictionary<int, string>();
+            if (_classMap == null)
+            {
+                return new Dictionary<int, string>();
+            }
+
+            var result = new Dictionary<int, string>();
+            foreach (var item in _classMap)
+            {
+                if (int.TryParse(item.Key, out var classId))
+                {
+                    result[classId] = item.Value;
+                }
+            }
+
+            return result;
         }
     }
 
@@ -72,7 +92,7 @@ public sealed class GesturePredictionService : IGesturePredictionService
     {
         EnsureInitialized();
 
-        if (_session == null || _labelMap == null)
+        if (_session == null || _classMap == null)
         {
             throw new InvalidOperationException("Model is not initialized.");
         }
@@ -87,48 +107,52 @@ public sealed class GesturePredictionService : IGesturePredictionService
             throw new ArgumentException($"Model expects {_expectedFeatureLength} features but received {features.Count}.");
         }
 
-        var tensor = new DenseTensor<float>(new[] { 1, _expectedFeatureLength });
-        for (var i = 0; i < _expectedFeatureLength; i++)
+        var tensor = new DenseTensor<float>(new[] { 1, SequenceLength, FeaturesPerFrame });
+        for (var i = 0; i < features.Count; i++)
         {
-            tensor[0, i] = features[i];
+            var frameIndex = i / FeaturesPerFrame;
+            var featureIndex = i % FeaturesPerFrame;
+            tensor[0, frameIndex, featureIndex] = features[i];
         }
 
         var inputs = new List<NamedOnnxValue>
         {
-            NamedOnnxValue.CreateFromTensor(_inputName!, tensor)
+            NamedOnnxValue.CreateFromTensor(RequiredInputName, tensor)
         };
 
         using var results = _session.Run(inputs);
-        var predictedId = -1;
-        var probabilities = _labelMap.ToDictionary(kv => kv.Key, _ => 0f);
-
-        foreach (var output in results)
+        var outputArray = results.First().AsEnumerable<float>().ToArray();
+        if (outputArray.Length == 0)
         {
-            if (TryReadClassId(output, ref predictedId))
+            throw new InvalidOperationException("ONNX output is empty.");
+        }
+
+        var predictedId = 0;
+        var confidence = outputArray[0];
+        var probabilities = new Dictionary<int, float>(outputArray.Length)
+        {
+            [0] = outputArray[0]
+        };
+
+        for (var i = 1; i < outputArray.Length; i++)
+        {
+            var probability = outputArray[i];
+            probabilities[i] = probability;
+
+            if (probability > confidence)
             {
-                continue;
+                confidence = probability;
+                predictedId = i;
             }
-
-            TryReadProbabilities(output, probabilities);
         }
 
-        if (predictedId == -1)
-        {
-            throw new InvalidOperationException("Could not parse ONNX output class id.");
-        }
-
-        var confidence = probabilities.Any(p => p.Value > 0)
-            ? probabilities.Values.Max()
-            : 1f;
-
-        if (!probabilities.Any(p => p.Value > 0))
-        {
-            probabilities[predictedId] = 1f;
-        }
-
-        var label = _labelMap.TryGetValue(predictedId, out var value)
+        var predictedKey = predictedId.ToString();
+        var mappedLabel = _classMap.TryGetValue(predictedKey, out var value)
             ? value
             : "unknown";
+        var label = confidence > ConfidenceThreshold ? mappedLabel : "unknown";
+
+        _logger.LogInformation("PredictedId={PredictedId}, Label={Label}, Confidence={Confidence:F4}", predictedId, label, confidence);
 
         return (predictedId, label, confidence, probabilities);
     }
@@ -147,8 +171,8 @@ public sealed class GesturePredictionService : IGesturePredictionService
                 return;
             }
 
-            var modelPath = ResolvePath("GestureModel:ModelPath", "vsl_rf_model.onnx");
-            var labelPath = ResolvePath("GestureModel:LabelPath", "label_mapping.json");
+            var modelPath = ResolvePath("GestureModel:ModelPath", "sign_language_lstm.onnx");
+            var labelPath = ResolvePath("GestureModel:LabelPath", "classes.json");
 
             if (!File.Exists(modelPath))
             {
@@ -164,25 +188,39 @@ public sealed class GesturePredictionService : IGesturePredictionService
 
             var json = File.ReadAllText(labelPath);
             var rawMap = JsonSerializer.Deserialize<Dictionary<string, string>>(json)
-                         ?? throw new InvalidOperationException("Failed to parse label_mapping.json");
+                         ?? throw new InvalidOperationException("Failed to parse classes.json");
 
-            _labelMap = rawMap.ToDictionary(kv => int.Parse(kv.Key), kv => kv.Value);
-            _inputName = _session.InputMetadata.Keys.First();
+            _classMap = rawMap;
+            _inputName = RequiredInputName;
             _outputName = _session.OutputMetadata.Keys.First();
 
-            var inputMeta = _session.InputMetadata[_inputName];
-            var dims = inputMeta.Dimensions;
-
-            if (dims.Length < 2 || dims[^1] <= 0)
+            if (!_session.InputMetadata.TryGetValue(RequiredInputName, out var inputMeta))
             {
-                throw new InvalidOperationException("Invalid model input dimensions.");
+                throw new InvalidOperationException($"Input node '{RequiredInputName}' not found in ONNX model.");
             }
 
-            _expectedFeatureLength = dims[^1];
+            var dims = inputMeta.Dimensions;
+
+            if (dims.Length != 3)
+            {
+                throw new InvalidOperationException("Invalid model input dimensions. Expected 3D input tensor.");
+            }
+
+            if (dims[1] > 0 && dims[1] != SequenceLength)
+            {
+                throw new InvalidOperationException($"Unexpected sequence length. Expected {SequenceLength}, got {dims[1]}.");
+            }
+
+            if (dims[2] > 0 && dims[2] != FeaturesPerFrame)
+            {
+                throw new InvalidOperationException($"Unexpected features per frame. Expected {FeaturesPerFrame}, got {dims[2]}.");
+            }
+
+            _expectedFeatureLength = TotalFeatures;
             _isInitialized = true;
 
             _logger.LogInformation("Gesture model loaded. Input={InputName}, Output={OutputName}, Features={FeatureLength}, Labels={LabelCount}",
-                _inputName, _outputName, _expectedFeatureLength, _labelMap.Count);
+                _inputName, _outputName, _expectedFeatureLength, _classMap.Count);
         }
     }
 
@@ -219,56 +257,4 @@ public sealed class GesturePredictionService : IGesturePredictionService
         return candidates[0];
     }
 
-    private static bool TryReadClassId(DisposableNamedOnnxValue output, ref int predictedId)
-    {
-        try
-        {
-            var longTensor = output.AsTensor<long>();
-            if (predictedId == -1)
-            {
-                predictedId = (int)longTensor[0];
-            }
-
-            return true;
-        }
-        catch
-        {
-            try
-            {
-                var intTensor = output.AsTensor<int>();
-                if (predictedId == -1)
-                {
-                    predictedId = intTensor[0];
-                }
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-    }
-
-    private void TryReadProbabilities(DisposableNamedOnnxValue output, Dictionary<int, float> probabilities)
-    {
-        try
-        {
-            var floatTensor = output.AsTensor<float>();
-            var dims = floatTensor.Dimensions;
-
-            if (dims.Length > 1 && dims[0] == 1)
-            {
-                var classCount = Math.Min(dims[1], probabilities.Count);
-                for (var i = 0; i < classCount; i++)
-                {
-                    probabilities[i] = floatTensor[0, i];
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Skip non-probability output {OutputName}", output.Name);
-        }
-    }
 }

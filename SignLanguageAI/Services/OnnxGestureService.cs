@@ -33,8 +33,8 @@ namespace SignLanguageAI.Services
 
                 try
                 {
-                    var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "vsl_rf_model.onnx");
-                    var labelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "label_mapping.json");
+                    var modelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "sign_language_lstm.onnx");
+                    var labelPath = Path.Combine(Directory.GetCurrentDirectory(), "AIModels", "classes.json");
 
                     if (!File.Exists(modelPath))
                     {

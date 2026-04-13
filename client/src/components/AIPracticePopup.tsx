@@ -35,25 +35,12 @@ const SELECTED_FACE_INDICES = [
 ];
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
-const EXTRACT_FEATURES_ENDPOINT = `${API_BASE_URL}/api/gesture/extract-features`;
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
 const HAND_SMOOTHING_ALPHA = 0.35;
 const MAX_HAND_HOLD_FRAMES = 4;
 
 // === TYPES ===
 type Keypoint = { x: number; y: number; z: number };
-type FrameKeypoints = {
-  pose: Keypoint[];
-  face: Keypoint[];
-  leftHand: Keypoint[];
-  rightHand: Keypoint[];
-};
-type ExtractFeaturesResponse = {
-  features: number[];
-  frameCount: number;
-  totalFeatures: number;
-  status: string;
-};
 type PredictApiResponse = {
   word?: string;
   message?: string;
@@ -74,7 +61,7 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word }) => {
   const streamRef = useRef<MediaStream | null>(null);
   const animationIdRef = useRef<number | null>(null);
 
-  const frameBufferRef = useRef<FrameKeypoints[]>([]);
+  const frameBufferRef = useRef<number[][]>([]);
   const isRecordingRef = useRef(false);
 
   // Smoothing states
@@ -153,44 +140,44 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word }) => {
     );
   };
 
-  const extractFrameKeypoints = (results: any): FrameKeypoints => {
-    const pose: Keypoint[] = [];
-    const face: Keypoint[] = [];
-    const leftHand: Keypoint[] = [];
-    const rightHand: Keypoint[] = [];
+  const extractFrameKeypoints = (results: any): number[] => {
+    const flatKeypoints: number[] = [];
+
+    const pushKeypoint = (point?: { x: number; y: number; z: number }) => {
+      if (point) {
+        flatKeypoints.push(point.x, point.y, point.z);
+      } else {
+        flatKeypoints.push(0, 0, 0);
+      }
+    };
 
     const rawPose = results.poseLandmarks?.[0] ?? [];
-    SELECTED_POSE_INDICES.forEach((i) => pose.push(toKeypoint(rawPose[i])));
+    for (const index of SELECTED_POSE_INDICES) {
+      pushKeypoint(rawPose.length > 0 ? rawPose[index] : undefined);
+    }
 
     const rawFace = results.faceLandmarks?.[0] ?? [];
-    SELECTED_FACE_INDICES.forEach((i) => face.push(toKeypoint(rawFace[i])));
+    for (const index of SELECTED_FACE_INDICES) {
+      pushKeypoint(rawFace.length > 0 ? rawFace[index] : undefined);
+    }
 
     const rawLeft = results.leftHandLandmarks?.[0] ?? [];
-    leftHand.push(
-      ...getHandKeypoints(rawLeft, prevLeftHandRef, missingLeftHandFramesRef),
+    const leftHandPoints = getHandKeypoints(
+      rawLeft,
+      prevLeftHandRef,
+      missingLeftHandFramesRef,
     );
+    leftHandPoints.forEach((point) => pushKeypoint(point));
 
     const rawRight = results.rightHandLandmarks?.[0] ?? [];
-    rightHand.push(
-      ...getHandKeypoints(
-        rawRight,
-        prevRightHandRef,
-        missingRightHandFramesRef,
-      ),
+    const rightHandPoints = getHandKeypoints(
+      rawRight,
+      prevRightHandRef,
+      missingRightHandFramesRef,
     );
+    rightHandPoints.forEach((point) => pushKeypoint(point));
 
-    const nose = pose[0] ?? toKeypoint(undefined);
-    const normalizeByNose = (p: Keypoint): Keypoint => {
-      if (p.x === 0 && p.y === 0 && p.z === 0) return p;
-      return { x: p.x - nose.x, y: p.y - nose.y, z: p.z - nose.z };
-    };
-
-    return {
-      pose: pose.map(normalizeByNose),
-      face: face.map(normalizeByNose),
-      leftHand: leftHand.map(normalizeByNose),
-      rightHand: rightHand.map(normalizeByNose),
-    };
+    return flatKeypoints;
   };
 
   const startPractice = async () => {
@@ -330,23 +317,17 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word }) => {
     }
   };
 
-  const finishRecording = async (frames: FrameKeypoints[]) => {
+  const finishRecording = async (frames: number[][]) => {
     setStep("ANALYZING");
     cleanupCamera(); // Dừng camera ngay lập tức
 
     try {
-      const extractRes = await fetch(EXTRACT_FEATURES_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames }),
-      });
-      if (!extractRes.ok) throw new Error("Lỗi trích xuất khung hình");
-      const extracted = (await extractRes.json()) as ExtractFeaturesResponse;
+      const features = frames.flat();
 
       const predictRes = await fetch(PREDICT_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ features: extracted.features }),
+        body: JSON.stringify({ features }),
       });
       if (!predictRes.ok) throw new Error("Lỗi gọi API AI");
       const data = (await predictRes.json()) as PredictApiResponse;
