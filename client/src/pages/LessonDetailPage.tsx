@@ -1,12 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Maximize, Bot, Bookmark, Share2, Info, ListChecks, Trophy, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import AIPracticePopup from "../components/AIPracticePopup";
 import videoXinChao from "../assets/videoCourse/W00489.mp4";
+import { tokenStorage } from "../lib/auth";
 
 export default function LessonDetailPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  
   const [showAI, setShowAI] = useState(false);
+  const [lesson, setLesson] = useState<any>(null);
+  const [videoUrl, setVideoUrl] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const authToken = tokenStorage.getToken();
+        const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+        const res = await fetch(`${API_BASE_URL}/api/lessons/${id}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setLesson(data);
+          
+          if (data.videoMediaId) {
+            const mediaRes = await fetch(`${API_BASE_URL}/api/media_assets/${data.videoMediaId}`, { headers });
+            if (mediaRes.ok) {
+              const mediaData = await mediaRes.json();
+              setVideoUrl(mediaData.fileUrl);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi tải bài học", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (id) loadData();
+  }, [id]);
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Đang tải bài học...</div>;
+  }
+
+  if (!lesson) {
+    return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Không tìm thấy bài học.</div>;
+  }
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
@@ -25,7 +69,7 @@ export default function LessonDetailPage() {
             {/* Video Player */}
             <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
               <video 
-                src={videoXinChao} 
+                src={videoUrl || videoXinChao} 
                 controls 
                 className="w-full h-full object-contain"
               />
@@ -42,7 +86,7 @@ export default function LessonDetailPage() {
                   <div className="flex-1 relative bg-slate-900 flex flex-col">
                     {/* KHU VỰC HIỂN THỊ AIPracticePopup (Chỉ Camera -> Review) */}
                     <AIPracticePopup 
-                      word="Xin chào" 
+                      word={lesson.title || "Xin chào"} 
                     />
                   </div>
                 </div>
@@ -64,10 +108,14 @@ export default function LessonDetailPage() {
             {/* Title & Actions Row */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4">
               <div>
-                <h1 className="text-4xl font-extrabold text-[#1f2937] mb-3">Xin chào</h1>
+                <h1 className="text-4xl font-extrabold text-[#1f2937] mb-3">{lesson.title}</h1>
                 <div className="flex items-center gap-3">
-                  <span className="bg-[#fef3c7] text-[#71540a] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Phiên âm: /sin tɕaw/</span>
-                  <span className="text-sm font-medium text-slate-400">Cấp độ: Cơ bản</span>
+                  <span className="text-sm font-medium text-slate-400">Cấp độ: {lesson.difficultyLevel || "Cơ bản"}</span>
+                  {lesson.xpReward && (
+                    <span className="bg-[#fef3c7] text-[#71540a] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+                      +{lesson.xpReward} XP
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -95,30 +143,32 @@ export default function LessonDetailPage() {
                   <Info size={18} className="text-[#3c6d44]"/> Ý nghĩa & Sử dụng
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed mb-4">
-                  Dùng để bày tỏ sự biết ơn đối với người khác khi nhận được sự giúp đỡ hoặc một điều tốt đẹp nào đó. Đây là một trong những thủ ngữ cơ bản và lịch sự nhất.
+                  {lesson.shortDescription || "Đang cập nhật..."}
                 </p>
-                <div className="bg-[#f4fbf6] border-l-4 border-[#3c6d44] p-4 rounded-r-2xl">
-                  <p className="text-sm font-semibold text-[#3c6d44] italic">"Cảm ơn bạn đã hỗ trợ tôi hoàn thành công việc này."</p>
-                </div>
+                {lesson.objectiveText && (
+                  <div className="bg-[#f4fbf6] border-l-4 border-[#3c6d44] p-4 rounded-r-2xl">
+                    <p className="text-sm font-semibold text-[#3c6d44] italic">"{lesson.objectiveText}"</p>
+                  </div>
+                )}
               </div>
 
               {/* Mẹo thực hiện */}
               <div>
                 <h3 className="text-[15px] font-extrabold text-[#1f2937] flex items-center gap-2 mb-4">
-                  <ListChecks size={18} className="text-[#3c6d44]"/> Mẹo thực hiện
+                  <ListChecks size={18} className="text-[#3c6d44]"/> Thông tin bổ sung
                 </h3>
                 <ul className="space-y-4">
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-black">1</span>
-                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Đặt các ngón tay khép lại, lòng bàn tay hướng về phía miệng.</p>
+                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Thời gian ước tính: {lesson.estimatedMinutes || 0} phút</p>
                   </li>
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-black">2</span>
-                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Di chuyển bàn tay ra xa miệng theo hướng người đối diện.</p>
+                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Thứ tự bài học: {lesson.sortOrder || 1}</p>
                   </li>
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-black">3</span>
-                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Kết hợp với nét mặt mỉm cười nhẹ nhàng để thể hiện sự chân thành.</p>
+                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Đừng quên thực hành với Trợ lý AI để lấy XP nhé!</p>
                   </li>
                 </ul>
               </div>
