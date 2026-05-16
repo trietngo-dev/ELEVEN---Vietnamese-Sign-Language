@@ -1,28 +1,116 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Users, 
   CheckCircle2, 
-  History, 
+  BookOpen, 
   Zap, 
   PlusCircle, 
-  BookOpen,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  GraduationCap
 } from 'lucide-react';
+import { tokenStorage } from '../../lib/auth';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+interface DashboardStats {
+  totalUsers: number;
+  totalCourses: number;
+  totalLessons: number;
+  publishedCourses: number;
+}
 
 const AdminDashboard: React.FC = () => {
-  const stats = [
-    { label: 'Tổng người dùng', value: '12,450', change: '+12%', icon: <Users className="text-[#3c6c44]" />, trend: 'up' },
-    { label: 'Bài học hoàn tất', value: '8,230', change: '+5%', icon: <CheckCircle2 className="text-yellow-600" />, trend: 'up' },
-    { label: 'Yêu cầu dịch thuật', value: '145', change: '-2%', icon: <History className="text-[#3c6c44]" />, trend: 'down' },
-    { label: 'Tỷ lệ chính xác AI', value: '98.2%', change: '+0.5%', icon: <Zap className="text-yellow-600" />, trend: 'up' },
-  ];
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const recentActivity = [
-    { user: 'Nguyễn Văn A', action: 'Hoàn thành bài học: Chào hỏi', time: '10 phút trước', status: 'Thành công' },
-    { user: 'Trần Thị B', action: 'Đăng ký tài khoản mới', time: '25 phút trước', status: 'Thành công' },
-    { user: 'Lê Văn C', action: 'Yêu cầu dịch: "Cảm ơn bạn"', time: '1 giờ trước', status: 'Đang xử lý' },
-    { user: 'Phạm Minh D', action: 'Cập nhật hồ sơ cá nhân', time: '2 giờ trước', status: 'Thành công' },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        const authToken = tokenStorage.getToken();
+        const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
+        const [usersRes, coursesRes, lessonsRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/users?page=1&pageSize=5`, { headers }),
+          fetch(`${API_BASE_URL}/api/courses`, { headers }),
+          fetch(`${API_BASE_URL}/api/lessons?page=1&pageSize=1`, { headers }),
+        ]);
+
+        let totalUsers = 0;
+        let users: any[] = [];
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          totalUsers = data.total || 0;
+          users = data.items || [];
+        }
+
+        let totalCourses = 0;
+        let publishedCourses = 0;
+        if (coursesRes.ok) {
+          const data = await coursesRes.json();
+          const items = data.items || [];
+          totalCourses = items.length;
+          publishedCourses = items.filter((c: any) => c.status === 1 || c.status === "Published").length;
+        }
+
+        let totalLessons = 0;
+        if (lessonsRes.ok) {
+          const data = await lessonsRes.json();
+          totalLessons = data.total || 0;
+        }
+
+        setStats({ totalUsers, totalCourses, totalLessons, publishedCourses });
+        setRecentUsers(users);
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  const statCards = stats ? [
+    { label: 'Tổng người dùng', value: stats.totalUsers.toLocaleString(), icon: <Users className="text-[#3c6c44]" />, bg: 'bg-[#3c6c44]/10' },
+    { label: 'Tổng khóa học', value: stats.totalCourses.toString(), icon: <BookOpen className="text-[#3c6c44]" />, bg: 'bg-[#3c6c44]/10' },
+    { label: 'Tổng bài học', value: stats.totalLessons.toString(), icon: <GraduationCap className="text-yellow-600" />, bg: 'bg-yellow-100' },
+    { label: 'Đã xuất bản', value: stats.publishedCourses.toString(), icon: <CheckCircle2 className="text-yellow-600" />, bg: 'bg-yellow-100' },
+  ] : [];
+
+  const getStatusLabel = (status: number) => {
+    switch (status) {
+      case 0: return { label: 'Chưa kích hoạt', color: 'bg-slate-100 text-slate-600' };
+      case 1: return { label: 'Hoạt động', color: 'bg-[#3c6c44]/10 text-[#3c6c44]' };
+      case 2: return { label: 'Bị khóa', color: 'bg-red-100 text-red-600' };
+      default: return { label: 'Không xác định', color: 'bg-slate-100 text-slate-600' };
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getTimeAgo = (dateStr: string) => {
+    try {
+      const now = new Date();
+      const date = new Date(dateStr);
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 60) return `${diffMins} phút trước`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} giờ trước`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays} ngày trước`;
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -30,7 +118,9 @@ const AdminDashboard: React.FC = () => {
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Tổng quan hệ thống</h2>
-          <p className="text-slate-500 text-sm mt-1">Chào mừng quay trở lại, cập nhật lần cuối lúc 09:45 hôm nay.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            Dữ liệu thống kê thời gian thực từ hệ thống.
+          </p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center gap-2 px-4 py-2 bg-[#fed963] text-slate-900 font-semibold rounded-lg hover:opacity-90 transition-opacity">
@@ -45,60 +135,86 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <div key={index} className="bg-white p-6 rounded-xl border border-slate-200 flex flex-col gap-4">
-            <div className="flex justify-between items-start">
-              <div className={`size-10 rounded-lg flex items-center justify-center ${index % 2 === 0 ? 'bg-[#3c6c44]/10' : 'bg-yellow-100'}`}>
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 animate-pulse">
+              <div className="h-10 w-10 rounded-lg bg-slate-100 mb-4" />
+              <div className="h-4 w-24 bg-slate-100 rounded mb-2" />
+              <div className="h-7 w-16 bg-slate-100 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statCards.map((stat, index) => (
+            <div key={index} className="bg-white p-6 rounded-xl border border-slate-200 flex flex-col gap-4">
+              <div className={`size-10 rounded-lg flex items-center justify-center ${stat.bg}`}>
                 {stat.icon}
               </div>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stat.trend === 'up' ? 'text-[#3c6c44] bg-[#3c6c44]/10' : 'text-red-500 bg-red-50'}`}>
-                {stat.change}
-              </span>
+              <div>
+                <p className="text-sm text-slate-500 font-medium">{stat.label}</p>
+                <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-slate-500 font-medium">{stat.label}</p>
-              <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Main Content Split View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Activity Table */}
+        {/* Recent Users Table */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 flex flex-col">
           <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="font-bold text-lg">Hoạt động người dùng gần đây</h3>
-            <button className="text-sm text-[#3c6c44] font-semibold hover:underline">Xem tất cả</button>
+            <h3 className="font-bold text-lg">Người dùng mới đăng ký</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Người dùng</th>
-                  <th className="px-6 py-4 font-semibold">Hành động</th>
-                  <th className="px-6 py-4 font-semibold">Thời gian</th>
-                  <th className="px-6 py-4 font-semibold text-right">Trạng thái</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {recentActivity.map((activity, index) => (
-                  <tr key={index} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium">{activity.user}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{activity.action}</td>
-                    <td className="px-6 py-4 text-sm text-slate-500">{activity.time}</td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        activity.status === 'Thành công' ? 'bg-[#3c6c44]/10 text-[#3c6c44]' : 'bg-yellow-100 text-slate-900'
-                      }`}>
-                        {activity.status}
-                      </span>
-                    </td>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="animate-spin text-slate-400" size={24} />
+              </div>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold">Người dùng</th>
+                    <th className="px-6 py-4 font-semibold">Email</th>
+                    <th className="px-6 py-4 font-semibold">Ngày tham gia</th>
+                    <th className="px-6 py-4 font-semibold text-right">Trạng thái</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {recentUsers.length > 0 ? recentUsers.map((user: any) => {
+                    const statusInfo = getStatusLabel(user.status);
+                    return (
+                      <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-[#3c6c44]/10 flex items-center justify-center text-[#3c6c44] font-bold text-xs">
+                              {(user.fullName || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+                            </div>
+                            <span className="font-medium text-slate-700 text-sm">{user.fullName}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{user.email}</td>
+                        <td className="px-6 py-4 text-sm text-slate-500">{getTimeAgo(user.createdAt)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-sm">
+                        Chưa có người dùng nào.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
 
@@ -117,8 +233,8 @@ const AdminDashboard: React.FC = () => {
                   className={`w-full rounded-t-lg transition-colors relative group ${i === 4 ? 'bg-[#3c6c44]' : 'bg-slate-100 hover:bg-[#3c6c44]/20'}`}
                   style={{ height: `${height}%` }}
                 >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                    Value
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    {height}%
                   </div>
                 </div>
               ))}
@@ -132,16 +248,16 @@ const AdminDashboard: React.FC = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-[#3c6c44]"></span>
-                <span className="text-sm text-slate-600">Lượt học mới</span>
+                <span className="text-sm text-slate-600">Tổng khóa học</span>
               </div>
-              <span className="text-sm font-bold">+24.5%</span>
+              <span className="text-sm font-bold">{stats?.totalCourses ?? '—'}</span>
             </div>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-[#fed963]"></span>
-                <span className="text-sm text-slate-600">Độ ổn định AI</span>
+                <span className="text-sm text-slate-600">Tổng bài học</span>
               </div>
-              <span className="text-sm font-bold">99.9%</span>
+              <span className="text-sm font-bold">{stats?.totalLessons ?? '—'}</span>
             </div>
           </div>
         </div>

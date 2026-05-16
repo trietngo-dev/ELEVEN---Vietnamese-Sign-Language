@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
 import { BookOpen, Users, Zap, ArrowRight, Clock, ChevronRight, Video } from "lucide-react";
@@ -28,6 +29,21 @@ const recentTranslations = [
   { text: '"Rất vui được gặp bạn."', time: "12/03" },
 ];
 
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 },
+};
+
+const sectionStagger = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
 export default function HomePage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -54,40 +70,61 @@ export default function HomePage() {
   const activeCourse = courses[0];
 
   return (
-    <div className="min-h-screen bg-white">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={sectionStagger}
+      className="min-h-screen bg-white"
+    >
       {/* ─── HERO / STATS ─── */}
-      <div className="bg-white border-b border-slate-100 px-6 pt-8 pb-6 max-w-5xl mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-1">
-          Chào mừng trở lại, {firstName}!
-        </h1>
-        <p className="text-sm text-amber-500 font-semibold flex items-center gap-1 mb-6">
-          🔥 Bạn đang có chuỗi 7 ngày! Tiếp tục phát huy nhé! 🔥
-        </p>
+      <motion.div
+        variants={fadeInUp}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="bg-white border-b border-slate-100 px-6 pt-8 pb-6"
+      >
+        <div className="container">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-1">
+            Chào mừng trở lại, {firstName}!
+          </h1>
+          <p className="text-sm text-amber-500 font-semibold flex items-center gap-1 mb-6">
+            🔥 Bạn đang có chuỗi 7 ngày! Tiếp tục phát huy nhé! 🔥
+          </p>
 
-        {/* Stats bar */}
-        <div className="grid grid-cols-3 divide-x divide-slate-200 border border-slate-200 rounded-2xl overflow-hidden">
-          {[
-            { icon: <BookOpen size={18} className="text-slate-600" />, label: "BÀI HỌC HOÀN THÀNH", value: "24" },
-            { icon: <Users size={18} className="text-slate-600" />, label: "TỪ VỰNG ĐÃ HỌC", value: "128" },
-            { icon: <Zap size={18} className="text-amber-500" />, label: "CHUỖI HIỆN TẠI", value: "7 Days" },
-          ].map((s) => (
-            <div key={s.label} className="flex items-center gap-3 px-4 py-4 sm:px-6 bg-slate-50">
-              <span className="bg-white rounded-xl p-2 shadow-sm border border-slate-100 flex-shrink-0">{s.icon}</span>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.07em] leading-tight">{s.label}</p>
-                <p className="text-xl font-black text-slate-900 leading-tight">{s.value}</p>
-              </div>
-            </div>
-          ))}
+          {/* Stats bar */}
+          <div className="grid grid-cols-3 divide-x divide-slate-200 border border-slate-200 rounded-2xl overflow-hidden">
+            {[
+              { icon: <BookOpen size={18} className="text-slate-600" />, label: "BÀI HỌC HOÀN THÀNH", value: "24" },
+              { icon: <Users size={18} className="text-slate-600" />, label: "TỪ VỰNG ĐÃ HỌC", value: "128" },
+              { icon: <Zap size={18} className="text-amber-500" />, label: "CHUỖI HIỆN TẠI", value: "7 Days" },
+            ].map((s) => (
+              <motion.div
+                key={s.label}
+                variants={fadeInUp}
+                className="flex items-center gap-3 px-4 py-4 sm:px-6 bg-slate-50"
+              >
+                <span className="bg-white rounded-xl p-2 shadow-sm border border-slate-100 flex-shrink-0">{s.icon}</span>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.07em] leading-tight">{s.label}</p>
+                  <p className="text-xl font-black text-slate-900 leading-tight">{s.value}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-10">
+      <div className="container py-8 space-y-10">
         {/* ─── TIẾP TỤC HỌC ─── */}
-        <section>
+        <motion.section
+          variants={fadeInUp}
+          transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
+        >
           <h2 className="text-xl font-bold text-slate-900 mb-4">Tiếp tục học</h2>
           {activeCourse ? (
-            <div className="relative rounded-3xl overflow-hidden bg-[#111f1a] text-white">
+            <motion.div
+              whileHover={{ y: -3 }}
+              className="relative rounded-3xl overflow-hidden bg-[#111f1a] text-white"
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-[#111f1a] via-[#111f1a]/90 to-transparent z-10" />
               {/* Background image placeholder */}
               <div className="absolute right-0 top-0 w-1/3 h-full bg-slate-700 opacity-60">
@@ -119,7 +156,7 @@ export default function HomePage() {
                   ▶ Tiếp tục bài học
                 </Link>
               </div>
-            </div>
+            </motion.div>
           ) : !isLoadingCourses ? (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-400 text-sm font-medium">
               Chưa có khóa học nào. <Link to="/khoa-hoc" className="text-[#2d6a4f] font-bold underline">Khám phá khóa học</Link>
@@ -127,12 +164,16 @@ export default function HomePage() {
           ) : (
             <div className="h-48 rounded-3xl bg-slate-100 animate-pulse" />
           )}
-        </section>
+        </motion.section>
 
         {/* ─── BOTTOM GRID ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <motion.div
+          variants={fadeInUp}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+        >
           {/* Thao tác nhanh */}
-          <section>
+          <motion.section variants={sectionStagger}>
             <h2 className="text-xl font-bold text-slate-900 mb-4">Thao tác nhanh</h2>
             <div className="space-y-3">
               {/* Primary CTA */}
@@ -154,26 +195,30 @@ export default function HomePage() {
 
               {/* Secondary links */}
               <div className="grid grid-cols-2 gap-3">
-                <Link
-                  to="/tu-dien"
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#2d6a4f] hover:bg-[#eef6f1] transition-colors"
-                >
-                  <BookOpen size={22} className="text-slate-600" />
-                  <span className="text-sm font-bold text-slate-700">Từ điển</span>
-                </Link>
-                <Link
-                  to="/cong-dong"
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#2d6a4f] hover:bg-[#eef6f1] transition-colors"
-                >
-                  <Users size={22} className="text-slate-600" />
-                  <span className="text-sm font-bold text-slate-700">Cộng đồng</span>
-                </Link>
+                <motion.div variants={fadeInUp}>
+                  <Link
+                    to="/tu-dien"
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#2d6a4f] hover:bg-[#eef6f1] transition-colors"
+                  >
+                    <BookOpen size={22} className="text-slate-600" />
+                    <span className="text-sm font-bold text-slate-700">Từ điển</span>
+                  </Link>
+                </motion.div>
+                <motion.div variants={fadeInUp}>
+                  <Link
+                    to="/cong-dong"
+                    className="flex flex-col items-center gap-2 p-4 rounded-2xl border border-slate-200 bg-white hover:border-[#2d6a4f] hover:bg-[#eef6f1] transition-colors"
+                  >
+                    <Users size={22} className="text-slate-600" />
+                    <span className="text-sm font-bold text-slate-700">Cộng đồng</span>
+                  </Link>
+                </motion.div>
               </div>
             </div>
-          </section>
+          </motion.section>
 
           {/* Bản dịch gần đây */}
-          <section>
+          <motion.section variants={sectionStagger}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-slate-900">Bản dịch gần đây</h2>
               <button className="text-sm font-bold text-[#2d6a4f] hover:underline flex items-center gap-0.5">
@@ -182,8 +227,9 @@ export default function HomePage() {
             </div>
             <div className="space-y-2">
               {recentTranslations.map((t, i) => (
-                <div
+                <motion.div
                   key={i}
+                  variants={fadeInUp}
                   className="flex items-center justify-between py-3.5 px-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
@@ -191,14 +237,17 @@ export default function HomePage() {
                     <span className="text-sm font-semibold text-slate-700 italic">{t.text}</span>
                   </div>
                   <span className="text-xs text-slate-400 font-medium whitespace-nowrap ml-3">{t.time}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
-          </section>
-        </div>
+          </motion.section>
+        </motion.div>
 
         {/* ─── GỢI Ý CHO BẠN ─── */}
-        <section>
+        <motion.section
+          variants={fadeInUp}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.15 }}
+        >
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-slate-900">Gợi ý cho bạn</h2>
             <Link to="/khoa-hoc" className="text-sm font-bold text-[#2d6a4f] hover:underline flex items-center gap-0.5">
@@ -211,31 +260,42 @@ export default function HomePage() {
               {[1, 2, 3].map((i) => <div key={i} className="h-52 rounded-3xl bg-slate-100 animate-pulse" />)}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <motion.div
+              initial="hidden"
+              animate="show"
+              variants={sectionStagger}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+            >
               {courses.length > 0 ? courses.map((course) => (
-                <Link key={course.id} to={`/khoa-hoc/${course.id}`} className="group rounded-3xl overflow-hidden border border-slate-200 bg-white hover:shadow-lg hover:-translate-y-1 transition-all">
-                  <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
-                    <CourseImage
-                      title={course.title}
-                      coverMediaId={course.coverMediaId}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] font-bold text-[#2d6a4f] uppercase tracking-wider mb-1">
-                      {LEVEL_LABELS[course.level ?? ""] ?? "CƠ BẢN"}
-                    </p>
-                    <h3 className="font-bold text-slate-800 text-sm line-clamp-2">{course.title}</h3>
-                    <p className="text-xs text-slate-500 mt-1">Từ vựng đã học</p>
-                  </div>
-                </Link>
+                <motion.div
+                  key={course.id}
+                  variants={fadeInUp}
+                  whileHover={{ y: -5 }}
+                >
+                  <Link to={`/khoa-hoc/${course.id}`} className="group block rounded-3xl overflow-hidden border border-slate-200 bg-white hover:shadow-lg transition-all">
+                    <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
+                      <CourseImage
+                        title={course.title}
+                        coverMediaId={course.coverMediaId}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="px-4 py-3">
+                      <p className="text-[10px] font-bold text-[#2d6a4f] uppercase tracking-wider mb-1">
+                        {LEVEL_LABELS[course.level ?? ""] ?? "CƠ BẢN"}
+                      </p>
+                      <h3 className="font-bold text-slate-800 text-sm line-clamp-2">{course.title}</h3>
+                      <p className="text-xs text-slate-500 mt-1">Từ vựng đã học</p>
+                    </div>
+                  </Link>
+                </motion.div>
               )) : (
                 <div className="col-span-3 text-center text-slate-400 text-sm py-8">Chưa có khóa học nào được hiển thị.</div>
               )}
-            </div>
+            </motion.div>
           )}
-        </section>
+        </motion.section>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Loader2, Clock, ListVideo, Layers } from "lucide-react";
+import { X, Loader2, Clock, ListVideo, Layers, Edit } from "lucide-react";
 import { tokenStorage } from "../../lib/auth";
+import EditLessonModal from "./EditLessonModal";
+import demoVideo from "../../assets/videoCourse/W00489.mp4";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -16,34 +18,37 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
   const [isLoading, setIsLoading] = useState(true);
   const [playingLessonId, setPlayingLessonId] = useState<number | null>(null);
   const [lessonVideoUrls, setLessonVideoUrls] = useState<Record<number, string>>({});
+  const [fetchedLessonIds, setFetchedLessonIds] = useState<Set<number>>(new Set());
+  const [editingLesson, setEditingLesson] = useState<any | null>(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      
+      const [modsRes, lessRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/course_modules?pageSize=100`, { headers }),
+        fetch(`${API_BASE_URL}/api/lessons?pageSize=500`, { headers })
+      ]);
+      
+      if (modsRes.ok) {
+        const data = await modsRes.json();
+        setModules(data.items ? data.items.filter((m: any) => m.courseId === course.id) : []);
+      }
+      if (lessRes.ok) {
+        const data = await lessRes.json();
+        setLessons(data.items ? data.items.filter((l: any) => l.courseId === course.id) : []);
+      }
+    } catch (error) {
+      console.error("Error fetching dependencies", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && course) {
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          const authToken = tokenStorage.getToken();
-          const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-          
-          const [modsRes, lessRes] = await Promise.all([
-            fetch(`${API_BASE_URL}/api/course_modules?pageSize=100`, { headers }),
-            fetch(`${API_BASE_URL}/api/lessons?pageSize=500`, { headers })
-          ]);
-          
-          if (modsRes.ok) {
-            const data = await modsRes.json();
-            setModules(data.items ? data.items.filter((m: any) => m.courseId === course.id) : []);
-          }
-          if (lessRes.ok) {
-            const data = await lessRes.json();
-            setLessons(data.items ? data.items.filter((l: any) => l.courseId === course.id) : []);
-          }
-        } catch (error) {
-          console.error("Error fetching dependencies", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
       fetchData();
     }
   }, [isOpen, course]);
@@ -55,23 +60,43 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
     }
     setPlayingLessonId(lesson.id);
     
-    // Fetch video URL via detail endpoint if not already fetched and exists
-    if (lesson.videoMediaId && !lessonVideoUrls[lesson.id]) {
-      try {
-        const authToken = tokenStorage.getToken();
-        const res = await fetch(`${API_BASE_URL}/api/lessons/${lesson.id}`, {
-          headers: authToken ? { Authorization: `Bearer ${authToken}` } as Record<string, string> : {}
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.videoUrl) {
-             setLessonVideoUrls(prev => ({...prev, [lesson.id]: data.videoUrl}));
+    // Already have URL cached
+    if (lessonVideoUrls[lesson.id]) return;
+    // Already attempted fetch
+    if (fetchedLessonIds.has(lesson.id)) return;
+
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+
+      // 1) Try the detail endpoint which includes VideoUrl via navigation property
+      const res = await fetch(`${API_BASE_URL}/api/lessons/${lesson.id}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.videoUrl) {
+          setLessonVideoUrls(prev => ({...prev, [lesson.id]: data.videoUrl}));
+          setFetchedLessonIds(prev => new Set(prev).add(lesson.id));
+          return;
+        }
+        // 2) If videoUrl is null but videoMediaId exists, fetch media asset directly
+        const mediaId = data.videoMediaId || lesson.videoMediaId;
+        if (mediaId) {
+          const mediaRes = await fetch(`${API_BASE_URL}/api/media_assets/${mediaId}`, { headers });
+          if (mediaRes.ok) {
+            const mediaData = await mediaRes.json();
+            if (mediaData.fileUrl) {
+              setLessonVideoUrls(prev => ({...prev, [lesson.id]: mediaData.fileUrl}));
+              setFetchedLessonIds(prev => new Set(prev).add(lesson.id));
+              return;
+            }
           }
         }
-      } catch (e) {
-        console.error("Failed to load lesson details", e);
       }
+    } catch (e) {
+      console.error("Failed to load lesson video", e);
     }
+    // Mark as fetched even if no URL was found
+    setFetchedLessonIds(prev => new Set(prev).add(lesson.id));
   };
 
   if (!isOpen || !course) return null;
@@ -135,9 +160,18 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
                                   <span className="text-sm font-medium text-slate-600 flex items-center gap-2">
                                     <ListVideo size={14} className="text-[#3c6c44]" /> {lesson.title}
                                   </span>
-                                  <span className="text-xs text-slate-400 flex items-center gap-1">
-                                    <Clock size={12} /> {lesson.estimatedMinutes || 10}p
-                                  </span>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                                      <Clock size={12} /> {lesson.estimatedMinutes || 10}p
+                                    </span>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setEditingLesson(lesson); }}
+                                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                      title="Chỉnh sửa bài học"
+                                    >
+                                      <Edit size={14} />
+                                    </button>
+                                  </div>
                                 </button>
                                 {playingLessonId === lesson.id && (
                                   <div className="px-4 pb-4 animate-in slide-in-from-top-2">
@@ -147,13 +181,18 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
                                         controls 
                                         className="w-full aspect-video rounded-xl bg-black" 
                                       />
-                                    ) : lesson.videoMediaId ? (
+                                    ) : !fetchedLessonIds.has(lesson.id) ? (
                                       <div className="w-full aspect-video rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 text-sm">
-                                        Đang tải video...
+                                        <Loader2 size={20} className="animate-spin mr-2" /> Đang tải video...
                                       </div>
                                     ) : (
-                                       <div className="w-full py-8 text-center rounded-xl bg-slate-50 text-slate-400 text-sm">
-                                        Bài học này chưa có video.
+                                      <div className="space-y-2">
+                                        <video 
+                                          src={demoVideo} 
+                                          controls 
+                                          className="w-full aspect-video rounded-xl bg-black" 
+                                        />
+                                        <p className="text-center text-xs text-amber-600 font-medium">⚠ Video demo — Bài học chưa được gắn video chính thức.</p>
                                       </div>
                                     )}
                                   </div>
@@ -171,6 +210,18 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
           )}
         </div>
       </div>
+
+      {editingLesson && (
+        <EditLessonModal
+          isOpen={!!editingLesson}
+          lesson={editingLesson}
+          onClose={() => setEditingLesson(null)}
+          onSuccess={() => {
+            setEditingLesson(null);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }

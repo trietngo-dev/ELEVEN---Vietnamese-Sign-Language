@@ -13,6 +13,7 @@ import {
 
 interface AIPracticePopupProps {
   word: string;
+  onSuccess?: (score: number) => void;
 }
 
 type Step =
@@ -48,7 +49,7 @@ type PredictApiResponse = {
   label?: string;
 };
 
-const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word }) => {
+const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) => {
   const [step, setStep] = useState<Step>("READY");
   const [countdown, setCountdown] = useState(3);
   const [apiResult, setApiResult] = useState<PredictApiResponse | null>(null);
@@ -363,6 +364,12 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word }) => {
   const confidenceScore = apiResult?.confidence
     ? Math.round(apiResult.confidence * 100)
     : 0;
+
+  useEffect(() => {
+    if (step === "RESULT" && isMatch && onSuccess) {
+      onSuccess(confidenceScore);
+    }
+  }, [step, isMatch, confidenceScore, onSuccess]);
 
   return (
     <div className="w-full h-full flex flex-col bg-white rounded-b-2xl overflow-hidden shadow-lg">

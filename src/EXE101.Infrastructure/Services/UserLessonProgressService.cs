@@ -94,6 +94,63 @@ public sealed class UserLessonProgressService(
         return Map(updated);
     }
 
+    public async Task<UserLessonProgressResponse> UpsertAsync(CreateUserLessonProgressRequest request, CancellationToken cancellationToken = default)
+    {
+        await ValidateDependenciesAsync(request.UserId, request.LessonId, cancellationToken);
+        ValidateMetrics(request.LastPositionSeconds, request.AttemptsCount, request.BestAccuracy, request.BestScore, request.TotalTimeSeconds, request.XpEarned);
+
+        var existing = await _repository.GetByUserAndLessonAsync(request.UserId, request.LessonId, cancellationToken);
+        if (existing != null)
+        {
+            existing.Status = request.Status;
+            if (request.StartedAt.HasValue) existing.StartedAt = request.StartedAt;
+            if (request.CompletedAt.HasValue) existing.CompletedAt = request.CompletedAt;
+            existing.LastPositionSeconds = request.LastPositionSeconds;
+            
+            // Only update attempt count and best scores if it makes sense
+            existing.AttemptsCount += request.AttemptsCount; // Accumulate attempts if passed, or maybe just +1. Actually let's assume client sends exact count or we increment. If frontend sends 1, we add 1.
+            if (request.BestAccuracy > existing.BestAccuracy) existing.BestAccuracy = request.BestAccuracy;
+            if (request.BestScore > existing.BestScore) existing.BestScore = request.BestScore;
+            
+            existing.TotalTimeSeconds += request.TotalTimeSeconds;
+            
+            // For XpEarned, maybe don't add if already earned. Let's just set if it's higher.
+            if (request.XpEarned > existing.XpEarned) existing.XpEarned = request.XpEarned;
+            
+            existing.UpdatedAt = DateTime.UtcNow;
+
+            var updated = await _repository.UpdateAsync(existing, cancellationToken);
+            return Map(updated);
+        }
+        else
+        {
+            var entity = new UserLessonProgress
+            {
+                UserId = request.UserId,
+                LessonId = request.LessonId,
+                Status = request.Status,
+                StartedAt = request.StartedAt,
+                CompletedAt = request.CompletedAt,
+                LastPositionSeconds = request.LastPositionSeconds,
+                AttemptsCount = request.AttemptsCount > 0 ? request.AttemptsCount : 1, // Default 1 attempt
+                BestAccuracy = request.BestAccuracy,
+                BestScore = request.BestScore,
+                TotalTimeSeconds = request.TotalTimeSeconds,
+                XpEarned = request.XpEarned,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var created = await _repository.AddAsync(entity, cancellationToken);
+            return Map(created);
+        }
+    }
+
+    public async Task<IReadOnlyList<UserLessonProgressResponse>> GetByUserAndCourseAsync(long userId, long courseId, CancellationToken cancellationToken = default)
+    {
+        var entities = await _repository.GetByUserAndCourseAsync(userId, courseId, cancellationToken);
+        return entities.Select(Map).ToList();
+    }
+
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
         => _repository.DeleteAsync(id, cancellationToken);
 

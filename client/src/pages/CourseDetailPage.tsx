@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, PlayCircle, CheckCircle2, Lock } from "lucide-react";
+import { ArrowLeft, PlayCircle, Lock } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
 import CourseImage from "../components/CourseImage";
@@ -7,10 +7,11 @@ import CourseImage from "../components/CourseImage";
 export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [course, setCourse] = useState<any>(null);
   const [modules, setModules] = useState<any[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
+  const [completedLessonsCount, setCompletedLessonsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -39,6 +40,29 @@ export default function CourseDetailPage() {
           const lesData = await lessonsRes.json();
           const courseLessons = (lesData.items || []).filter((l: any) => l.courseId.toString() === id);
           setLessons(courseLessons.sort((a: any, b: any) => a.sortOrder - b.sortOrder));
+        }
+
+        // Fetch User Progress
+        let userId = 1; // default
+        if (authToken) {
+          try {
+            const payload = JSON.parse(atob(authToken.split('.')[1]));
+            if (payload.nameid) userId = parseInt(payload.nameid);
+          } catch (e) {
+            console.error("Lỗi parse token", e);
+          }
+        }
+        if (authToken && id) {
+          try {
+            const progRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress/user/${userId}/course/${id}`, { headers });
+            if (progRes.ok) {
+              const progData = await progRes.json();
+              const completedCount = progData.filter((p: any) => p.status === 2).length; // 2 = Completed
+              setCompletedLessonsCount(completedCount);
+            }
+          } catch (err) {
+            console.error("Lỗi tải tiến độ", err);
+          }
         }
       } catch (err) {
         console.error("Lỗi tải chi tiết khóa học", err);
@@ -69,11 +93,12 @@ export default function CourseDetailPage() {
   }
 
   const firstLessonId = lessons.length > 0 ? lessons[0].id : null;
+  const progressPercentage = lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
       <div className="mx-auto max-w-5xl px-6 py-10">
-        
+
         {/* Back Button */}
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 mb-8 transition-colors">
           <ArrowLeft size={16} className="bg-slate-100 rounded-full p-1" /> Quay lại
@@ -84,9 +109,9 @@ export default function CourseDetailPage() {
           {/* Left: Course Info */}
           <div>
             <div className="relative w-full aspect-[2/1] rounded-3xl overflow-hidden mb-6 shadow-md bg-slate-100">
-              <CourseImage 
-                title={course.title} 
-                coverMediaId={course.coverMediaId} 
+              <CourseImage
+                title={course.title}
+                coverMediaId={course.coverMediaId}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
@@ -105,17 +130,17 @@ export default function CourseDetailPage() {
           {/* Right: Progress Card */}
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 h-fit">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
-              <span className="w-6 h-6 rounded-lg bg-[#eef7ee] flex items-center justify-center text-[#3c6d44]"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span> 
+              <span className="w-6 h-6 rounded-lg bg-[#eef7ee] flex items-center justify-center text-[#3c6d44]"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg></span>
               Thông tin khóa học
             </h3>
-            
-            <div className="mb-8 hidden">
+
+            <div className="mb-8 block">
               <div className="flex justify-between items-end mb-2">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hoàn thành</span>
-                <span className="text-2xl font-black text-slate-800">0%</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hoàn thành ({completedLessonsCount}/{lessons.length})</span>
+                <span className="text-2xl font-black text-slate-800">{progressPercentage}%</span>
               </div>
               <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#fed963] w-[0%] rounded-full"></div>
+                <div className="h-full bg-[#fed963] rounded-full transition-all duration-1000" style={{ width: `${progressPercentage}%` }}></div>
               </div>
             </div>
 
@@ -136,7 +161,7 @@ export default function CourseDetailPage() {
               </Link>
             ) : (
               <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center gap-2 font-bold cursor-not-allowed">
-                 Chưa có bài học
+                Chưa có bài học
               </button>
             )}
           </div>
@@ -163,11 +188,11 @@ export default function CourseDetailPage() {
                     </h3>
                     {isLocked && (
                       <Link to="/nang-cap" className="text-[10px] font-bold uppercase tracking-widest bg-[#eef7ee] text-[#3c6d44] px-3 py-1 rounded-full flex items-center gap-1 border border-[#d4e4d8]">
-                        <Lock size={10}/> Nâng cấp tài khoản
+                        <Lock size={10} /> Nâng cấp tài khoản
                       </Link>
                     )}
                   </div>
-                  
+
                   <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm flex flex-col divide-y divide-slate-50">
                     {moduleLessons.length > 0 ? moduleLessons.map((lesson, lIdx) => (
                       <div key={lesson.id} className={`p-5 flex items-center justify-between ${isLocked ? "opacity-50" : "hover:bg-slate-50/50 transition-colors"}`}>

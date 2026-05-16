@@ -1,10 +1,14 @@
 import {
   ChevronDown,
-  Frown,
-  Laugh,
+  AlertTriangle,
+  Clock,
   Meh,
+  Shield,
+  HelpCircle,
   SendHorizontal,
-  Smile,
+  Headphones,
+  MessageCircleQuestion,
+  MailOpen,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -30,16 +34,16 @@ const sectionStagger = {
 
 function ReviewPage() {
   const { reviewPage } = viText;
-  const [rating, setRating] = useState(4);
+  const [rating, setRating] = useState(3);
   const [category, setCategory] = useState("");
   const [detail, setDetail] = useState("");
 
   const ratingOptions = [
-    { value: 1, label: reviewPage.rating.veryBad, Icon: Frown },
-    { value: 2, label: reviewPage.rating.notGood, Icon: Frown },
-    { value: 3, label: reviewPage.rating.normal, Icon: Meh },
-    { value: 4, label: reviewPage.rating.satisfied, Icon: Smile },
-    { value: 5, label: reviewPage.rating.verySatisfied, Icon: Laugh },
+    { value: 1, label: reviewPage.rating.veryBad, Icon: AlertTriangle, color: "text-red-500" },
+    { value: 2, label: reviewPage.rating.notGood, Icon: Clock, color: "text-orange-500" },
+    { value: 3, label: reviewPage.rating.normal, Icon: Meh, color: "text-amber-500" },
+    { value: 4, label: reviewPage.rating.satisfied, Icon: Shield, color: "text-sky-500" },
+    { value: 5, label: reviewPage.rating.verySatisfied, Icon: HelpCircle, color: "text-emerald-500" },
   ] as const;
 
   return (
@@ -55,6 +59,9 @@ function ReviewPage() {
           transition={{ duration: 0.45, ease: "easeOut" }}
           className="mx-auto max-w-[700px] text-center"
         >
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#eef7ef]">
+            <Headphones className="h-8 w-8 text-[#3b7948]" />
+          </div>
           <h1 className="text-[clamp(2rem,3vw,2.95rem)] font-bold leading-[1.1] text-[#172334]">
             {reviewPage.hero.title}
           </h1>
@@ -63,9 +70,49 @@ function ReviewPage() {
           </p>
         </motion.header>
 
+        {/* Quick help cards */}
         <motion.div
           variants={fadeInUp}
-          transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
+          className="mx-auto mt-8 grid max-w-[900px] gap-4 sm:grid-cols-3"
+        >
+          {[
+            {
+              icon: <MessageCircleQuestion className="h-6 w-6 text-[#3b7948]" />,
+              title: "Câu hỏi thường gặp",
+              desc: "Tìm câu trả lời nhanh cho các vấn đề phổ biến",
+            },
+            {
+              icon: <MailOpen className="h-6 w-6 text-[#3b7948]" />,
+              title: "Email hỗ trợ",
+              desc: "support@eleven.vn — Phản hồi trong 24h",
+            },
+            {
+              icon: <Headphones className="h-6 w-6 text-[#3b7948]" />,
+              title: "Hotline",
+              desc: "1900 xxxx — Thứ 2 đến Thứ 6, 8h-17h",
+            },
+          ].map((item) => (
+            <motion.div
+              key={item.title}
+              whileHover={{ y: -3 }}
+              className="flex items-start gap-3 rounded-2xl border border-[#e5ece8] bg-white p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
+            >
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef7ef]">
+                {item.icon}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#1e3039]">{item.title}</p>
+                <p className="mt-0.5 text-xs text-[#7c8790]">{item.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {/* Support form */}
+        <motion.div
+          variants={fadeInUp}
+          transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }}
           className="mx-auto mt-8 max-w-[610px] rounded-[36px] border border-[#e5ece8] bg-white p-6 shadow-[0_12px_30px_rgba(19,36,52,0.06)] md:p-8"
         >
           <p className="text-center text-[0.9rem] font-bold uppercase tracking-[0.06em] text-[#8c98a2]">
@@ -73,7 +120,7 @@ function ReviewPage() {
           </p>
 
           <div className="mt-4 flex items-center justify-center gap-2.5">
-            {ratingOptions.map(({ value, label, Icon }) => {
+            {ratingOptions.map(({ value, label, Icon, color }) => {
               const isActive = value === rating;
 
               return (
@@ -85,13 +132,19 @@ function ReviewPage() {
                   whileTap={{ scale: 0.92 }}
                   whileHover={{ y: -2 }}
                   className={cn(
-                    "grid h-10 w-10 place-items-center rounded-full border transition-colors",
+                    "flex flex-col items-center gap-1 rounded-2xl border px-3 py-2.5 transition-colors",
                     isActive
-                      ? "border-[#3b7948] bg-[#eef7ef] text-[#3b7948]"
-                      : "border-[#dae4de] bg-white text-[#b0bcc6] hover:border-[#bfcfc4] hover:text-[#6f808b]",
+                      ? "border-[#3b7948] bg-[#eef7ef]"
+                      : "border-[#dae4de] bg-white hover:border-[#bfcfc4]",
                   )}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className={cn("h-5 w-5", isActive ? color : "text-[#b0bcc6]")} />
+                  <span className={cn(
+                    "text-[0.6rem] font-bold",
+                    isActive ? "text-[#3b7948]" : "text-[#b0bcc6]"
+                  )}>
+                    {label}
+                  </span>
                 </motion.button>
               );
             })}

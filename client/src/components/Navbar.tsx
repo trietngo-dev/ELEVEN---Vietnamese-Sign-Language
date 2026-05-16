@@ -13,7 +13,7 @@ function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#e7ece9] bg-white/95 backdrop-blur">
-      <div className="container flex min-h-[82px] flex-wrap items-center justify-center gap-4 py-3 lg:justify-between lg:py-0">
+      <div className="container flex min-h-[82px] flex-wrap items-center justify-between gap-4 py-3 lg:py-0">
         <NavLink
           to={
             isAuthenticated

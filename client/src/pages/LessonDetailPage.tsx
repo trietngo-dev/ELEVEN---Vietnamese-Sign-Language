@@ -14,6 +14,12 @@ export default function LessonDetailPage() {
   const [videoUrl, setVideoUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
 
+  // Completion states
+  const [isVideoWatched, setIsVideoWatched] = useState(false);
+  const [aiScore, setAiScore] = useState<number | null>(null);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -44,6 +50,57 @@ export default function LessonDetailPage() {
     if (id) loadData();
   }, [id]);
 
+  useEffect(() => {
+    const completeLesson = async () => {
+      if (isVideoWatched && aiScore !== null && !isCompleted && lesson) {
+        try {
+          const authToken = tokenStorage.getToken();
+          // Extract userId from token payload
+          let userId = 1; // default if error
+          if (authToken) {
+            try {
+              const payload = JSON.parse(atob(authToken.split('.')[1]));
+              if (payload.nameid) userId = parseInt(payload.nameid);
+            } catch (e) {
+              console.error("Lỗi parse token", e);
+            }
+          }
+
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+          const res = await fetch(`${API_BASE_URL}/api/user_lesson_progress/upsert`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+            },
+            body: JSON.stringify({
+              userId: userId,
+              lessonId: lesson.id,
+              status: 2, // Completed
+              startedAt: new Date().toISOString(),
+              completedAt: new Date().toISOString(),
+              lastPositionSeconds: 0,
+              attemptsCount: 1,
+              bestAccuracy: aiScore,
+              bestScore: aiScore,
+              totalTimeSeconds: lesson.estimatedMinutes * 60,
+              xpEarned: lesson.xpReward || 50
+            })
+          });
+
+          if (res.ok) {
+            setIsCompleted(true);
+            setShowCompletionModal(true);
+          }
+        } catch (error) {
+          console.error("Lỗi khi cập nhật tiến độ bài học", error);
+        }
+      }
+    };
+
+    completeLesson();
+  }, [isVideoWatched, aiScore, isCompleted, lesson]);
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Đang tải bài học...</div>;
   }
@@ -72,6 +129,7 @@ export default function LessonDetailPage() {
                 src={videoUrl || videoXinChao} 
                 controls 
                 className="w-full h-full object-contain"
+                onEnded={() => setIsVideoWatched(true)}
               />
 
               {/* AI Overlay Box */}
@@ -87,6 +145,7 @@ export default function LessonDetailPage() {
                     {/* KHU VỰC HIỂN THỊ AIPracticePopup (Chỉ Camera -> Review) */}
                     <AIPracticePopup 
                       word={lesson.title || "Xin chào"} 
+                      onSuccess={(score) => setAiScore(score)}
                     />
                   </div>
                 </div>
@@ -255,6 +314,42 @@ export default function LessonDetailPage() {
         </div>
 
       </div>
+
+      {/* Completion Modal */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            <button onClick={() => setShowCompletionModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
+              <X size={20} />
+            </button>
+            
+            <div className="size-24 bg-[#f4fbf6] rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner relative z-10">
+              <Trophy size={48} className="text-[#3c6d44]" />
+            </div>
+            
+            <h2 className="text-2xl font-extrabold text-slate-800 mb-2 relative z-10">Hoàn thành bài học!</h2>
+            <p className="text-sm text-slate-500 mb-6 leading-relaxed relative z-10">
+              Tuyệt vời! Bạn đã xem xong video và thực hành cử chỉ cực chuẩn với AI đạt <strong>{aiScore}%</strong>.
+            </p>
+            
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 relative z-10 flex flex-col items-center justify-center gap-1">
+              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Phần thưởng</span>
+              <span className="text-3xl font-black text-amber-600">+{lesson?.xpReward || 50} XP</span>
+            </div>
+            
+            <button 
+              onClick={() => {
+                setShowCompletionModal(false);
+                navigate(-1);
+              }}
+              className="w-full py-4 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center font-bold hover:bg-[#315736] transition-all shadow-xl shadow-[#3c6d44]/20 hover:-translate-y-0.5 relative z-10"
+            >
+              Tiếp tục học
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

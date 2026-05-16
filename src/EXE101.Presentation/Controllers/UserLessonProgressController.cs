@@ -34,6 +34,20 @@ public sealed class UserLessonProgressController(IUserLessonProgressService serv
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
+    [HttpPost("upsert")]
+    public async Task<IActionResult> Upsert([FromBody] CreateUserLessonProgressRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await service.UpsertAsync(request, cancellationToken);
+        return Ok(result);
+    }
+
+    [HttpGet("user/{userId:long}/course/{courseId:long}")]
+    public async Task<IActionResult> GetByUserAndCourse([FromRoute] long userId, [FromRoute] long courseId, CancellationToken cancellationToken = default)
+    {
+        var result = await service.GetByUserAndCourseAsync(userId, courseId, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update([FromRoute] long id, [FromBody] UpdateUserLessonProgressRequest request, CancellationToken cancellationToken = default)
     {

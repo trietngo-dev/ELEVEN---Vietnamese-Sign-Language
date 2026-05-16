@@ -28,6 +28,17 @@ public sealed class UserLessonProgressRepository(AppDbContext dbContext) : IUser
     public Task<UserLessonProgress?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         => _dbContext.UserLessonProgresses.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task<UserLessonProgress?> GetByUserAndLessonAsync(long userId, long lessonId, CancellationToken cancellationToken = default)
+        => _dbContext.UserLessonProgresses.FirstOrDefaultAsync(x => x.UserId == userId && x.LessonId == lessonId, cancellationToken);
+
+    public async Task<IReadOnlyList<UserLessonProgress>> GetByUserAndCourseAsync(long userId, long courseId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.UserLessonProgresses
+            .AsNoTracking()
+            .Where(ulp => ulp.UserId == userId && _dbContext.Lessons.Any(l => l.Id == ulp.LessonId && l.CourseId == courseId))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<bool> ExistsByUserAndLessonAsync(long userId, long lessonId, long? excludeId = null, CancellationToken cancellationToken = default)
     {
         var query = _dbContext.UserLessonProgresses.AsNoTracking().Where(x => x.UserId == userId && x.LessonId == lessonId);
