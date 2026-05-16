@@ -6,7 +6,9 @@ import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
 import { tokenStorage } from "../lib/auth";
 import CourseImage from "../components/CourseImage";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import LoginModal from "../components/LoginModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -31,6 +33,16 @@ function CoursesPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const navigate = useNavigate();
+
+  const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      setShowLoginModal(true);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -105,7 +117,7 @@ function CoursesPage() {
             </div>
           </div>
 
-          <Link to="/nang-cap">
+          <Link to="/nang-cap" onClick={(e) => handleProtectedLink(e, "/nang-cap")}>
             <Button
               size="sm"
               className="mt-3 h-9 bg-[#efca4c] px-5 text-[0.8rem] font-bold text-[#4b3c14] shadow-none hover:translate-y-0 hover:bg-[#e7c13f] md:mt-0"
@@ -217,7 +229,7 @@ function CoursesPage() {
                   {course.description || course.summary || "Chưa có mô tả"}
                 </p>
 
-                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5">
+                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
                   <Button className="h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
                     {common.buttons.startLearning}
                     <ArrowRight className="ml-1 h-4 w-4" />
@@ -239,6 +251,12 @@ function CoursesPage() {
           </motion.p>
         )}
       </div>
+
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        message="Bạn cần đăng nhập để xem chi tiết bài học và tham gia khóa học."
+      />
     </motion.section>
   );
 }
