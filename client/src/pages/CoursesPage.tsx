@@ -63,11 +63,10 @@ function CoursesPage() {
 
         if (courseRes.ok) {
           const courseData = await courseRes.json();
-          // Filter out drafted ones, handling both int and string enums
-          setCourses(courseData.items?.filter((c: any) => 
-            c.status === 1 || 
-            c.status === "Published" || 
-            c.status === "published" || 
+          setCourses(courseData.items?.filter((c: any) =>
+            c.status === 1 ||
+            c.status === "Published" ||
+            c.status === "published" ||
             c.status === "1"
           ) || []);
         }
@@ -192,17 +191,14 @@ function CoursesPage() {
               variants={fadeInUp}
               transition={{ duration: 0.35, ease: "easeOut" }}
               whileHover={{ y: -6 }}
-              className="overflow-hidden rounded-[26px] border border-[#e6ece8] bg-white shadow-[0_6px_28px_rgba(35,48,57,0.06)] flex flex-col"
+              className="overflow-hidden rounded-[26px] border border-[#e6ece8] bg-white shadow-[0_6px_28px_rgba(35,48,57,0.06)] flex flex-col h-full"
             >
-              <div
-                className={cn(
-                  "relative h-[220px] overflow-hidden bg-slate-100 flex items-center justify-center",
-                )}
-              >
-                <CourseImage 
-                  title={course.title} 
-                  coverMediaId={course.coverMediaId} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+              {/* Fixed-height image area */}
+              <div className="relative h-[200px] overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+                <CourseImage
+                  title={course.title}
+                  coverMediaId={course.coverMediaId}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent" />
                 {course.isPremium && (
@@ -215,21 +211,27 @@ function CoursesPage() {
                 </p>
               </div>
 
+              {/* Fixed-layout content area */}
               <div className="px-4 pb-4 pt-3.5 flex flex-col flex-1">
-                <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.03em] text-[#92a09d]">
+                {/* Level badge - fixed height */}
+                <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.03em] text-[#92a09d] h-6">
                   <span className="rounded-full bg-[#eef4ef] px-2 py-0.5 text-[#5f776b]">
                     {course.level || "Cơ bản"}
                   </span>
                 </div>
 
-                <h2 className="mt-2 text-[1.55rem] font-bold leading-tight text-[#1f2e39] line-clamp-2">
+                {/* Title - fixed 2 lines */}
+                <h2 className="mt-2 text-[1.35rem] font-bold leading-snug text-[#1f2e39] line-clamp-2 min-h-[3.4rem]">
                   {course.title}
                 </h2>
-                <p className="mt-2 text-[0.95rem] text-[#74818a] line-clamp-2">
+
+                {/* Description - fixed 2 lines */}
+                <p className="mt-2 text-[0.9rem] text-[#74818a] line-clamp-2 min-h-[2.7rem]">
                   {course.description || course.summary || "Chưa có mô tả"}
                 </p>
 
-                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
+                {/* Button pushed to bottom */}
+                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-auto pt-4" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
                   <Button className="h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
                     {common.buttons.startLearning}
                     <ArrowRight className="ml-1 h-4 w-4" />
@@ -252,9 +254,9 @@ function CoursesPage() {
         )}
       </div>
 
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
         message="Bạn cần đăng nhập để xem chi tiết bài học và tham gia khóa học."
       />
     </motion.section>

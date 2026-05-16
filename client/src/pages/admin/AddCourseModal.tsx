@@ -21,6 +21,8 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
   const [moduleData, setModuleData] = useState({ title: "" });
   const [lessonData, setLessonData] = useState({
     title: "",
+    shortDescription: "",
+    objectiveText: "",
     lessonType: "Video",
     difficultyLevel: "Beginner",
     estimatedMinutes: 10,
@@ -145,10 +147,12 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
           moduleId: moduleId,
           title: lessonData.title,
           slug: generateSlug(lessonData.title),
+          shortDescription: lessonData.shortDescription,
+          objectiveText: lessonData.objectiveText,
           lessonType: lessonData.lessonType,
           difficultyLevel: lessonData.difficultyLevel,
-          estimatedMinutes: lessonData.estimatedMinutes,
-          xpReward: lessonData.xpReward,
+          estimatedMinutes: Number(lessonData.estimatedMinutes),
+          xpReward: Number(lessonData.xpReward),
           sortOrder: 1
         })
       });
@@ -339,15 +343,80 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
           {step === 4 && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 className="text-lg font-semibold text-slate-800 mb-2">Bài học đầu tiên & Video (Lesson)</h3>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tên bài học *</label>
-                <input
-                  type="text"
-                  value={lessonData.title}
-                  onChange={e => setLessonData({ ...lessonData, title: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
-                  placeholder="Ví dụ: Bài 1: Xin chào & Tạm biệt"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tên bài học *</label>
+                  <input
+                    type="text"
+                    value={lessonData.title}
+                    onChange={e => setLessonData({ ...lessonData, title: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                    placeholder="Ví dụ: Bài 1: Xin chào & Tạm biệt"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Mô tả ngắn</label>
+                  <textarea
+                    value={lessonData.shortDescription}
+                    onChange={e => setLessonData({ ...lessonData, shortDescription: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50 min-h-[60px]"
+                    placeholder="Mô tả ngắn gọn về bài học..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Mục tiêu (Objective)</label>
+                  <input
+                    type="text"
+                    value={lessonData.objectiveText}
+                    onChange={e => setLessonData({ ...lessonData, objectiveText: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                    placeholder="VD: Học viên nắm được bảng chữ cái"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Loại bài học</label>
+                  <select
+                    value={lessonData.lessonType}
+                    onChange={e => setLessonData({ ...lessonData, lessonType: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                  >
+                    <option value="Video">Video</option>
+                    <option value="Text">Văn bản</option>
+                    <option value="Quiz">Trắc nghiệm</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Độ khó</label>
+                  <select
+                    value={lessonData.difficultyLevel}
+                    onChange={e => setLessonData({ ...lessonData, difficultyLevel: e.target.value })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                  >
+                    <option value="Beginner">Beginner (Cơ bản)</option>
+                    <option value="Intermediate">Intermediate (Trung cấp)</option>
+                    <option value="Advanced">Advanced (Nâng cao)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Thời gian học (phút)</label>
+                  <input
+                    type="number"
+                    value={lessonData.estimatedMinutes}
+                    onChange={e => setLessonData({ ...lessonData, estimatedMinutes: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                    min="1"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">XP Nhận được</label>
+                  <input
+                    type="number"
+                    value={lessonData.xpReward}
+                    onChange={e => setLessonData({ ...lessonData, xpReward: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                    min="0"
+                  />
+                </div>
               </div>
 
               <div className="mt-4 p-4 border-2 border-dashed border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
@@ -376,10 +445,15 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
 
               <div className="bg-slate-50 p-4 rounded-xl text-left mt-6 space-y-2 text-sm text-slate-700 border border-slate-200">
                 <p><strong>Danh mục:</strong> {categoryData.name}</p>
-                <p><strong>Khóa học:</strong> {courseData.title} ({courseData.level})</p>
+                <p><strong>Khóa học:</strong> {courseData.title} <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">{courseData.level}</span> {courseData.isPremium && <span className="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">Premium</span>}</p>
                 <p><strong>Chương học:</strong> {moduleData.title}</p>
-                <p><strong>Bài học:</strong> {lessonData.title}</p>
-                <p><strong>Video:</strong> {videoFile?.name}</p>
+                <div className="border-t border-slate-200 my-2 pt-2"></div>
+                <p><strong>Tên bài học:</strong> {lessonData.title}</p>
+                <p><strong>Phân loại:</strong> {lessonData.lessonType} • {lessonData.difficultyLevel}</p>
+                <p><strong>Thời gian & Phần thưởng:</strong> {lessonData.estimatedMinutes} phút • {lessonData.xpReward} XP</p>
+                <p><strong>Mô tả ngắn:</strong> {lessonData.shortDescription || <i>Trống</i>}</p>
+                <p><strong>Mục tiêu:</strong> {lessonData.objectiveText || <i>Trống</i>}</p>
+                <p><strong>Video:</strong> {videoFile ? <span className="text-green-600 font-medium">{videoFile.name}</span> : <span className="text-red-500 font-medium">Chưa chọn video (bắt buộc)</span>}</p>
               </div>
             </div>
           )}

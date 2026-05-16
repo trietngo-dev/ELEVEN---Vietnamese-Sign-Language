@@ -16,7 +16,7 @@ export const viText = {
       { label: "Trang chủ", to: "/" },
       { label: "Khóa học", to: "/khoa-hoc" },
       { label: "Từ điển", to: "/tu-dien" },
-      { label: "Đánh giá", to: "/danh-gia" },
+      { label: "Hỗ trợ", to: "/danh-gia" },
     ],
   },
   footer: {
@@ -124,25 +124,25 @@ export const viText = {
 
   reviewPage: {
     hero: {
-      title: "Đóng góp ý kiến",
+      title: "Trung tâm hỗ trợ",
       description:
-        "Cảm nhận của bạn về ứng dụng là động lực để chúng tôi cải thiện mỗi ngày.",
+        "Chúng tôi luôn sẵn sàng hỗ trợ bạn. Hãy gửi yêu cầu và đội ngũ Eleven sẽ phản hồi trong thời gian sớm nhất.",
     },
     rating: {
-      prompt: "Trải nghiệm của bạn?",
-      veryBad: "Rất tệ",
-      notGood: "Chưa tốt",
+      prompt: "Mức độ cấp thiết?",
+      veryBad: "Rất gấp",
+      notGood: "Gấp",
       normal: "Bình thường",
-      satisfied: "Hài lòng",
-      verySatisfied: "Rất hài lòng",
+      satisfied: "Không vội",
+      verySatisfied: "Tham khảo",
     },
     form: {
-      categoryLabel: "Danh mục phản hồi",
-      categoryPlaceholder: "Chọn danh mục...",
-      detailLabel: "Chi tiết phản hồi",
+      categoryLabel: "Loại yêu cầu hỗ trợ",
+      categoryPlaceholder: "Chọn loại yêu cầu...",
+      detailLabel: "Mô tả chi tiết vấn đề",
       detailPlaceholder:
-        "Hãy cho chúng tôi biết chi tiết hơn về ý kiến của bạn...",
-      submitButton: "Gửi phản hồi",
+        "Vui lòng mô tả chi tiết vấn đề bạn đang gặp phải để chúng tôi hỗ trợ nhanh hơn...",
+      submitButton: "Gửi yêu cầu hỗ trợ",
     },
   },
 

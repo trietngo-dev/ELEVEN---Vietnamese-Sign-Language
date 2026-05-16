@@ -7,6 +7,8 @@ public interface IUserLessonProgressRepository
     Task<IReadOnlyList<UserLessonProgress>> GetPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default);
     Task<int> CountAsync(CancellationToken cancellationToken = default);
     Task<UserLessonProgress?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+    Task<UserLessonProgress?> GetByUserAndLessonAsync(long userId, long lessonId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserLessonProgress>> GetByUserAndCourseAsync(long userId, long courseId, CancellationToken cancellationToken = default);
     Task<bool> ExistsByUserAndLessonAsync(long userId, long lessonId, long? excludeId = null, CancellationToken cancellationToken = default);
     Task<UserLessonProgress> AddAsync(UserLessonProgress entity, CancellationToken cancellationToken = default);
     Task<UserLessonProgress> UpdateAsync(UserLessonProgress entity, CancellationToken cancellationToken = default);

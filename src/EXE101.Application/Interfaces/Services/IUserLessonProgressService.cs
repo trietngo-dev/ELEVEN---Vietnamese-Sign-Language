@@ -9,5 +9,7 @@ public interface IUserLessonProgressService
     Task<UserLessonProgressResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<UserLessonProgressResponse> CreateAsync(CreateUserLessonProgressRequest request, CancellationToken cancellationToken = default);
     Task<UserLessonProgressResponse?> UpdateAsync(long id, UpdateUserLessonProgressRequest request, CancellationToken cancellationToken = default);
+    Task<UserLessonProgressResponse> UpsertAsync(CreateUserLessonProgressRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserLessonProgressResponse>> GetByUserAndCourseAsync(long userId, long courseId, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
 }
