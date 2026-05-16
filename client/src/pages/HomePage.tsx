@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
 import { BookOpen, Users, Zap, ArrowRight, Clock, ChevronRight, Video } from "lucide-react";
+import CourseImage from "@/components/CourseImage";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -214,10 +215,10 @@ export default function HomePage() {
               {courses.length > 0 ? courses.map((course) => (
                 <Link key={course.id} to={`/khoa-hoc/${course.id}`} className="group rounded-3xl overflow-hidden border border-slate-200 bg-white hover:shadow-lg hover:-translate-y-1 transition-all">
                   <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 relative overflow-hidden">
-                    <img
-                      src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=600&auto=format&fit=crop&q=60"
-                      alt={course.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    <CourseImage
+                      title={course.title}
+                      coverMediaId={course.coverMediaId}
+                      className="w-full h-full object-cover"
                     />
                   </div>
                   <div className="px-4 py-3">
