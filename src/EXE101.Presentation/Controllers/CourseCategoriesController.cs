@@ -1,6 +1,5 @@
 using EXE101.Application.Interfaces.Services;
 using EXE101.Application.Models.CourseCategories;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EXE101.Presentation.Controllers;
@@ -9,7 +8,6 @@ namespace EXE101.Presentation.Controllers;
 [Route("api/course_categories")]
 public sealed class CourseCategoriesController(ICourseCategoryService service) : ControllerBase
 {
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
@@ -17,7 +15,6 @@ public sealed class CourseCategoriesController(ICourseCategoryService service) :
         return Ok(result);
     }
 
-    [AllowAnonymous]
     [HttpGet("{id:long}")]
     public async Task<IActionResult> GetById([FromRoute] long id, CancellationToken cancellationToken = default)
     {

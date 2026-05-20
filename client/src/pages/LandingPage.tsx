@@ -10,9 +10,6 @@ import {
 } from "../components/ui/card";
 import { viText } from "../locales/vi";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import LoginModal from "../components/LoginModal";
 
 const featureIcons = [Bot, BookOpenCheck, Mic2] as const;
 
@@ -34,17 +31,6 @@ const staggerContainer = {
 function LandingPage() {
   const { common, landing } = viText;
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-  const [showLoginModal, setShowLoginModal] = useState(false);
-
-  const handleProtectedAction = (e: React.MouseEvent, path: string) => {
-    if (!isAuthenticated) {
-      e.preventDefault();
-      setShowLoginModal(true);
-    } else {
-      navigate(path);
-    }
-  };
 
   return (
     <>
@@ -82,12 +68,12 @@ function LandingPage() {
               className="mx-auto mt-7 flex w-full max-w-md flex-col items-center gap-3 sm:flex-row sm:justify-center lg:mx-0 lg:max-w-none lg:justify-start"
             >
               <Button
-                onClick={(e) => handleProtectedAction(e, "*")}
+                onClick={() => navigate("*")}
                 className="w-full sm:w-auto"
               >
                 {common.buttons.tryTranslator}
               </Button>
-              <Button variant="outline" className="w-full sm:w-auto" onClick={() => navigate("/khoa-hoc")}>
+              <Button variant="outline" className="w-full sm:w-auto">
                 {common.buttons.startLearning}
               </Button>
             </motion.div>
@@ -201,12 +187,6 @@ function LandingPage() {
           </Button>
         </motion.div>
       </section>
-
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
-        message="Bạn cần đăng nhập để sử dụng tính năng Dịch ngôn ngữ ký hiệu AI."
-      />
     </>
   );
 }

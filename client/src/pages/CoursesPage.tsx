@@ -6,9 +6,7 @@ import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
 import { tokenStorage } from "../lib/auth";
 import CourseImage from "../components/CourseImage";
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import LoginModal from "../components/LoginModal";
+import { Link } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -33,16 +31,6 @@ function CoursesPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { isAuthenticated } = useAuth();
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const navigate = useNavigate();
-
-  const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
-    if (!isAuthenticated) {
-      e.preventDefault();
-      setShowLoginModal(true);
-    }
-  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -116,7 +104,7 @@ function CoursesPage() {
             </div>
           </div>
 
-          <Link to="/nang-cap" onClick={(e) => handleProtectedLink(e, "/nang-cap")}>
+          <Link to="/nang-cap">
             <Button
               size="sm"
               className="mt-3 h-9 bg-[#efca4c] px-5 text-[0.8rem] font-bold text-[#4b3c14] shadow-none hover:translate-y-0 hover:bg-[#e7c13f] md:mt-0"
@@ -230,17 +218,17 @@ function CoursesPage() {
                   {course.description || course.summary || "Chưa có mô tả"}
                 </p>
 
-                {/* Button pushed to bottom */}
-                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-auto pt-4" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
+                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5">
                   <Button className="h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
                     {common.buttons.startLearning}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </Link>
               </div>
-            </motion.article>
-          ))}
-        </motion.div>
+            </motion.article >
+          ))
+          }
+        </motion.div >
 
         {!isLoading && visibleCourses.length === 0 && (
           <motion.p
@@ -252,14 +240,8 @@ function CoursesPage() {
             {coursesPage.labels.empty}
           </motion.p>
         )}
-      </div>
-
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-        message="Bạn cần đăng nhập để xem chi tiết bài học và tham gia khóa học."
-      />
-    </motion.section>
+      </div >
+    </motion.section >
   );
 }
 
