@@ -33,6 +33,40 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [createdResult, setCreatedResult] = useState({ categoryId: 0, courseId: 0, moduleId: 0, lessonId: 0, videoUrl: "" });
 
+  // Categories Selection
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [isCreatingNewCategory, setIsCreatingNewCategory] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const fetchCategories = async () => {
+        try {
+          const authToken = tokenStorage.getToken();
+          const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+          const res = await fetch(`${API_BASE_URL}/api/course_categories?pageSize=100`, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            const items = data.items || [];
+            setCategories(items);
+            if (items.length > 0) {
+              setSelectedCategoryId(items[0].id.toString());
+              setIsCreatingNewCategory(false);
+            } else {
+              setIsCreatingNewCategory(true);
+            }
+          } else {
+            setIsCreatingNewCategory(true);
+          }
+        } catch (e) {
+          console.error("Failed to fetch categories", e);
+          setIsCreatingNewCategory(true);
+        }
+      };
+      fetchCategories();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const generateSlug = (text: string) => {
@@ -45,8 +79,13 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
 
   const handleNext = () => {
     setError(null);
-    if (step === 1 && !categoryData.name.trim()) {
-      setError("Vui lòng nhập tên danh mục"); return;
+    if (step === 1) {
+      if (isCreatingNewCategory && !categoryData.name.trim()) {
+        setError("Vui lòng nhập tên danh mục"); return;
+      }
+      if (!isCreatingNewCategory && !selectedCategoryId) {
+        setError("Vui lòng chọn danh mục"); return;
+      }
     }
     if (step === 2 && !courseData.title.trim()) {
       setError("Vui lòng nhập tên khóa học"); return;
@@ -75,19 +114,24 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
       };
 
-      // 1. Create Category
-      const catRes = await fetch(`${API_BASE_URL}/api/course_categories`, {
-        method: "POST", headers,
-        body: JSON.stringify({
-          name: categoryData.name,
-          slug: generateSlug(categoryData.name),
-          description: categoryData.description,
-          colorHex: "#3c6c44"
-        })
-      });
-      if (!catRes.ok) throw new Error("Lỗi khi tạo danh mục (Category)");
-      const catObj = await catRes.json();
-      const categoryId = catObj.id;
+      // 1. Create or Resolve Category
+      let categoryId: number;
+      if (isCreatingNewCategory) {
+        const catRes = await fetch(`${API_BASE_URL}/api/course_categories`, {
+          method: "POST", headers,
+          body: JSON.stringify({
+            name: categoryData.name,
+            slug: generateSlug(categoryData.name),
+            description: categoryData.description,
+            colorHex: "#3c6c44"
+          })
+        });
+        if (!catRes.ok) throw new Error("Lỗi khi tạo danh mục (Category)");
+        const catObj = await catRes.json();
+        categoryId = catObj.id;
+      } else {
+        categoryId = parseInt(selectedCategoryId, 10);
+      }
 
       // 1.5 Upload Course Image (if exists)
       let coverMediaId: number | null = null;
@@ -235,25 +279,51 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
           {step === 1 && (
             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
               <h3 className="text-lg font-semibold text-slate-800 mb-2">Thông tin danh mục (Category)</h3>
+              
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Tên danh mục *</label>
-                <input
-                  type="text"
-                  value={categoryData.name}
-                  onChange={e => setCategoryData({ ...categoryData, name: e.target.value })}
+                <label className="block text-sm font-medium text-slate-700 mb-1">Chọn danh mục khóa học</label>
+                <select
+                  value={isCreatingNewCategory ? "new" : selectedCategoryId}
+                  onChange={e => {
+                    if (e.target.value === "new") {
+                      setIsCreatingNewCategory(true);
+                    } else {
+                      setIsCreatingNewCategory(false);
+                      setSelectedCategoryId(e.target.value);
+                    }
+                  }}
                   className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
-                  placeholder="Ví dụ: Giao tiếp cơ bản"
-                />
+                >
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                  <option value="new">+ Tạo danh mục mới</option>
+                </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Mô tả danh mục</label>
-                <textarea
-                  value={categoryData.description}
-                  onChange={e => setCategoryData({ ...categoryData, description: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50 min-h-[100px]"
-                  placeholder="Mô tả danh mục..."
-                />
-              </div>
+
+              {isCreatingNewCategory && (
+                <div className="space-y-4 pt-2 border-t border-slate-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Tên danh mục *</label>
+                    <input
+                      type="text"
+                      value={categoryData.name}
+                      onChange={e => setCategoryData({ ...categoryData, name: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
+                      placeholder="Ví dụ: Giao tiếp cơ bản"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Mô tả danh mục</label>
+                    <textarea
+                      value={categoryData.description}
+                      onChange={e => setCategoryData({ ...categoryData, description: e.target.value })}
+                      className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50 min-h-[100px]"
+                      placeholder="Mô tả danh mục..."
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

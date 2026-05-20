@@ -11,10 +11,12 @@ namespace EXE101.Infrastructure.Services;
 
 public sealed class LessonService(
     ILessonRepository repository,
-    AppDbContext dbContext) : ILessonService
+    AppDbContext dbContext,
+    IMediaAssetService mediaAssetService) : ILessonService
 {
     private readonly ILessonRepository _repository = repository;
     private readonly AppDbContext _dbContext = dbContext;
+    private readonly IMediaAssetService _mediaAssetService = mediaAssetService;
 
     public async Task<PagedResult<LessonResponse>> GetPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
@@ -97,6 +99,8 @@ public sealed class LessonService(
             throw new InvalidOperationException("Lesson slug already exists.");
         }
 
+        var oldVideoMediaId = entity.VideoMediaId;
+
         entity.CourseId = request.CourseId;
         entity.ModuleId = request.ModuleId;
         entity.Title = request.Title.Trim();
@@ -117,6 +121,16 @@ public sealed class LessonService(
         entity.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
+
+        if (oldVideoMediaId.HasValue && oldVideoMediaId.Value != request.VideoMediaId)
+        {
+            var isShared = await _dbContext.Lessons.AnyAsync(x => x.Id != id && x.VideoMediaId == oldVideoMediaId.Value, cancellationToken);
+            if (!isShared)
+            {
+                await _mediaAssetService.DeleteAsync(oldVideoMediaId.Value, cancellationToken);
+            }
+        }
+
         return Map(updated);
     }
 
@@ -139,10 +153,21 @@ public sealed class LessonService(
             throw new InvalidOperationException("Video media does not exist.");
         }
 
+        var oldVideoMediaId = entity.VideoMediaId;
+
         entity.VideoMediaId = request.VideoMediaId;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _repository.UpdateAsync(entity, cancellationToken);
+
+        if (oldVideoMediaId.HasValue && oldVideoMediaId.Value != request.VideoMediaId)
+        {
+            var isShared = await _dbContext.Lessons.AnyAsync(x => x.Id != id && x.VideoMediaId == oldVideoMediaId.Value, cancellationToken);
+            if (!isShared)
+            {
+                await _mediaAssetService.DeleteAsync(oldVideoMediaId.Value, cancellationToken);
+            }
+        }
 
         var updatedLesson = await _dbContext.Lessons
             .AsNoTracking()
@@ -152,8 +177,28 @@ public sealed class LessonService(
         return updatedLesson is null ? null : MapDetail(updatedLesson);
     }
 
-    public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
-        => _repository.DeleteAsync(id, cancellationToken);
+    public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity is null)
+        {
+            return false;
+        }
+
+        var videoMediaId = entity.VideoMediaId;
+
+        var deleted = await _repository.DeleteAsync(id, cancellationToken);
+        if (deleted && videoMediaId.HasValue)
+        {
+            var isShared = await _dbContext.Lessons.AnyAsync(x => x.VideoMediaId == videoMediaId.Value, cancellationToken);
+            if (!isShared)
+            {
+                await _mediaAssetService.DeleteAsync(videoMediaId.Value, cancellationToken);
+            }
+        }
+
+        return deleted;
+    }
 
     private static void ValidateRequired(string title, string slug, string lessonType, string difficultyLevel, int estimatedMinutes, int xpReward)
     {

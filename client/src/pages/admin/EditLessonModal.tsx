@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Loader2, Save } from "lucide-react";
+import { X, Loader2, Save, UploadCloud, CheckCircle2, Video } from "lucide-react";
 import { tokenStorage } from "../../lib/auth";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -13,6 +13,7 @@ type EditLessonModalProps = {
 
 const EditLessonModal: React.FC<EditLessonModalProps> = ({ isOpen, onClose, onSuccess, lesson }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [lessonData, setLessonData] = useState({
@@ -26,6 +27,13 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ isOpen, onClose, onSu
     status: 1
   });
 
+  // Existing Video info
+  const [currentVideoMediaId, setCurrentVideoMediaId] = useState<number | null>(null);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string | null>(null);
+
+  // New Video upload
+  const [newVideoFile, setNewVideoFile] = useState<File | null>(null);
+
   useEffect(() => {
     if (lesson) {
       setLessonData({
@@ -38,10 +46,50 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ isOpen, onClose, onSu
         xpReward: lesson.xpReward || 50,
         status: lesson.status ?? 1
       });
+      setCurrentVideoMediaId(lesson.videoMediaId || null);
+      setCurrentVideoUrl(null);
+      setNewVideoFile(null);
+
+      // Fetch full lesson details to get current video URL
+      const fetchDetails = async () => {
+        setIsLoadingDetails(true);
+        try {
+          const authToken = tokenStorage.getToken();
+          const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+          const res = await fetch(`${API_BASE_URL}/api/lessons/${lesson.id}`, { headers });
+          if (res.ok) {
+            const data = await res.json();
+            setCurrentVideoUrl(data.videoUrl || null);
+            if (data.videoMediaId) {
+              setCurrentVideoMediaId(data.videoMediaId);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load full lesson details in EditLessonModal", e);
+        } finally {
+          setIsLoadingDetails(false);
+        }
+      };
+      
+      fetchDetails();
     }
   }, [lesson]);
 
   if (!isOpen || !lesson) return null;
+
+  const generateSlug = (text: string) => {
+    return text.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setNewVideoFile(e.target.files[0]);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!lessonData.title.trim()) {
@@ -53,14 +101,37 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ isOpen, onClose, onSu
     setError(null);
     try {
       const authToken = tokenStorage.getToken();
+      let videoMediaId = currentVideoMediaId;
+
+      // 1. Upload new video if provided
+      if (newVideoFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", newVideoFile);
+        
+        const uploadHeaders: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+        const uploadRes = await fetch(`${API_BASE_URL}/api/media_assets/upload`, {
+          method: "POST",
+          headers: uploadHeaders,
+          body: uploadFormData
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Lỗi khi tải video mới lên hệ thống");
+        }
+
+        const uploadObj = await uploadRes.json();
+        videoMediaId = uploadObj.id;
+      }
       
       const payload = {
         courseId: lesson.courseId,
         moduleId: lesson.moduleId,
-        title: lessonData.title,
-        slug: lesson.slug || lessonData.title.toLowerCase().replace(/ /g, '-'),
-        shortDescription: lessonData.shortDescription,
-        objectiveText: lessonData.objectiveText,
+        title: lessonData.title.trim(),
+        slug: generateSlug(lessonData.title),
+        shortDescription: lessonData.shortDescription.trim() || null,
+        objectiveText: lessonData.objectiveText.trim() || null,
+        coverMediaId: lesson.coverMediaId || null,
+        videoMediaId,
         lessonType: lessonData.lessonType,
         difficultyLevel: lessonData.difficultyLevel,
         estimatedMinutes: Number(lessonData.estimatedMinutes),
@@ -79,10 +150,12 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ isOpen, onClose, onSu
       });
 
       if (!res.ok) {
-        throw new Error("Lỗi khi cập nhật bài học");
+        const resData = await res.json().catch(() => ({}));
+        throw new Error(resData.message || "Lỗi khi cập nhật bài học");
       }
 
       onSuccess();
+      onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Có lỗi xảy ra");
     } finally {
@@ -188,6 +261,41 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ isOpen, onClose, onSu
                 className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
                 min="0"
               />
+            </div>
+
+            {/* Video Management Section */}
+            <div className="md:col-span-2 pt-4 border-t border-slate-100 space-y-3">
+              <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Video size={16} className="text-[#3c6c44]" /> Quản lý Video bài học
+              </h4>
+
+              {isLoadingDetails ? (
+                <div className="flex items-center justify-center py-4 text-xs text-slate-400">
+                  <Loader2 size={16} className="animate-spin mr-2" /> Đang tải thông tin video...
+                </div>
+              ) : currentVideoUrl ? (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <p className="text-xs text-slate-500 font-semibold">Video hiện tại:</p>
+                  <video src={currentVideoUrl} controls className="w-full aspect-video rounded-lg bg-black" />
+                  <p className="text-[11px] text-slate-400 break-all">{currentVideoUrl}</p>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Bài học này chưa được gán video chính thức.</p>
+              )}
+
+              <div className="p-4 border-2 border-dashed border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
+                <label className="flex flex-col items-center justify-center cursor-pointer min-h-[100px]">
+                  <UploadCloud size={28} className="text-[#3c6c44] mb-1" />
+                  <span className="text-sm font-medium text-slate-700">Thay thế bằng video mới</span>
+                  <span className="text-xs text-slate-500 mt-0.5">Tải lên file video để ghi đè video cũ</span>
+                  <input type="file" className="hidden" accept="video/*" onChange={handleFileChange} />
+                </label>
+                {newVideoFile && (
+                  <div className="mt-3 p-2 bg-[#3c6c44]/10 rounded-lg flex items-center gap-2 text-sm text-[#3c6c44] font-medium">
+                    <CheckCircle2 size={16} /> <span>{newVideoFile.name} ({(newVideoFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

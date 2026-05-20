@@ -184,6 +184,44 @@ public sealed class MediaAssetService(
         return Map(updated);
     }
 
+    public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        if (id <= 0)
+        {
+            throw new InvalidOperationException("Id must be greater than zero.");
+        }
+
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity is null)
+        {
+            return false;
+        }
+
+        // Try to delete from Supabase storage
+        try
+        {
+            var supabaseClient = await CreateSupabaseClientAsync(cancellationToken);
+            var bucket = ResolveBucketName(entity.MediaType);
+            
+            // Extract object path from FileUrl
+            var bucketSegment = $"/{bucket}/";
+            var index = entity.FileUrl.IndexOf(bucketSegment, StringComparison.OrdinalIgnoreCase);
+            if (index != -1)
+            {
+                var objectPath = entity.FileUrl[(index + bucketSegment.Length)..];
+                await supabaseClient.Storage.From(bucket).Remove(new List<string> { objectPath });
+            }
+        }
+        catch (Exception)
+        {
+            // Do not block database deletion if storage deletion fails, but we could log it.
+        }
+
+        _dbContext.MediaAssets.Remove(entity);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private async Task ValidateOwnerAsync(long? ownerUserId, CancellationToken cancellationToken)
     {
         if (!ownerUserId.HasValue)
