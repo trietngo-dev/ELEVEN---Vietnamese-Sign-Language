@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { X, Loader2, Clock, ListVideo, Layers, Edit } from "lucide-react";
+import { X, Loader2, Clock, ListVideo, Layers, Edit, Trash2, Plus, Check } from "lucide-react";
 import { tokenStorage } from "../../lib/auth";
 import EditLessonModal from "./EditLessonModal";
+import AddLessonModal from "./AddLessonModal";
 import demoVideo from "../../assets/videoCourse/W00489.mp4";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -20,6 +21,14 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
   const [lessonVideoUrls, setLessonVideoUrls] = useState<Record<number, string>>({});
   const [fetchedLessonIds, setFetchedLessonIds] = useState<Set<number>>(new Set());
   const [editingLesson, setEditingLesson] = useState<any | null>(null);
+
+  // New chapter & lesson management state
+  const [addingLessonToModuleId, setAddingLessonToModuleId] = useState<number | null>(null);
+  const [isAddingModule, setIsAddingModule] = useState(false);
+  const [newModuleTitle, setNewModuleTitle] = useState("");
+  const [editingModuleId, setEditingModuleId] = useState<number | null>(null);
+  const [editingModuleTitle, setEditingModuleTitle] = useState("");
+  const [isSavingModule, setIsSavingModule] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -99,6 +108,123 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
     setFetchedLessonIds(prev => new Set(prev).add(lesson.id));
   };
 
+  const handleAddModule = async () => {
+    if (!newModuleTitle.trim() || isSavingModule) return;
+    setIsSavingModule(true);
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers = {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+      };
+      const res = await fetch(`${API_BASE_URL}/api/course_modules`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          courseId: course.id,
+          title: newModuleTitle.trim(),
+          sortOrder: modules.length + 1,
+          isPreview: false
+        })
+      });
+      if (res.ok) {
+        setNewModuleTitle("");
+        setIsAddingModule(false);
+        await fetchData();
+      } else {
+        alert("Lỗi khi thêm chương mới");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Đã xảy ra lỗi");
+    } finally {
+      setIsSavingModule(false);
+    }
+  };
+
+  const handleRenameModule = async (mod: any) => {
+    if (!editingModuleTitle.trim() || isSavingModule) return;
+    setIsSavingModule(true);
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json"
+      };
+      if (authToken) {
+        headers["Authorization"] = `Bearer ${authToken}`;
+      }
+      const res = await fetch(`${API_BASE_URL}/api/course_modules/${mod.id}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({
+          courseId: course.id,
+          title: editingModuleTitle.trim(),
+          sortOrder: mod.sortOrder,
+          isPreview: mod.isPreview,
+          description: mod.description
+        })
+      });
+      if (res.ok) {
+        setEditingModuleId(null);
+        setEditingModuleTitle("");
+        await fetchData();
+      } else {
+        alert("Lỗi khi đổi tên chương");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Đã xảy ra lỗi");
+    } finally {
+      setIsSavingModule(false);
+    }
+  };
+
+  const handleDeleteModule = async (moduleId: number) => {
+    const moduleLessons = lessons.filter(l => l.moduleId === moduleId);
+    if (moduleLessons.length > 0) {
+      alert("Không thể xóa chương học đang chứa bài học. Vui lòng xóa hết các bài học trước.");
+      return;
+    }
+    if (!window.confirm("Bạn có chắc chắn muốn xóa chương học này?")) return;
+
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const res = await fetch(`${API_BASE_URL}/api/course_modules/${moduleId}`, {
+        method: "DELETE",
+        headers
+      });
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert("Lỗi khi xóa chương học");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: number) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bài học này?")) return;
+
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const res = await fetch(`${API_BASE_URL}/api/lessons/${lessonId}`, {
+        method: "DELETE",
+        headers
+      });
+      if (res.ok) {
+        if (playingLessonId === lessonId) setPlayingLessonId(null);
+        fetchData();
+      } else {
+        alert("Lỗi khi xóa bài học");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   if (!isOpen || !course) return null;
 
   return (
@@ -135,7 +261,48 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
             <div className="flex justify-center py-6"><Loader2 size={24} className="animate-spin text-slate-400" /></div>
           ) : (
             <div className="space-y-4">
-              <h4 className="font-bold flex items-center gap-2"><Layers size={18} className="text-[#3c6c44]" /> Nội dung chương trình</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold flex items-center gap-2">
+                  <Layers size={18} className="text-[#3c6c44]" /> Nội dung chương trình
+                </h4>
+                {!isAddingModule ? (
+                  <button
+                    onClick={() => setIsAddingModule(true)}
+                    className="flex items-center gap-1 text-xs font-bold text-[#3c6c44] hover:text-[#325b3a] bg-[#3c6c44]/10 hover:bg-[#3c6c44]/20 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Plus size={14} /> Thêm chương mới
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newModuleTitle}
+                      onChange={e => setNewModuleTitle(e.target.value)}
+                      placeholder="Tên chương học..."
+                      className="px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/30 w-44"
+                    />
+                    <button
+                      onClick={handleAddModule}
+                      disabled={isSavingModule}
+                      className="p-1 text-white bg-[#3c6c44] rounded hover:bg-[#325b3a] disabled:opacity-50 flex items-center justify-center min-w-[24px] min-h-[24px]"
+                      title="Lưu"
+                    >
+                      {isSavingModule ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsAddingModule(false);
+                        setNewModuleTitle("");
+                      }}
+                      className="p-1 text-slate-500 bg-slate-100 rounded hover:bg-slate-200"
+                      title="Hủy"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {modules.length === 0 ? (
                 <p className="text-sm text-slate-500 italic">Chưa có chương học nào.</p>
               ) : (
@@ -143,14 +310,74 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
                   {modules.sort((a,b)=>a.sortOrder-b.sortOrder).map(mod => {
                     const modLessons = lessons.filter(l => l.moduleId === mod.id).sort((a,b)=>a.sortOrder-b.sortOrder);
                     return (
-                      <div key={mod.id} className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="bg-slate-50 px-4 py-3 font-semibold text-slate-800 text-sm">
-                          {mod.title}
+                      <div key={mod.id} className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                        <div className="bg-slate-50 px-4 py-3 flex items-center justify-between font-semibold text-slate-800 text-sm border-b border-slate-100">
+                          {editingModuleId === mod.id ? (
+                            <div className="flex items-center gap-2 w-full max-w-xs">
+                              <input
+                                type="text"
+                                value={editingModuleTitle}
+                                onChange={e => setEditingModuleTitle(e.target.value)}
+                                className="px-2 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/30 w-full"
+                              />
+                              <button
+                                onClick={() => handleRenameModule(mod)}
+                                disabled={isSavingModule}
+                                className="p-1.5 text-white bg-[#3c6c44] rounded-lg hover:bg-[#325b3a] disabled:opacity-50 flex items-center justify-center min-w-[24px] min-h-[24px]"
+                                title="Lưu"
+                              >
+                                {isSavingModule ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingModuleId(null);
+                                  setEditingModuleTitle("");
+                                }}
+                                className="p-1.5 text-slate-500 bg-slate-100 rounded-lg hover:bg-slate-200"
+                                title="Hủy"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="truncate">{mod.title}</span>
+                          )}
+
+                          {editingModuleId !== mod.id && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => {
+                                  setAddingLessonToModuleId(mod.id);
+                                }}
+                                className="flex items-center gap-0.5 text-xs bg-white border border-[#3c6c44]/30 text-[#3c6c44] hover:bg-[#3c6c44] hover:text-white px-2 py-1 rounded-lg transition-all shadow-sm font-bold"
+                                title="Thêm bài học mới"
+                              >
+                                <Plus size={12} /> Bài học
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingModuleId(mod.id);
+                                  setEditingModuleTitle(mod.title);
+                                }}
+                                className="p-1.5 text-slate-500 hover:text-[#3c6c44] hover:bg-white/80 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                                title="Sửa tên chương"
+                              >
+                                <Edit size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteModule(mod.id)}
+                                className="p-1.5 text-slate-500 hover:text-red-500 hover:bg-white/80 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                                title="Xóa chương"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                         {modLessons.length === 0 ? (
-                          <div className="p-4 text-xs text-slate-400">Không có bài học</div>
+                          <div className="p-4 text-xs text-slate-400 italic bg-white">Không có bài học trong chương này</div>
                         ) : (
-                          <div className="divide-y divide-slate-100">
+                          <div className="divide-y divide-slate-100 bg-white">
                             {modLessons.map(lesson => (
                               <div key={lesson.id} className="flex flex-col border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
                                 <div className="px-4 py-3 flex items-center justify-between w-full">
@@ -172,6 +399,13 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
                                       title="Chỉnh sửa bài học"
                                     >
                                       <Edit size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteLesson(lesson.id)}
+                                      className="p-1.5 hover:bg-red-50 rounded-lg text-slate-500 hover:text-red-500 transition-colors"
+                                      title="Xóa bài học"
+                                    >
+                                      <Trash2 size={14} />
                                     </button>
                                   </div>
                                 </div>
@@ -223,6 +457,19 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
             // Clear playing video urls cache if updated
             setLessonVideoUrls({});
             setFetchedLessonIds(new Set());
+            fetchData();
+          }}
+        />
+      )}
+
+      {addingLessonToModuleId !== null && (
+        <AddLessonModal
+          isOpen={addingLessonToModuleId !== null}
+          courseId={course.id}
+          moduleId={addingLessonToModuleId}
+          onClose={() => setAddingLessonToModuleId(null)}
+          onSuccess={() => {
+            setAddingLessonToModuleId(null);
             fetchData();
           }}
         />

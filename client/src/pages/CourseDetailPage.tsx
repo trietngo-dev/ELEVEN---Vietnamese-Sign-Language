@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, PlayCircle, Lock } from "lucide-react";
+import { ArrowLeft, PlayCircle, Lock, Crown } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
 import CourseImage from "../components/CourseImage";
@@ -13,6 +13,7 @@ export default function CourseDetailPage() {
   const [lessons, setLessons] = useState<any[]>([]);
   const [completedLessonsCount, setCompletedLessonsCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUserPremium, setIsUserPremium] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -63,6 +64,20 @@ export default function CourseDetailPage() {
           } catch (err) {
             console.error("Lỗi tải tiến độ", err);
           }
+
+          // Check if user has an active premium subscription
+          try {
+            const subRes = await fetch(`${API_BASE_URL}/api/user_subscriptions?page=1&pageSize=100`, { headers });
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              const hasActiveSub = (subData.items || []).some(
+                (sub: any) => sub.userId === userId && sub.status === 0 // 0 = Active
+              );
+              setIsUserPremium(hasActiveSub);
+            }
+          } catch (err) {
+            console.error("Lỗi kiểm tra gói đăng ký", err);
+          }
         }
       } catch (err) {
         console.error("Lỗi tải chi tiết khóa học", err);
@@ -94,15 +109,36 @@ export default function CourseDetailPage() {
 
   const firstLessonId = lessons.length > 0 ? lessons[0].id : null;
   const progressPercentage = lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
+  const isPremiumCourse = course?.isPremium ?? false;
+  const canStartLearning = !isPremiumCourse || isUserPremium;
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
       <div className="mx-auto max-w-5xl px-6 py-10">
 
-        {/* Back Button */}
-        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 mb-8 transition-colors">
-          <ArrowLeft size={16} className="bg-slate-100 rounded-full p-1" /> Quay lại
-        </button>
+        {/* Top Bar: Back Button + Premium Notice */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-[#3b7948] text-white font-bold text-sm hover:bg-[#336a40] transition-all active:scale-95 shadow-md">
+            <ArrowLeft size={18} /> Quay lại
+          </button>
+
+          {isPremiumCourse && !canStartLearning && (
+            <div className="flex-1 flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-[#fcf8ea] border border-[#efe7cf] md:justify-between">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f6ebb7] text-[#b7861f]" aria-hidden="true">
+                  <Crown className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[0.95rem] font-bold text-[#3a403f]">Đây là khóa học dành cho tài khoản Premium</p>
+                  <p className="text-sm text-[#86908c]">Nâng cấp tài khoản để truy cập toàn bộ nội dung khóa học này.</p>
+                </div>
+              </div>
+              <Link to="/nang-cap" className="flex-shrink-0 h-9 px-5 rounded-lg bg-[#efca4c] text-[0.8rem] font-bold text-[#4b3c14] hover:bg-[#e7c13f] transition-colors inline-flex items-center">
+                Nâng cấp ngay
+              </Link>
+            </div>
+          )}
+        </div>
 
         {/* Hero & Progress Section */}
         <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] gap-10 mb-16">
@@ -156,9 +192,15 @@ export default function CourseDetailPage() {
             </div>
 
             {firstLessonId ? (
-              <Link to={`/bai-hoc/${firstLessonId}`} className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#315736] transition-all shadow-lg shadow-[#3c6d44]/20 hover:-translate-y-0.5">
-                <PlayCircle size={18} /> Bắt đầu học
-              </Link>
+              canStartLearning ? (
+                <Link to={`/bai-hoc/${firstLessonId}`} className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#315736] transition-all shadow-lg shadow-[#3c6d44]/20 hover:-translate-y-0.5">
+                  <PlayCircle size={18} /> Bắt đầu học
+                </Link>
+              ) : (
+                <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold cursor-not-allowed">
+                  <Lock size={16} /> Yêu cầu tài khoản Premium
+                </button>
+              )
             ) : (
               <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center gap-2 font-bold cursor-not-allowed">
                 Chưa có bài học
@@ -194,7 +236,7 @@ export default function CourseDetailPage() {
                   </div>
 
                   <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm flex flex-col divide-y divide-slate-50">
-                    {moduleLessons.length > 0 ? moduleLessons.map((lesson, lIdx) => (
+                    {moduleLessons.length > 0 ? moduleLessons.map((lesson) => (
                       <div key={lesson.id} className={`p-5 flex items-center justify-between ${isLocked ? "opacity-50" : "hover:bg-slate-50/50 transition-colors"}`}>
                         <div className="flex items-center gap-4">
                           {isLocked ? (

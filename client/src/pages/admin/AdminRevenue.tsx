@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import {
-    TrendingUp,
-    TrendingDown,
     DollarSign,
     CreditCard,
     Wallet,
@@ -49,17 +47,10 @@ const containerVariants = {
     }
 };
 
-const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: { duration: 0.5, ease: 'easeOut' }
-    }
-};
+// itemVariants is unused
 
 const AdminRevenue: React.FC = () => {
-    const [timeFilter, setTimeFilter] = useState('Năm nay');
+    const timeFilter = 'Năm nay';
 
     return (
         <div className="p-8 bg-slate-50 min-h-screen">

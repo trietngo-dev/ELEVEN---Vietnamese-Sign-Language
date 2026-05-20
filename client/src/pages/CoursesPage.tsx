@@ -6,7 +6,7 @@ import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
 import { tokenStorage } from "../lib/auth";
 import CourseImage from "../components/CourseImage";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import LoginModal from "../components/LoginModal";
 
@@ -35,9 +35,9 @@ function CoursesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const navigate = useNavigate();
 
-  const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+
+  const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>, _path: string) => {
     if (!isAuthenticated) {
       e.preventDefault();
       setShowLoginModal(true);
@@ -232,7 +232,7 @@ function CoursesPage() {
 
                 <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
                   <Button className="h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
-                    {common.buttons.startLearning}
+                    {common.buttons.viewDetail}
                     <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </Link>
@@ -254,9 +254,9 @@ function CoursesPage() {
         )}
       </div>
 
-      <LoginModal 
-        isOpen={showLoginModal} 
-        onClose={() => setShowLoginModal(false)} 
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
         message="Bạn cần đăng nhập để xem chi tiết bài học và tham gia khóa học."
       />
     </motion.section>
