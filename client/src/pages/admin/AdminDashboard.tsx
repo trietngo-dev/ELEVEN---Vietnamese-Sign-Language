@@ -3,7 +3,6 @@ import {
   Users, 
   CheckCircle2, 
   BookOpen, 
-  Zap, 
   PlusCircle, 
   MoreHorizontal,
   Loader2,
@@ -85,14 +84,6 @@ const AdminDashboard: React.FC = () => {
       case 1: return { label: 'Hoạt động', color: 'bg-[#3c6c44]/10 text-[#3c6c44]' };
       case 2: return { label: 'Bị khóa', color: 'bg-red-100 text-red-600' };
       default: return { label: 'Không xác định', color: 'bg-slate-100 text-slate-600' };
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    } catch {
-      return dateStr;
     }
   };
 

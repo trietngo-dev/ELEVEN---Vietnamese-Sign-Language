@@ -6,7 +6,6 @@ import {
   BookOpen,
   Languages,
   BarChart3,
-  Settings,
   LogOut,
   ChartNoAxesCombined
 } from 'lucide-react';

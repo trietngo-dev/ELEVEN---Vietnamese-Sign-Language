@@ -6,6 +6,7 @@ export const viText = {
       signIn: "Đăng nhập",
       tryTranslator: "Thử trình dịch",
       startLearning: "Bắt đầu học",
+      viewDetail: "Xem chi tiết",
       createFreeAccount: "Tạo tài khoản miễn phí",
     },
   },
