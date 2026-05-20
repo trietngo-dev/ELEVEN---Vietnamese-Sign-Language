@@ -11,4 +11,5 @@ public interface IMediaAssetService
     Task<UploadMediaAssetResponse> UploadAsync(Stream fileStream, UploadMediaAssetRequest request, CancellationToken cancellationToken = default);
     Task<MediaAssetResponse?> UpdateAsync(long id, UpdateMediaAssetRequest request, CancellationToken cancellationToken = default);
     Task<MediaAssetResponse?> ArchiveAsync(long id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
 }

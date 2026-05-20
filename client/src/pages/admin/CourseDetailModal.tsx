@@ -153,26 +153,28 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
                           <div className="divide-y divide-slate-100">
                             {modLessons.map(lesson => (
                               <div key={lesson.id} className="flex flex-col border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
-                                <button 
-                                  onClick={() => handleToggleLesson(lesson)}
-                                  className="px-4 py-3 flex items-center justify-between cursor-pointer w-full text-left"
-                                >
-                                  <span className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                                <div className="px-4 py-3 flex items-center justify-between w-full">
+                                  <button 
+                                    onClick={() => handleToggleLesson(lesson)}
+                                    className="flex-1 text-left text-sm font-medium text-slate-600 flex items-center gap-2 hover:text-[#3c6c44] transition-colors"
+                                  >
                                     <ListVideo size={14} className="text-[#3c6c44]" /> {lesson.title}
-                                  </span>
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-xs text-slate-400 flex items-center gap-1">
+                                  </button>
+                                  <div className="flex items-center gap-3 ml-2 flex-shrink-0">
+                                    <span className="text-xs text-slate-400 flex items-center gap-1 font-semibold">
                                       <Clock size={12} /> {lesson.estimatedMinutes || 10}p
                                     </span>
-                                    <button 
-                                      onClick={(e) => { e.stopPropagation(); setEditingLesson(lesson); }}
-                                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    <button
+                                      onClick={() => {
+                                        setEditingLesson(lesson);
+                                      }}
+                                      className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-[#3c6c44] transition-colors"
                                       title="Chỉnh sửa bài học"
                                     >
                                       <Edit size={14} />
                                     </button>
                                   </div>
-                                </button>
+                                </div>
                                 {playingLessonId === lesson.id && (
                                   <div className="px-4 pb-4 animate-in slide-in-from-top-2">
                                     {lessonVideoUrls[lesson.id] ? (
@@ -218,6 +220,9 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
           onClose={() => setEditingLesson(null)}
           onSuccess={() => {
             setEditingLesson(null);
+            // Clear playing video urls cache if updated
+            setLessonVideoUrls({});
+            setFetchedLessonIds(new Set());
             fetchData();
           }}
         />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Eye, ChevronLeft, ChevronRight, BookOpen, Edit } from "lucide-react";
+import { Plus, Eye, ChevronLeft, ChevronRight, BookOpen, Edit, Trash2 } from "lucide-react";
 import AddCourseModal from "./AddCourseModal";
 import EditCourseModal from "./EditCourseModal";
 import CourseDetailModal from "./CourseDetailModal";
@@ -61,6 +61,31 @@ const AdminCourses: React.FC = () => {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteCourse = async (course: any) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa khóa học "${course.title}"? Hành động này không thể hoàn tác.`)) {
+      return;
+    }
+
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      
+      const res = await fetch(`${API_BASE_URL}/api/courses/${course.id}`, {
+        method: "DELETE",
+        headers
+      });
+      
+      if (res.ok) {
+        fetchCourses();
+      } else {
+        alert("Lỗi khi xóa khóa học. Có thể khóa học này đang có dữ liệu liên quan.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Đã xảy ra lỗi khi kết nối với máy chủ.");
     }
   };
 
@@ -162,6 +187,13 @@ const AdminCourses: React.FC = () => {
                   title="Xem chi tiết"
                 >
                   <Eye size={16} />
+                </button>
+                <button 
+                  onClick={() => handleDeleteCourse(course)}
+                  className="p-2 border border-red-100 text-red-500 rounded-xl hover:bg-red-50 transition-colors cursor-pointer pointer-events-auto"
+                  title="Xóa khóa học"
+                >
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
