@@ -169,11 +169,10 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger enabled in all environments for API testing on Render
+// TODO: Restrict to Development only after deployment is stable
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseRouting();
 app.UseCors("AllowFrontend");
