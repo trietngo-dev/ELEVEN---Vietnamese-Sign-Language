@@ -1,9 +1,12 @@
 import modelImg from "../assets/model.png";
+import class1Img from "../assets/Class1.png";
+import class2Img from "../assets/Class2.png";
+import class3Img from "../assets/Class3.png";
 import { motion, type Variants } from "framer-motion";
 import { ArrowRight, BookOpen, Brain, Sparkles, Star, Plus, CheckCircle2, BarChart3, Languages } from "lucide-react";
 import { viText } from "../locales/vi";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import LoginModal from "../components/LoginModal";
 
@@ -228,6 +231,239 @@ function FloatingCards() {
   );
 }
 
+/* ── Infinite Circular Carousel Component ── */
+interface CarouselItem {
+  type: "card" | "class";
+  title?: string;
+  body?: string;
+  icon?: React.ReactNode;
+  img?: string;
+  alt?: string;
+}
+
+function CircularCarousel() {
+  const { landing } = viText;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const startX = useRef(0);
+  const scrollLeftStart = useRef(0);
+  const autoScrollActive = useRef(true);
+  const animationFrameId = useRef<number | null>(null);
+
+  const carouselItems: CarouselItem[] = [
+    {
+      type: "card",
+      title: landing.learningPoints[0].title,
+      body: landing.learningPoints[0].body,
+      icon: <CheckCircle2 size={18} className="text-[#3c6c44]" />,
+    },
+    {
+      type: "class",
+      img: class1Img,
+      alt: "Lớp học 1",
+    },
+    {
+      type: "card",
+      title: landing.learningPoints[1].title,
+      body: landing.learningPoints[1].body,
+      icon: <CheckCircle2 size={18} className="text-[#e4bf3f]" />,
+    },
+    {
+      type: "class",
+      img: class2Img,
+      alt: "Lớp học 2",
+    },
+    {
+      type: "card",
+      title: landing.learningPoints[2].title,
+      body: landing.learningPoints[2].body,
+      icon: <CheckCircle2 size={18} className="text-[#3c6c44]" />,
+    },
+    {
+      type: "class",
+      img: class3Img,
+      alt: "Lớp học 3",
+    },
+    {
+      type: "card",
+      title: landing.learningPoints[3].title,
+      body: landing.learningPoints[3].body,
+      icon: <CheckCircle2 size={18} className="text-[#e4bf3f]" />,
+    },
+  ];
+
+  // We duplicate items 4 times to ensure seamless infinite scrolling in both directions
+  const duplicatedItems = [...carouselItems, ...carouselItems, ...carouselItems, ...carouselItems];
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Set initial scroll to the middle copy
+    const singleSetWidth = container.scrollWidth / 4;
+    container.scrollLeft = singleSetWidth;
+
+    const scrollSpeed = 0.5; // Very slow and premium scrolling
+    
+    const updateScroll = () => {
+      if (autoScrollActive.current && !isDragging) {
+        // Auto scroll from left to right (so scrollLeft decreases)
+        container.scrollLeft -= scrollSpeed;
+        
+        // Wrap around seamlessly when scrolling to the left
+        const minScroll = container.scrollWidth * 0.25;
+        if (container.scrollLeft <= minScroll) {
+          container.scrollLeft += singleSetWidth;
+        }
+      }
+      animationFrameId.current = requestAnimationFrame(updateScroll);
+    };
+
+    animationFrameId.current = requestAnimationFrame(updateScroll);
+
+    return () => {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, [isDragging]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+    setIsDragging(true);
+    autoScrollActive.current = false;
+    startX.current = e.pageX - container.offsetLeft;
+    scrollLeftStart.current = container.scrollLeft;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const container = containerRef.current;
+    if (!container) return;
+    e.preventDefault();
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX.current) * 1.5; // Drag speed multiplier
+    container.scrollLeft = scrollLeftStart.current - walk;
+
+    // Wrap around dynamically during drag to prevent reaching edges
+    const singleSetWidth = container.scrollWidth / 4;
+    const maxScroll = container.scrollWidth * 0.75;
+    const minScroll = container.scrollWidth * 0.25;
+    if (container.scrollLeft >= maxScroll) {
+      container.scrollLeft -= singleSetWidth;
+      startX.current = e.pageX - container.offsetLeft;
+      scrollLeftStart.current = container.scrollLeft;
+    } else if (container.scrollLeft <= minScroll) {
+      container.scrollLeft += singleSetWidth;
+      startX.current = e.pageX - container.offsetLeft;
+      scrollLeftStart.current = container.scrollLeft;
+    }
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsDragging(false);
+    // Smoothly resume auto-scrolling after a short duration
+    setTimeout(() => {
+      autoScrollActive.current = true;
+    }, 1500);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+    setIsDragging(true);
+    autoScrollActive.current = false;
+    startX.current = e.touches[0].pageX - container.offsetLeft;
+    scrollLeftStart.current = container.scrollLeft;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const container = containerRef.current;
+    if (!container) return;
+    const x = e.touches[0].pageX - container.offsetLeft;
+    const walk = (x - startX.current) * 1.5;
+    container.scrollLeft = scrollLeftStart.current - walk;
+
+    const singleSetWidth = container.scrollWidth / 4;
+    const maxScroll = container.scrollWidth * 0.75;
+    const minScroll = container.scrollWidth * 0.25;
+    if (container.scrollLeft >= maxScroll) {
+      container.scrollLeft -= singleSetWidth;
+      startX.current = e.touches[0].pageX - container.offsetLeft;
+      scrollLeftStart.current = container.scrollLeft;
+    } else if (container.scrollLeft <= minScroll) {
+      container.scrollLeft += singleSetWidth;
+      startX.current = e.touches[0].pageX - container.offsetLeft;
+      scrollLeftStart.current = container.scrollLeft;
+    }
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUpOrLeave}
+      onMouseLeave={handleMouseUpOrLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleMouseUpOrLeave}
+      className={`flex items-center gap-6 overflow-x-auto py-8 px-4 cursor-grab select-none scrollbar-none ${
+        isDragging ? "cursor-grabbing" : ""
+      }`}
+      style={{
+        scrollbarWidth: "none",
+        msOverflowStyle: "none",
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
+      {duplicatedItems.map((item, index) => {
+        if (item.type === "card") {
+          return (
+            <article 
+              key={index}
+              className="flex-shrink-0 w-80 h-56 rounded-[24px] bg-white border border-slate-100/85 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-[#3c6c44]/20 hover:shadow-md transition-all flex flex-col justify-between"
+            >
+              <div>
+                <div className="mb-4 size-10 rounded-xl bg-[#ebf4ec] flex items-center justify-center shrink-0">
+                  {item.icon}
+                </div>
+                <h3 className="text-[1.05rem] font-bold text-slate-800 mb-2">
+                  {item.title}
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-500 line-clamp-3">
+                  {item.body}
+                </p>
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#3c6c44] border-t border-slate-50 pt-3 mt-1">
+                <span>Eleven Course</span>
+                <span className="flex items-center gap-1 text-[#e4bf3f]">
+                  ★ <span className="text-slate-500 font-semibold">5.0</span>
+                </span>
+              </div>
+            </article>
+          );
+        } else {
+          return (
+            <div 
+              key={index}
+              className="flex-shrink-0 w-44 h-56 rounded-[24px] overflow-hidden border border-slate-100 bg-white p-2 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-center hover:scale-[1.02] transition-transform duration-300"
+            >
+              <img 
+                src={item.img} 
+                alt={item.alt} 
+                className="w-full h-full object-cover rounded-2xl pointer-events-none"
+              />
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+}
+
 /* ── Main Component ── */
 function LandingPage() {
   const { common, landing } = viText;
@@ -249,6 +485,7 @@ function LandingPage() {
       {/* ════════ HERO ════════ */}
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-[#f8fdf8] to-[#edf6e4] min-h-screen flex items-center pt-[96px] pb-16 md:pt-[120px] md:pb-24">
         <FloatingDecorations />
+        <FloatingCards />
 
         {/* Soft animated ambient auroras */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -371,13 +608,13 @@ function LandingPage() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.2 }}
-            className="grid gap-8 lg:grid-cols-3"
+            className="grid gap-8 lg:grid-cols-3 items-stretch"
           >
-            {/* Left Column - Stack of 2 horizontal cards */}
-            <div className="flex flex-col gap-6 lg:col-span-2">
+            {/* Left Column - Stack of 3 horizontal cards */}
+            <div className="flex flex-col gap-6 lg:col-span-2 justify-between">
               {/* Card 1: Dịch AI thời gian thực */}
-              <motion.div variants={fadeInUp}>
-                <div className="group rounded-3xl border border-slate-100 bg-gradient-to-br from-[#3c6c44]/5 to-[#3c6c44]/[0.02] p-8 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5 flex flex-col md:flex-row items-center gap-6">
+              <motion.div variants={fadeInUp} className="flex-1 flex">
+                <div className="w-full group rounded-3xl border border-slate-100 bg-gradient-to-br from-[#3c6c44]/5 to-[#3c6c44]/[0.02] p-8 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5 flex flex-col md:flex-row items-center gap-6">
                   <div className="size-16 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
                     <Brain className="size-8 text-[#3c6c44]" />
                   </div>
@@ -389,8 +626,8 @@ function LandingPage() {
               </motion.div>
 
               {/* Card 2: Chuyển văn bản thành giọng nói */}
-              <motion.div variants={fadeInUp}>
-                <div className="group rounded-3xl border border-slate-100 bg-gradient-to-br from-[#3c6c44]/5 to-[#e4bf3f]/5 p-8 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5 flex flex-col md:flex-row items-center gap-6">
+              <motion.div variants={fadeInUp} className="flex-1 flex">
+                <div className="w-full group rounded-3xl border border-slate-100 bg-gradient-to-br from-[#3c6c44]/5 to-[#e4bf3f]/5 p-8 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5 flex flex-col md:flex-row items-center gap-6">
                   <div className="size-16 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
                     <Languages className="size-8 text-[#3c6c44]" />
                   </div>
@@ -400,26 +637,33 @@ function LandingPage() {
                   </div>
                 </div>
               </motion.div>
-            </div>
 
-            {/* Right Column - Tall vertical card with model.png image */}
-            <motion.div variants={fadeInUp} className="lg:col-span-1">
-              <div className="group h-full rounded-3xl border border-slate-100 bg-gradient-to-br from-[#e4bf3f]/10 to-[#e4bf3f]/[0.02] p-8 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5 flex flex-col justify-between">
-                <div>
-                  <div className="mb-6 size-16 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+              {/* Card 3: Bài học tương tác */}
+              <motion.div variants={fadeInUp} className="flex-1 flex">
+                <div className="w-full group rounded-3xl border border-slate-100 bg-gradient-to-br from-[#e4bf3f]/5 to-[#3c6c44]/5 p-8 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5 flex flex-col md:flex-row items-center gap-6">
+                  <div className="size-16 rounded-2xl bg-white flex items-center justify-center shadow-sm shrink-0">
                     <BookOpen className="size-8 text-[#3c6c44]" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-2">{landing.featureCards[1].title}</h3>
-                  <p className="text-[14px] leading-relaxed text-slate-500 mb-6">{landing.featureCards[1].body}</p>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-2">{landing.featureCards[1].title}</h3>
+                    <p className="text-[14px] leading-relaxed text-slate-500">{landing.featureCards[1].body}</p>
+                  </div>
                 </div>
-                {/* Embed modelImg vertical image inside the card */}
-                <div className="overflow-hidden rounded-2xl h-48 bg-slate-50 border border-slate-100 flex-shrink-0">
-                  <img 
-                    src={modelImg} 
-                    alt="Bài học tương tác" 
-                    className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
-                  />
+              </motion.div>
+            </div>
+
+            {/* Right Column - Tall vertical container with model.png image */}
+            <motion.div variants={fadeInUp} className="lg:col-span-1 h-full">
+              <div className="group relative h-full rounded-[32px] border border-slate-100 bg-gradient-to-br from-[#e4bf3f]/10 to-[#3c6c44]/10 overflow-hidden shadow-md transition-all hover:border-[#3c6c44]/20 hover:shadow-xl hover:shadow-[#3c6c44]/5 flex items-stretch">
+                <div className="absolute top-6 left-6 z-10 rounded-2xl bg-white/90 backdrop-blur-md px-4 py-2 border border-white/50 shadow-sm flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#e4bf3f] animate-pulse" />
+                  <span className="text-[11px] font-bold text-slate-700">Eleven AI Model</span>
                 </div>
+                <img 
+                  src={modelImg} 
+                  alt="Bài học tương tác" 
+                  className="w-full h-full object-cover object-top hover:scale-[1.03] transition-transform duration-700"
+                />
               </div>
             </motion.div>
           </motion.div>
@@ -427,14 +671,14 @@ function LandingPage() {
       </section>
 
       {/* ════════ LEARNING POINTS ════════ */}
-      <section className="py-20 md:py-28 bg-[#fafcfa]">
+      <section className="py-20 md:py-28 bg-[#fafcfa] overflow-hidden">
         <div className="container">
           <motion.div
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, amount: 0.2 }}
             variants={staggerContainer}
-            className="text-center mb-14"
+            className="text-center mb-10"
           >
             <motion.h2
               variants={fadeInUp}
@@ -444,30 +688,11 @@ function LandingPage() {
             </motion.h2>
             <motion.div variants={fadeInUp} className="mx-auto mt-4 h-1 w-16 rounded-full bg-[#e4bf3f]" />
           </motion.div>
+        </div>
 
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, amount: 0.2 }}
-            className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
-          >
-            {landing.learningPoints.map((point, i) => (
-              <motion.article
-                key={point.title}
-                variants={fadeInUp}
-                className="group rounded-2xl bg-white border border-slate-100 p-6 transition-all hover:border-[#3c6c44]/20 hover:shadow-lg hover:shadow-[#3c6c44]/5"
-              >
-                <div className="mb-4 size-10 rounded-xl bg-[#ebf4ec] flex items-center justify-center">
-                  <CheckCircle2 size={18} className="text-[#3c6c44]" />
-                </div>
-                <h3 className="text-[1.05rem] font-bold text-slate-800 mb-2">
-                  {point.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-slate-500">{point.body}</p>
-              </motion.article>
-            ))}
-          </motion.div>
+        {/* Full-bleed marquee container */}
+        <div className="w-full max-w-[100vw] overflow-hidden">
+          <CircularCarousel />
         </div>
       </section>
 
