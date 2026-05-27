@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { viText } from "../locales/vi";
 import { cn } from "../lib/utils";
@@ -12,12 +13,30 @@ function Navbar() {
   const location = useLocation();
   
   const isLandingPage = location.pathname === "/";
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (!isLandingPage) return;
+    
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+    
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isLandingPage]);
 
   return (
     <header className={cn(
-      "z-50 transition-all duration-200",
+      "z-50 transition-all duration-300",
       isLandingPage 
-        ? "absolute top-0 left-0 right-0 bg-transparent border-none" 
+        ? scrolled
+          ? "fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-emerald-50/10 shadow-sm shadow-[#3c6c44]/[0.02]"
+          : "absolute top-0 left-0 right-0 bg-transparent border-none" 
         : "sticky top-0 bg-white/95 border-b border-slate-100"
     )}>
       <div className="container flex min-h-[72px] items-center justify-between gap-6 py-2">
