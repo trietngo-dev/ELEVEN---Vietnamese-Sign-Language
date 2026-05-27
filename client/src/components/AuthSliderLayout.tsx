@@ -431,10 +431,22 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
             </span>
           </div>
 
+          {/* Cross-fading premium images */}
           <img
-            src={isLogin ? loginImg : registerImg}
-            alt="Authentication Illustration"
-            className="w-full h-full object-cover select-none"
+            src={loginImg}
+            alt="Login Illustration"
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover select-none transition-opacity duration-700 ease-in-out",
+              isLogin ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
+          />
+          <img
+            src={registerImg}
+            alt="Register Illustration"
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover select-none transition-opacity duration-700 ease-in-out",
+              !isLogin ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
           />
 
           {/* Slogan Overlay at bottom */}
