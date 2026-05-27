@@ -59,9 +59,6 @@ function ReviewPage() {
           transition={{ duration: 0.45, ease: "easeOut" }}
           className="mx-auto max-w-[700px] text-center"
         >
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#eef7ef]">
-            <Headphones className="h-8 w-8 text-[#3b7948]" />
-          </div>
           <h1 className="text-[clamp(2rem,3vw,2.95rem)] font-bold leading-[1.1] text-[#172334]">
             {reviewPage.hero.title}
           </h1>
@@ -70,50 +67,11 @@ function ReviewPage() {
           </p>
         </motion.header>
 
-        {/* Quick help cards */}
-        <motion.div
-          variants={fadeInUp}
-          transition={{ duration: 0.4, ease: "easeOut", delay: 0.05 }}
-          className="mx-auto mt-8 grid max-w-[900px] gap-4 sm:grid-cols-3"
-        >
-          {[
-            {
-              icon: <MessageCircleQuestion className="h-6 w-6 text-[#3b7948]" />,
-              title: "Câu hỏi thường gặp",
-              desc: "Tìm câu trả lời nhanh cho các vấn đề phổ biến",
-            },
-            {
-              icon: <MailOpen className="h-6 w-6 text-[#3b7948]" />,
-              title: "Email hỗ trợ",
-              desc: "support@eleven.vn — Phản hồi trong 24h",
-            },
-            {
-              icon: <Headphones className="h-6 w-6 text-[#3b7948]" />,
-              title: "Hotline",
-              desc: "1900 xxxx — Thứ 2 đến Thứ 6, 8h-17h",
-            },
-          ].map((item) => (
-            <motion.div
-              key={item.title}
-              whileHover={{ y: -3 }}
-              className="flex items-start gap-3 rounded-2xl border border-[#e5ece8] bg-white p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
-            >
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef7ef]">
-                {item.icon}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#1e3039]">{item.title}</p>
-                <p className="mt-0.5 text-xs text-[#7c8790]">{item.desc}</p>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
         {/* Support form */}
         <motion.div
           variants={fadeInUp}
-          transition={{ duration: 0.45, ease: "easeOut", delay: 0.1 }}
-          className="mx-auto mt-8 max-w-[610px] rounded-[36px] border border-[#e5ece8] bg-white p-6 shadow-[0_12px_30px_rgba(19,36,52,0.06)] md:p-8"
+          transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
+          className="mx-auto mt-6 max-w-[610px] rounded-[36px] border border-[#e5ece8] bg-white p-6 shadow-[0_12px_30px_rgba(19,36,52,0.06)] md:p-8"
         >
           <p className="text-center text-[0.9rem] font-bold uppercase tracking-[0.06em] text-[#8c98a2]">
             {reviewPage.rating.prompt}
@@ -195,6 +153,45 @@ function ReviewPage() {
             <SendHorizontal className="mr-2 h-4.5 w-4.5" />
             {reviewPage.form.submitButton}
           </Button>
+        </motion.div>
+
+        {/* Quick help cards */}
+        <motion.div
+          variants={fadeInUp}
+          transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
+          className="mx-auto mt-10 grid max-w-[900px] gap-4 sm:grid-cols-3"
+        >
+          {[
+            {
+              icon: <MessageCircleQuestion className="h-6 w-6 text-[#3b7948]" />,
+              title: "Câu hỏi thường gặp",
+              desc: "Tìm câu trả lời nhanh cho các vấn đề phổ biến",
+            },
+            {
+              icon: <MailOpen className="h-6 w-6 text-[#3b7948]" />,
+              title: "Email hỗ trợ",
+              desc: "support@eleven.vn — Phản hồi trong 24h",
+            },
+            {
+              icon: <Headphones className="h-6 w-6 text-[#3b7948]" />,
+              title: "Hotline",
+              desc: "1900 xxxx — Thứ 2 đến Thứ 6, 8h-17h",
+            },
+          ].map((item) => (
+            <motion.div
+              key={item.title}
+              whileHover={{ y: -3 }}
+              className="flex items-start gap-3 rounded-2xl border border-[#e5ece8] bg-white p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer"
+            >
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef7ef]">
+                {item.icon}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#1e3039]">{item.title}</p>
+                <p className="mt-0.5 text-xs text-[#7c8790]">{item.desc}</p>
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
 
         <motion.div
