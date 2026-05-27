@@ -189,13 +189,20 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                       <Lock className="h-4 w-4 text-[#9babb6] shrink-0" />
                       <input
                         id="login-password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder={authPages.login.passwordPlaceholder}
                         required
                         className="w-full border-none bg-transparent text-[0.88rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-[#9babb6] hover:text-slate-600 shrink-0"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -348,6 +355,13 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                           required
                           className="w-full border-none bg-transparent text-[0.82rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="text-[#9babb6] hover:text-slate-600 shrink-0"
+                        >
+                          {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
                       </div>
                     </div>
                   </div>
