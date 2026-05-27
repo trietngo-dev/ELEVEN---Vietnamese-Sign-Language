@@ -44,7 +44,6 @@ const sectionStagger: Variants = {
 export default function HomePage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [profile, setProfile] = useState<any | null>(null);
 
   const firstName = (user?.fullName || "bạn").split(" ").at(-1);
 
@@ -62,25 +61,31 @@ export default function HomePage() {
       .catch(() => setCourses([]));
   }, []);
 
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user?.id) return;
     const token = tokenStorage.getToken();
-    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((res) => {
-        if (res.ok) return res.json();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(`${API_BASE_URL}/api/users/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((userData) => {
+        if (userData && userData.avatarMediaId) {
+          return fetch(`${API_BASE_URL}/api/media_assets/${userData.avatarMediaId}`, { headers });
+        }
         return null;
       })
-      .then((data) => {
-        if (data) {
-          setProfile(data);
+      .then((res) => (res && res.ok ? res.json() : null))
+      .then((mediaData) => {
+        if (mediaData && mediaData.fileUrl) {
+          setAvatarUrl(mediaData.fileUrl);
         }
       })
-      .catch(() => {});
+      .catch((e) => console.error("Error loading user avatar in HomePage", e));
   }, [user]);
 
-  const avatarSrc = profile?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
+  const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
 
   // "Tiếp tục học" - first course in list as active
   const activeCourse = courses[0];

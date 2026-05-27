@@ -28,6 +28,30 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [activeSub, setActiveSub] = useState<any | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Load avatar dynamically from users and media_assets tables
+  useEffect(() => {
+    if (!user?.id) return;
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(`${API_BASE_URL}/api/users/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((userData) => {
+        if (userData && userData.avatarMediaId) {
+          return fetch(`${API_BASE_URL}/api/media_assets/${userData.avatarMediaId}`, { headers });
+        }
+        return null;
+      })
+      .then((res) => (res && res.ok ? res.json() : null))
+      .then((mediaData) => {
+        if (mediaData && mediaData.fileUrl) {
+          setAvatarUrl(mediaData.fileUrl);
+        }
+      })
+      .catch((e) => console.error("Error loading user avatar in ProfilePage", e));
+  }, [user]);
 
   // Load profile from API
   useEffect(() => {
@@ -160,42 +184,30 @@ export default function ProfilePage() {
 
       const mediaAsset = await uploadRes.json();
       const newAvatarUrl = mediaAsset.fileUrl; // Public URL of the uploaded image
+      const mediaId = mediaAsset.id;
 
-      // 2. Update user profile with the new avatarUrl
-      let res: Response;
-      const profileHeaders = {
-        "Content-Type": "application/json",
-        ...headers
-      };
+      // 2. Update user's avatar_media_id in users table
+      const patchRes = await fetch(`${API_BASE_URL}/api/users/${user.id}/avatar`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({ avatarMediaId: mediaId }),
+      });
 
-      if (profile) {
-        res = await fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, {
-          method: "PUT",
-          headers: profileHeaders,
-          body: JSON.stringify({
-            fullName: name || profile.fullName || user.fullName,
-            phone: phone || profile.phone,
-            bio: bio || profile.bio,
-            avatarUrl: newAvatarUrl,
-          }),
-        });
-      } else {
-        res = await fetch(`${API_BASE_URL}/api/user_profiles`, {
-          method: "POST",
-          headers: profileHeaders,
-          body: JSON.stringify({
-            userId: user.id,
-            fullName: name || user.fullName,
-            phone: phone,
-            bio: bio,
-            avatarUrl: newAvatarUrl,
-          }),
-        });
+      if (!patchRes.ok) {
+        throw new Error("Cập nhật avatar người dùng thất bại");
       }
 
-      if (res.ok) {
-        const updatedProfile = await res.json();
-        setProfile(updatedProfile);
+      // 3. Update local state to show immediately
+      setAvatarUrl(newAvatarUrl);
+      
+      // 4. Update localStorage token user details
+      const authUser = tokenStorage.getUser();
+      if (authUser) {
+        authUser.avatarMediaId = mediaId;
+        tokenStorage.setUser(authUser);
       }
     } catch (err) {
       console.error(err);
@@ -206,7 +218,7 @@ export default function ProfilePage() {
   const displayName = name || user?.fullName || "Người dùng";
   const displayEmail = user?.email || "";
   const avatarSrc =
-    profile?.avatarUrl ||
+    avatarUrl ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`;
 
   return (
