@@ -1,5 +1,5 @@
 import { ArrowRight, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/button";
 import { cn } from "../lib/utils";
@@ -12,12 +12,12 @@ import LoginModal from "../components/LoginModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
 };
 
-const sectionStagger = {
+const sectionStagger: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -94,42 +94,10 @@ function CoursesPage() {
       className="bg-[#f6f9f7] py-8 md:py-10"
     >
       <div className="container">
-        <motion.div
-          variants={fadeInUp}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="rounded-2xl border border-[#efe7cf] bg-[#fcf8ea] px-4 py-3.5 md:flex md:items-center md:justify-between md:px-6"
-        >
-          <div className="flex items-start gap-3">
-            <span
-              className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f6ebb7] text-[#b7861f]"
-              aria-hidden="true"
-            >
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <div>
-              <p className="text-[0.95rem] font-bold text-[#3a403f]">
-                {coursesPage.upgrade.title}
-              </p>
-              <p className="text-sm text-[#86908c]">
-                {coursesPage.upgrade.description}
-              </p>
-            </div>
-          </div>
-
-          <Link to="/nang-cap" onClick={(e) => handleProtectedLink(e, "/nang-cap")}>
-            <Button
-              size="sm"
-              className="mt-3 h-9 bg-[#efca4c] px-5 text-[0.8rem] font-bold text-[#4b3c14] shadow-none hover:translate-y-0 hover:bg-[#e7c13f] md:mt-0"
-            >
-              {coursesPage.upgrade.cta}
-            </Button>
-          </Link>
-        </motion.div>
-
         <motion.header
           variants={fadeInUp}
           transition={{ duration: 0.45, ease: "easeOut", delay: 0.05 }}
-          className="mt-8"
+          className="mt-4"
         >
           <h1 className="text-[clamp(1.9rem,3vw,2.6rem)] font-bold leading-[1.12] text-[#1e2834]">
             {coursesPage.hero.title}
@@ -142,7 +110,7 @@ function CoursesPage() {
         <motion.div
           variants={fadeInUp}
           transition={{ duration: 0.4, ease: "easeOut", delay: 0.1 }}
-          className="mt-8 flex flex-wrap gap-2.5"
+          className="mt-6 flex flex-wrap gap-2.5"
         >
           <button
             onClick={() => setActiveCategory("all")}
@@ -181,7 +149,7 @@ function CoursesPage() {
           initial="hidden"
           animate="show"
           variants={sectionStagger}
-          className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3"
+          className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         >
           {isLoading ? (
             <div className="col-span-full py-10 flex justify-center text-slate-500">Đang tải dữ liệu...</div>
@@ -191,49 +159,49 @@ function CoursesPage() {
               variants={fadeInUp}
               transition={{ duration: 0.35, ease: "easeOut" }}
               whileHover={{ y: -6 }}
-              className="overflow-hidden rounded-[26px] border border-[#e6ece8] bg-white shadow-[0_6px_28px_rgba(35,48,57,0.06)] flex flex-col h-full"
+              className="overflow-hidden rounded-[20px] border border-[#e8efe9] bg-white shadow-[0_4px_20px_rgba(35,48,57,0.04)] flex flex-col h-full hover:shadow-[0_8px_30px_rgba(60,108,68,0.08)] transition-all duration-300"
             >
-              {/* Fixed-height image area */}
-              <div className="relative h-[200px] overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
+              {/* Compact image area */}
+              <div className="relative h-[130px] overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
                 <CourseImage
                   title={course.title}
                   coverMediaId={course.coverMediaId}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/20 to-transparent" />
                 {course.isPremium && (
-                  <span className="absolute left-3 top-3 rounded-full bg-[#ebca4f] px-3 py-1 text-xs font-bold text-[#394041]">
+                  <span className="absolute left-3 top-3 rounded-full bg-[#ebca4f] px-2.5 py-0.5 text-[10px] font-bold text-[#394041]">
                     Premium
                   </span>
                 )}
-                <p className="absolute bottom-3 left-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+                <p className="absolute bottom-2.5 left-3 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-800 shadow-sm">
                   ELEVEN Teacher
                 </p>
               </div>
 
-              {/* Fixed-layout content area */}
-              <div className="px-4 pb-4 pt-3.5 flex flex-col flex-1">
-                {/* Level badge - fixed height */}
-                <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.03em] text-[#92a09d] h-6">
+              {/* Compact content area */}
+              <div className="px-4 pb-4 pt-3 flex flex-col flex-1">
+                {/* Level badge */}
+                <div className="flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-[0.03em] text-[#92a09d] h-5">
                   <span className="rounded-full bg-[#eef4ef] px-2 py-0.5 text-[#5f776b]">
                     {course.level || "Cơ bản"}
                   </span>
                 </div>
 
-                {/* Title - fixed 2 lines */}
-                <h2 className="mt-2 text-[1.35rem] font-bold leading-snug text-[#1f2e39] line-clamp-2 min-h-[3.4rem]">
+                {/* Compact title */}
+                <h2 className="mt-1.5 text-[1.05rem] font-bold leading-snug text-[#1f2e39] line-clamp-2 min-h-[2.8rem]">
                   {course.title}
                 </h2>
 
-                {/* Description - fixed 2 lines */}
-                <p className="mt-2 text-[0.9rem] text-[#74818a] line-clamp-2 min-h-[2.7rem]">
+                {/* Compact description */}
+                <p className="mt-1 text-xs text-[#74818a] line-clamp-2 min-h-[2.2rem]">
                   {course.description || course.summary || "Chưa có mô tả"}
                 </p>
 
-                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-5" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
-                  <Button className="h-10 w-full justify-center bg-[#3b7948] text-white text-[0.95rem] shadow-md hover:bg-[#336a40] transition-colors rounded-xl">
+                <Link to={`/khoa-hoc/${course.id}`} className="w-full mt-4" onClick={(e) => handleProtectedLink(e, `/khoa-hoc/${course.id}`)}>
+                  <Button className="h-9 w-full justify-center bg-[#3c6c44] text-white text-xs font-semibold shadow-sm hover:bg-[#325a38] transition-colors rounded-lg">
                     {common.buttons.viewDetail}
-                    <ArrowRight className="ml-1 h-4 w-4" />
+                    <ArrowRight className="ml-1 h-3.5 w-3.5" />
                   </Button>
                 </Link>
               </div>

@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, BookOpen, Search, Play, Clock, Zap, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
@@ -67,12 +67,12 @@ const letterGradients: Record<string, string> = {
   Z: "from-orange-400/80 to-rose-300/80",
 };
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
 };
 
-const sectionStagger = {
+const sectionStagger: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,

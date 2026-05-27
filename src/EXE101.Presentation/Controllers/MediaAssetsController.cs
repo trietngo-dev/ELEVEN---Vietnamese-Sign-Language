@@ -1,6 +1,7 @@
 using EXE101.Application.Interfaces.Services;
 using EXE101.Application.Models.MediaAssets;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace EXE101.Presentation.Controllers;
 
@@ -9,6 +10,7 @@ namespace EXE101.Presentation.Controllers;
 public sealed class MediaAssetsController(IMediaAssetService mediaAssetService) : ControllerBase
 {
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetMediaAssets([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
         var result = await mediaAssetService.GetPagedAsync(page, pageSize, cancellationToken);
@@ -16,6 +18,7 @@ public sealed class MediaAssetsController(IMediaAssetService mediaAssetService) 
     }
 
     [HttpGet("{id:long}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetMediaAsset([FromRoute] long id, CancellationToken cancellationToken = default)
     {
         var result = await mediaAssetService.GetByIdAsync(id, cancellationToken);

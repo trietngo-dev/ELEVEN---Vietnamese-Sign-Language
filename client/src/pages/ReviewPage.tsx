@@ -10,19 +10,19 @@ import {
   MessageCircleQuestion,
   MailOpen,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useState } from "react";
 import { Button } from "../components/ui/button";
 import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
 import { reviewCategories, reviewHighlights } from "../data/mockReview";
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
 };
 
-const sectionStagger = {
+const sectionStagger: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,

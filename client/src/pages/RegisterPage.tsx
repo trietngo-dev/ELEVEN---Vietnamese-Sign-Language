@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { Apple, Eye, EyeOff, Lock, Mail, UserRound, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -8,12 +8,12 @@ import { Button } from "../components/ui/button";
 import { viText } from "../locales/vi";
 import { useAuth } from "../context/AuthContext";
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 18 },
   show: { opacity: 1, y: 0 },
 };
 
-const container = {
+const container: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,

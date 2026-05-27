@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
 import { BookOpen, Users, Zap, ArrowRight, Clock, ChevronRight, Video } from "lucide-react";
@@ -29,12 +29,12 @@ const recentTranslations = [
   { text: '"Rất vui được gặp bạn."', time: "12/03" },
 ];
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
 };
 
-const sectionStagger = {
+const sectionStagger: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
