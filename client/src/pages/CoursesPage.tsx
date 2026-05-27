@@ -91,7 +91,7 @@ function CoursesPage() {
       initial="hidden"
       animate="show"
       variants={sectionStagger}
-      className="bg-[#f6f9f7] py-8 md:py-10"
+      className="py-8 md:py-10 bg-transparent"
     >
       <div className="container">
         <motion.header

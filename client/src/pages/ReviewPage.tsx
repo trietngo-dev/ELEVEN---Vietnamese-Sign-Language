@@ -51,7 +51,7 @@ function ReviewPage() {
       initial="hidden"
       animate="show"
       variants={sectionStagger}
-      className="bg-[#f7f9f8] py-8 md:py-10"
+      className="py-8 md:py-10 bg-transparent"
     >
       <div className="container">
         <motion.header
