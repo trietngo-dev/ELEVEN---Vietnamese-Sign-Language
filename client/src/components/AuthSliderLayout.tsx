@@ -131,13 +131,13 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
         
         {/* Left Column: Login Form */}
         <div className="w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 z-10 bg-white overflow-y-auto scrollbar-none">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {isLogin && (
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.5 }}
                 className="w-full max-w-[400px] flex flex-col"
               >
                 {/* Brand */}
@@ -244,13 +244,13 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
 
         {/* Right Column: Register Form */}
         <div className="w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 z-10 bg-white overflow-y-auto scrollbar-none">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             {!isLogin && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.4 }}
+                transition={{ duration: 0.5 }}
                 className="w-full max-w-[400px] flex flex-col"
               >
                 {/* Brand */}
@@ -351,6 +351,28 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                       </div>
                     </div>
                   </div>
+                  <label
+                    htmlFor="register-agreement"
+                    className="flex cursor-pointer items-start gap-2 text-[10px] text-[#65747d] select-none my-1"
+                  >
+                    <input
+                      id="register-agreement"
+                      type="checkbox"
+                      required
+                      className="mt-0.5 h-3.5 w-3.5 rounded border-[#bfcfc4] accent-[#3b7948] cursor-pointer"
+                    />
+                    <span className="leading-tight text-left">
+                      {authPages.register.agreementText}{" "}
+                      <Link to="/dang-nhap" className="font-bold text-[#3c7c4a] hover:underline">
+                        {authPages.register.termLink}
+                      </Link>
+                      {" và "}
+                      <Link to="/dang-nhap" className="font-bold text-[#3c7c4a] hover:underline">
+                        {authPages.register.privacyLink}
+                      </Link>
+                      .
+                    </span>
+                  </label>
 
                   <Button
                     type="submit"

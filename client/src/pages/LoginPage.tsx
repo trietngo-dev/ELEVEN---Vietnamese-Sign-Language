@@ -1,7 +1,11 @@
+import { useLocation } from "react-router-dom";
 import AuthSliderLayout from "../components/AuthSliderLayout";
 
 function LoginPage() {
-  return <AuthSliderLayout initialMode="login" />;
+  const location = useLocation();
+  const isRegister = location.pathname === "/dang-ky";
+
+  return <AuthSliderLayout initialMode={isRegister ? "register" : "login"} />;
 }
 
 export default LoginPage;

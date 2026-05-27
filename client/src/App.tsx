@@ -180,7 +180,7 @@ function App() {
           path="dang-ky"
           element={
             <PublicRoute>
-              <RegisterPage />
+              <LoginPage />
             </PublicRoute>
           }
         />
