@@ -107,7 +107,7 @@ export default function ProfilePage() {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    const body = JSON.stringify({ fullName: name, phone, bio });
+    const body = JSON.stringify({ fullName: name, phone, bio, avatarUrl: profile?.avatarUrl });
     try {
       let res: Response;
       if (profile) {
@@ -130,6 +130,76 @@ export default function ProfilePage() {
       }
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // 1. Upload to Supabase/storage
+      const uploadRes = await fetch(`${API_BASE_URL}/api/media_assets/upload`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("Tải ảnh lên thất bại");
+      }
+
+      const mediaAsset = await uploadRes.json();
+      const newAvatarUrl = mediaAsset.fileUrl; // Public URL of the uploaded image
+
+      // 2. Update user profile with the new avatarUrl
+      let res: Response;
+      const profileHeaders = {
+        "Content-Type": "application/json",
+        ...headers
+      };
+
+      if (profile) {
+        res = await fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, {
+          method: "PUT",
+          headers: profileHeaders,
+          body: JSON.stringify({
+            fullName: name || profile.fullName || user.fullName,
+            phone: phone || profile.phone,
+            bio: bio || profile.bio,
+            avatarUrl: newAvatarUrl,
+          }),
+        });
+      } else {
+        res = await fetch(`${API_BASE_URL}/api/user_profiles`, {
+          method: "POST",
+          headers: profileHeaders,
+          body: JSON.stringify({
+            userId: user.id,
+            fullName: name || user.fullName,
+            phone: phone,
+            bio: bio,
+            avatarUrl: newAvatarUrl,
+          }),
+        });
+      }
+
+      if (res.ok) {
+        const updatedProfile = await res.json();
+        setProfile(updatedProfile);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi khi tải ảnh đại diện lên!");
     }
   };
 
@@ -167,6 +237,7 @@ export default function ProfilePage() {
                   type="file"
                   accept="image/*"
                   className="hidden"
+                  onChange={handleAvatarChange}
                 />
               </div>
 

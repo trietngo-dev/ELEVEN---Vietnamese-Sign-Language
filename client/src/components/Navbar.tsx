@@ -6,11 +6,39 @@ import brand from "../assets/brand.jpg";
 
 import { useAuth } from "../context/AuthContext";
 import { LogOut } from "lucide-react";
+import { tokenStorage } from "../lib/auth";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 function Navbar() {
   const { common, navbar } = viText;
   const { isAuthenticated, user, logout } = useAuth();
   const location = useLocation();
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) {
+      setAvatarUrl(null);
+      return;
+    }
+    const token = tokenStorage.getToken();
+    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then((data) => {
+        if (data && data.avatarUrl) {
+          setAvatarUrl(data.avatarUrl);
+        }
+      })
+      .catch(() => {});
+  }, [isAuthenticated, user]);
+
+  const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
   
   const isLandingPage = location.pathname === "/";
   const [scrolled, setScrolled] = useState(false);
@@ -102,7 +130,7 @@ function Navbar() {
                 <div
                   className="h-9 w-9 cursor-pointer rounded-full border-2 border-slate-100 bg-cover bg-center shadow-sm"
                   style={{
-                    backgroundImage: `url('https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff')`,
+                    backgroundImage: `url('${avatarSrc}')`,
                   }}
                 ></div>
               </NavLink>

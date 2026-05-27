@@ -9,7 +9,7 @@ import {
   Clock, 
   ChevronRight, 
   Video, 
-  BarChart3, 
+  BookOpen, 
   Flame, 
   Check, 
   Activity 
@@ -44,6 +44,7 @@ const sectionStagger: Variants = {
 export default function HomePage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [profile, setProfile] = useState<any | null>(null);
 
   const firstName = (user?.fullName || "bạn").split(" ").at(-1);
 
@@ -61,6 +62,26 @@ export default function HomePage() {
       .catch(() => setCourses([]));
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const token = tokenStorage.getToken();
+    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => {
+        if (res.ok) return res.json();
+        return null;
+      })
+      .then((data) => {
+        if (data) {
+          setProfile(data);
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const avatarSrc = profile?.avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
+
   // "Tiếp tục học" - first course in list as active
   const activeCourse = courses[0];
 
@@ -74,12 +95,12 @@ export default function HomePage() {
       <div className="container max-w-6xl mx-auto px-4 md:px-6 space-y-8">
         
         {/* ─── ROW 1: WELCOME BANNER & STATS ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
           
           {/* Welcome glassmorphic banner */}
           <motion.div
             variants={fadeInUp}
-            className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6"
+            className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 h-full"
           >
             <div className="space-y-4 max-w-md text-center md:text-left">
               <h1 className="text-3xl font-black text-slate-800 leading-tight">
@@ -133,29 +154,30 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          {/* Right quick stats stacked */}
-          <div className="flex flex-col gap-4">
+          {/* Right quick stats stacked (Equal height using flex flex-col items-stretch h-full) */}
+          <div className="flex flex-col gap-4 h-full justify-between items-stretch">
             
-            {/* Stat 1: Weekly Ranking */}
+            {/* Stat 1: Word Count Widget */}
             <motion.div
               variants={fadeInUp}
-              className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
+              className="flex-1 bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
             >
               <div>
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Xếp hạng tuần</p>
-                <p className="text-xl font-black text-slate-800 mt-2">
-                  #12 <span className="text-xs font-bold text-slate-400">/ 450</span>
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Từ ngữ đã học</p>
+                <p className="text-xl font-black text-slate-800 mt-1">
+                  128 <span className="text-xs font-bold text-slate-400">từ</span>
                 </p>
+                <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Số từ đã học</p>
               </div>
               <div className="w-11 h-11 rounded-full bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
-                <BarChart3 size={18} className="text-[#2d6a4f]" />
+                <BookOpen size={18} className="text-[#2d6a4f]" />
               </div>
             </motion.div>
 
             {/* Stat 2: Daily Goal */}
             <motion.div
               variants={fadeInUp}
-              className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
+              className="flex-1 bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
             >
               <div>
                 <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Mục tiêu ngày</p>
@@ -234,8 +256,8 @@ export default function HomePage() {
             {/* Circular Illustration */}
             <div className="relative w-24 h-24 rounded-full overflow-hidden bg-slate-50 border-4 border-slate-100 shadow-sm flex items-center justify-center shrink-0">
               <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80"
-                alt="AI Character"
+                src={avatarSrc}
+                alt="User Avatar"
                 className="w-full h-full object-cover"
               />
             </div>
