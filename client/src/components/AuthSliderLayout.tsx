@@ -237,9 +237,9 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     </button>
                   </div>
 
-                  <p className="text-center text-xs text-[#8d99a2] mt-4 md:hidden">
+                  <p className="text-center text-xs text-[#8d99a2] mt-4">
                     {authPages.login.noAccount}{" "}
-                    <button type="button" onClick={handleToggleMode} className="font-bold text-[#3c7c4a] hover:underline">
+                    <button type="button" onClick={handleToggleMode} className="font-bold text-[#3c7c4a] hover:underline cursor-pointer">
                       {authPages.login.registerNow}
                     </button>
                   </p>
@@ -419,9 +419,9 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     </button>
                   </div>
 
-                  <p className="text-center text-xs text-[#8d99a2] mt-3 md:hidden">
+                  <p className="text-center text-xs text-[#8d99a2] mt-3">
                     {authPages.register.hasAccount}{" "}
-                    <button type="button" onClick={handleToggleMode} className="font-bold text-[#3c7c4a] hover:underline">
+                    <button type="button" onClick={handleToggleMode} className="font-bold text-[#3c7c4a] hover:underline cursor-pointer">
                       {authPages.register.signInNow}
                     </button>
                   </p>
@@ -472,24 +472,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
           </div>
         </motion.div>
 
-        {/* Middle Toggle Slide Button (Only desktop) */}
-        <button
-          onClick={handleToggleMode}
-          className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 px-6 py-3 rounded-full bg-[#3c6c44] text-white shadow-lg shadow-[#3c6c44]/30 hover:scale-105 active:scale-95 transition-all duration-300 items-center justify-center border-4 border-white cursor-pointer select-none text-[11px] font-extrabold uppercase tracking-wider shrink-0 w-36 whitespace-nowrap"
-          title={isLogin ? "Trượt sang Đăng ký" : "Trượt sang Đăng nhập"}
-        >
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={isLogin ? "register" : "login"}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.25 }}
-            >
-              {isLogin ? "Đăng ký" : "Đăng nhập"}
-            </motion.span>
-          </AnimatePresence>
-        </button>
+        {/* Middle Toggle Slide Button is removed to prevent overlapping illustration details */}
 
       </div>
     </div>
