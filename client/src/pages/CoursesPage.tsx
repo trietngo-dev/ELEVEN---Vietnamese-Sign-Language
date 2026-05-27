@@ -1,4 +1,4 @@
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/button";

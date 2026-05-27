@@ -3,7 +3,7 @@ import class1Img from "../assets/Class1.png";
 import class2Img from "../assets/Class2.png";
 import class3Img from "../assets/Class3.png";
 import { motion, type Variants } from "framer-motion";
-import { ArrowRight, BookOpen, Brain, Sparkles, Star, Plus, CheckCircle2, BarChart3, Languages } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, Sparkles, Star, Plus, CheckCircle2, Languages } from "lucide-react";
 import { viText } from "../locales/vi";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";

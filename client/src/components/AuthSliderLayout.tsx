@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Apple, Lock, Mail, UserRound, Eye, EyeOff, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import { Apple, Lock, Mail, UserRound, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import brand from "../assets/brand.jpg";
 import loginImg from "../assets/login.png";
 import registerImg from "../assets/register.png";
