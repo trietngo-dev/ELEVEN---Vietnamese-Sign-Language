@@ -37,7 +37,7 @@ function Navbar() {
         ? scrolled
           ? "fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-emerald-50/10 shadow-sm shadow-[#3c6c44]/[0.02]"
           : "absolute top-0 left-0 right-0 bg-transparent border-none" 
-        : "sticky top-0 bg-white/95 border-b border-slate-100"
+        : "sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100/50 shadow-sm shadow-slate-100/10"
     )}>
       <div className="container relative flex min-h-[72px] items-center justify-between gap-6 py-2">
         {/* Brand */}
