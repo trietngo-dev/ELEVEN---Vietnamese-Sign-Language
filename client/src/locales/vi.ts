@@ -4,7 +4,8 @@ export const viText = {
     buttons: {
       start: "Bắt đầu",
       signIn: "Đăng nhập",
-      tryTranslator: "Thử trình dịch",
+      tryTranslator: "Thử trình dịch ngay",
+      startLearningFree: "Bắt đầu học miễn phí",
       startLearning: "Bắt đầu học",
       viewDetail: "Xem chi tiết",
       createFreeAccount: "Tạo tài khoản miễn phí",
@@ -31,14 +32,15 @@ export const viText = {
   },
   landing: {
     hero: {
-      badge: "MỚI! THỬ NGHIỆM DỊCH THUẬT THỜI GIAN THỰC",
-      title: "Làm chủ Ngôn ngữ Ký hiệu dễ dàng với",
-      titleHighlight: "Độ chính xác từ AI",
+      badge: "NỀN TẢNG HỌC KÝ HIỆU ỨNG DỤNG AI ĐẦU TIÊN TẠI VIỆT NAM",
+      title: "Học Ngôn ngữ\nKý hiệu dễ dàng",
+      titleHighlight: "cùng AI",
       description:
-        "Trải nghiệm giao tiếp liền mạch với trình dịch AI cho ngôn ngữ ký hiệu Việt. Học theo tốc độ của riêng bạn với các mô-đun tương tác dành cho mọi người.",
-      imageAlt: "Minh họa phiên dịch ngôn ngữ ký hiệu",
+        "Eleven giúp bạn học, luyện tập và dịch Ngôn ngữ Ký hiệu Việt theo thời gian thực với công nghệ AI tiên tiến.",
+      imageAlt: "Minh họa ngôn ngữ ký hiệu Việt Nam",
       realtimeCaption:
         'DỊCH THUẬT THỜI GIAN THỰC: "Xin chào, tôi có thể giúp gì cho bạn hôm nay?"',
+      socialProof: "Hơn 10.000+ người đang học cùng Eleven",
     },
     sections: {
       featureTitle: "Sẵn sàng phá vỡ rào cản giao tiếp?",

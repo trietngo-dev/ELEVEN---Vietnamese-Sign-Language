@@ -5,7 +5,6 @@ import CoursesPage from "./pages/CoursesPage";
 import DictionaryPage from "./pages/DictionaryPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import ReviewPage from "./pages/ReviewPage";
 import SignLanguageTracker from "./components/SignLanguageTracker";
 
@@ -180,7 +179,7 @@ function App() {
           path="dang-ky"
           element={
             <PublicRoute>
-              <RegisterPage />
+              <LoginPage />
             </PublicRoute>
           }
         />
