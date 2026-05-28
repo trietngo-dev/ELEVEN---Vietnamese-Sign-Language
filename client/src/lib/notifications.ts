@@ -100,5 +100,33 @@ export const notificationsApi = {
       console.error("Error marking notification as read", e);
       return false;
     }
+  },
+
+  // Delete a notification using DELETE
+  deleteNotification: async (id: number): Promise<boolean> => {
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notifications/${id}`, {
+        method: "DELETE",
+        headers
+      });
+      return response.ok;
+    } catch (e) {
+      console.error("Error deleting notification", e);
+      return false;
+    }
+  },
+
+  // Delete multiple notifications in parallel bulk-style
+  deleteMultiple: async (ids: number[]): Promise<boolean> => {
+    try {
+      const results = await Promise.all(ids.map(id => notificationsApi.deleteNotification(id)));
+      return results.every(res => res);
+    } catch (e) {
+      console.error("Error deleting multiple notifications", e);
+      return false;
+    }
   }
 };
