@@ -35,13 +35,42 @@ export default function PricingPage() {
 
   useEffect(() => {
     const status = searchParams.get("status");
-    if (status === "PAID") {
-      setPaymentStatus("success");
-      searchParams.delete("status");
-      searchParams.delete("orderCode");
-      setSearchParams(searchParams);
-    } else if (status === "CANCELLED") {
-      setPaymentStatus("cancelled");
+    const orderCode = searchParams.get("orderCode");
+
+    if (status && orderCode) {
+      const token = tokenStorage.getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      // Call status endpoint to trigger active sync on backend
+      fetch(`${API_BASE_URL}/api/payments/status/${orderCode}`, { headers })
+        .then((res) => {
+          if (res.ok) {
+            // Re-fetch active subscription to update UI
+            return fetch(`${API_BASE_URL}/api/user_subscriptions/current`, { headers });
+          }
+          return null;
+        })
+        .then((res) => {
+          if (res && res.ok) return res.json();
+          return null;
+        })
+        .then((data) => {
+          if (data && data.status === 0) {
+            setActiveSub(data);
+          }
+        })
+        .catch((err) => console.error("Lỗi đồng bộ trạng thái thanh toán:", err));
+
+      if (status === "PAID") {
+        setPaymentStatus("success");
+      } else if (status === "CANCELLED") {
+        setPaymentStatus("cancelled");
+      }
+
+      // Clean search parameters
       searchParams.delete("status");
       searchParams.delete("orderCode");
       setSearchParams(searchParams);
