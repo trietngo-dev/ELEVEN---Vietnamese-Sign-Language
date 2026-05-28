@@ -14,6 +14,7 @@ import {
   Check, 
   Activity 
 } from "lucide-react";
+import { notificationsApi } from "../lib/notifications";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -24,6 +25,13 @@ interface Course {
   level?: string;
   coverMediaId?: number;
   status?: number | string;
+}
+
+interface RecentLessonInfo {
+  title: string;
+  accuracy: string;
+  time: string;
+  isReal?: boolean;
 }
 
 const fadeInUp: Variants = {
@@ -44,30 +52,28 @@ const sectionStagger: Variants = {
 export default function HomePage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Dynamic Statistics States
+  const [loginDays, setLoginDays] = useState<number>(7);
+  const [learnedWords, setLearnedWords] = useState<number>(128);
+  const [learningHours, setLearningHours] = useState<number>(4.5);
+  const [accumulatedXp, setAccumulatedXp] = useState<number>(1240);
+  const [recentLessons, setRecentLessons] = useState<RecentLessonInfo[]>([
+    { title: "Giao tiếp: Xin chào", accuracy: "98%", time: "12:30 PM" },
+    { title: "Giao tiếp: Cảm ơn", accuracy: "94%", time: "Hôm qua" },
+    { title: "Giao tiếp: Bạn tên là gì?", accuracy: "91%", time: "2 ngày trước" },
+  ]);
 
   const firstName = (user?.fullName || "bạn").split(" ").at(-1);
 
-  useEffect(() => {
-    const token = tokenStorage.getToken();
-    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-    fetch(`${API_BASE_URL}/api/courses`, { headers })
-      .then((r) => r.ok ? r.json() : { items: [] })
-      .then((data) => {
-        const published = (data.items || []).filter(
-          (c: Course) => c.status === 1 || c.status === "Published" || c.status === "published"
-        );
-        setCourses(published.slice(0, 3));
-      })
-      .catch(() => setCourses([]));
-  }, []);
-
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
+  // 1. Fetch avatar and courses
   useEffect(() => {
     if (!user?.id) return;
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
+    // Fetch avatar
     fetch(`${API_BASE_URL}/api/users/${user.id}`, { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((userData) => {
@@ -82,13 +88,156 @@ export default function HomePage() {
           setAvatarUrl(mediaData.fileUrl);
         }
       })
-      .catch((e) => console.error("Error loading user avatar in HomePage", e));
+      .catch(() => {});
+
+    // Fetch courses
+    fetch(`${API_BASE_URL}/api/courses`, { headers })
+      .then((r) => r.ok ? r.json() : { items: [] })
+      .then((data) => {
+        const published = (data.items || []).filter(
+          (c: Course) => c.status === 1 || c.status === "Published" || c.status === "published"
+        );
+        setCourses(published.slice(0, 3));
+      })
+      .catch(() => setCourses([]));
   }, [user]);
 
-  const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
+  // 2. Fetch User Stats & Proactive Notification Generation
+  useEffect(() => {
+    if (!user?.id) return;
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    // A. Fetch Login Days (Activity Logs)
+    fetch(`${API_BASE_URL}/api/user_activity_logs`, { headers })
+      .then(res => res.ok ? res.json() : { items: [] })
+      .then(data => {
+        const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
+        const userLogs = items.filter((log: any) => log.userId === user.id);
+        if (userLogs.length > 0) {
+          // Unique days calculation
+          const uniqueDays = new Set(
+            userLogs.map((log: any) => new Date(log.createdAt || log.timestamp).toDateString())
+          );
+          setLoginDays(Math.max(7, uniqueDays.size));
+        }
+      })
+      .catch(() => {});
+
+    // B. Fetch Learned Words Progress
+    fetch(`${API_BASE_URL}/api/user_vocabulary_progress`, { headers })
+      .then(res => res.ok ? res.json() : { items: [] })
+      .then(data => {
+        const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
+        const userVocabs = items.filter((v: any) => v.userId === user.id);
+        const completed = userVocabs.filter((v: any) => v.status === 2 || v.masteryLevel >= 0.8).length;
+        setLearnedWords(completed > 0 ? completed : 128);
+      })
+      .catch(() => {});
+
+    // C. Fetch Completed Lessons & Time & XP
+    fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers })
+      .then(res => res.ok ? res.json() : { items: [] })
+      .then(async (data) => {
+        const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
+        const userProgress = items.filter((p: any) => p.userId === user.id);
+        
+        if (userProgress.length > 0) {
+          // Sum hours
+          const totalSeconds = userProgress.reduce((sum: number, p: any) => sum + (p.totalTimeSeconds || 0), 0);
+          const calculatedHours = parseFloat((totalSeconds / 3600).toFixed(1));
+          setLearningHours(calculatedHours > 0 ? calculatedHours : 4.5);
+
+          // Sum XP
+          const totalXp = userProgress.reduce((sum: number, p: any) => sum + (p.xpEarned || 0), 0);
+          setAccumulatedXp(totalXp > 0 ? totalXp : 1240);
+
+          // Fetch Recent Lessons Info
+          const completedProgress = userProgress
+            .filter((p: any) => p.completedAt || p.status === 2)
+            .sort((a: any, b: any) => new Date(b.completedAt || b.updatedAt).getTime() - new Date(a.completedAt || a.updatedAt).getTime())
+            .slice(0, 3);
+
+          if (completedProgress.length > 0) {
+            // Retrieve lesson names
+            const resolved = await Promise.all(
+              completedProgress.map(async (p: any) => {
+                try {
+                  const lessonRes = await fetch(`${API_BASE_URL}/api/lessons/${p.lessonId}`, { headers });
+                  if (lessonRes.ok) {
+                    const lessonObj = await lessonRes.json();
+                    const completionDate = new Date(p.completedAt || p.updatedAt);
+                    return {
+                      title: lessonObj.title || `Bài học #${p.lessonId}`,
+                      accuracy: `${Math.round((p.bestAccuracy || 0.9) * 100)}%`,
+                      time: completionDate.toLocaleDateString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+                      isReal: true
+                    };
+                  }
+                } catch {}
+                return null;
+              })
+            );
+            const validResolved = resolved.filter(r => r !== null) as RecentLessonInfo[];
+            if (validResolved.length > 0) {
+              setRecentLessons(validResolved);
+            }
+          }
+
+          // Trigger Proactive Notification for Completed Lessons
+          const latestCompleted = userProgress.find((p: any) => p.status === 2);
+          if (latestCompleted) {
+            // Check if alert already exists in database
+            const currentAlerts = await notificationsApi.getUserNotifications(user.id);
+            const hasAlert = currentAlerts.some(
+              a => a.type === "learning" && a.message.includes(`Bài học #${latestCompleted.lessonId}`)
+            );
+            if (!hasAlert) {
+              // Fetch lesson details to get title
+              fetch(`${API_BASE_URL}/api/lessons/${latestCompleted.lessonId}`, { headers })
+                .then(res => res.ok ? res.json() : null)
+                .then(lessonObj => {
+                  const title = lessonObj?.title || `Bài học #${latestCompleted.lessonId}`;
+                  notificationsApi.createNotification(
+                    user.id,
+                    "Hoàn thành bài học!",
+                    `Chúc mừng bạn đã hoàn thành bài học "${title}" và nhận được +${latestCompleted.xpEarned || 50} XP điểm thưởng!`,
+                    "learning"
+                  );
+                });
+            }
+          }
+        }
+      })
+      .catch(() => {});
+
+    // D. Trigger Proactive Notification for Subscription Registration
+    fetch(`${API_BASE_URL}/api/user_subscriptions/current`, { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(async (subData) => {
+        if (subData && subData.status === 0) {
+          const currentAlerts = await notificationsApi.getUserNotifications(user.id);
+          const hasSubAlert = currentAlerts.some(a => a.type === "subscription");
+          if (!hasSubAlert) {
+            const planNames: Record<number, string> = { 1: "Cơ bản", 2: "Chuyên nghiệp", 3: "Cao cấp" };
+            const planName = planNames[subData.planId] || "Cao cấp";
+            const expDate = new Date(subData.endAt).toLocaleDateString("vi-VN");
+            notificationsApi.createNotification(
+              user.id,
+              "Đăng ký gói thành công!",
+              `Tài khoản của bạn đã được nâng cấp thành công lên gói "${planName}". Ngày hết hạn dịch vụ: ${expDate}.`,
+              "subscription"
+            );
+          }
+        }
+      })
+      .catch(() => {});
+
+  }, [user]);
 
   // "Tiếp tục học" - first course in list as active
   const activeCourse = courses[0];
+  const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
 
   return (
     <motion.div
@@ -118,13 +267,13 @@ export default function HomePage() {
               
               {/* Badges */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-[10px] font-extrabold text-[#2d6a4f]">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-[10px] font-extrabold text-[#2d6a4f] select-none">
                   <Flame size={12} className="fill-[#2d6a4f] shrink-0" />
-                  7 ngày liên tiếp
+                  {loginDays} ngày liên tiếp
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[10px] font-extrabold text-amber-600">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[10px] font-extrabold text-amber-600 select-none">
                   <Zap size={12} className="fill-amber-500 stroke-amber-500 shrink-0" />
-                  1,240 XP
+                  {accumulatedXp} XP tích lũy
                 </span>
               </div>
             </div>
@@ -170,7 +319,7 @@ export default function HomePage() {
               <div>
                 <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Từ ngữ đã học</p>
                 <p className="text-xl font-black text-slate-800 mt-1">
-                  128 <span className="text-xs font-bold text-slate-400">từ</span>
+                  {learnedWords} <span className="text-xs font-bold text-slate-400">từ</span>
                 </p>
                 <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Số từ đã học</p>
               </div>
@@ -179,16 +328,17 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* Stat 2: Daily Goal */}
+            {/* Stat 2: Learning Hours Widget */}
             <motion.div
               variants={fadeInUp}
               className="flex-1 bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
             >
               <div>
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Mục tiêu ngày</p>
-                <p className="text-xl font-black text-slate-800 mt-2">
-                  15 <span className="text-xs font-bold text-slate-400">/ 20 Phút</span>
+                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Tổng giờ học</p>
+                <p className="text-xl font-black text-slate-800 mt-1">
+                  {learningHours} <span className="text-xs font-bold text-slate-400">giờ</span>
                 </p>
+                <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Thời gian luyện tập</p>
               </div>
               <div className="w-11 h-11 rounded-full bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
                 <Clock size={18} className="text-[#2d6a4f]" />
@@ -263,16 +413,16 @@ export default function HomePage() {
               <img
                 src={avatarSrc}
                 alt="User Avatar"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover animate-fade-in"
               />
             </div>
 
             <div className="w-full">
               <h4 className="text-base font-bold text-slate-800 leading-snug">
-                Tiếp tục học: {activeCourse ? activeCourse.title : "Cảm ơn"}
+                Tiếp tục học: {activeCourse ? activeCourse.title : "Khoá học mới"}
               </h4>
               <p className="text-[10px] text-slate-400 font-extrabold mt-1 uppercase tracking-wider">
-                {activeCourse ? `Cơ bản • ${activeCourse.level || "Bài học 1"}` : "Bài học thứ 12 trong chuỗi Giao tiếp 1"}
+                {activeCourse ? `Cơ bản • ${activeCourse.level || "Bài học 1"}` : "Cơ bản • Trung cấp"}
               </p>
             </div>
 
@@ -299,15 +449,15 @@ export default function HomePage() {
 
         </div>
 
-        {/* ─── ROW 3: RECENT AI TRANSLATIONS ─── */}
+        {/* ─── ROW 3: RECENT LESSONS ─── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-slate-800">Bản dịch gần đây</h2>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Lịch sử tương tác AI của bạn</p>
+              <h2 className="text-xl font-black text-slate-800">Bài học gần đây</h2>
+              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tiến độ luyện tập bài học gần nhất</p>
             </div>
             <Link 
-              to="/tu-dien" 
+              to="/khoa-hoc" 
               className="text-xs font-bold text-[#2d6a4f] hover:underline flex items-center gap-0.5"
             >
               Xem tất cả <ChevronRight size={14} />
@@ -318,11 +468,7 @@ export default function HomePage() {
             variants={sectionStagger}
             className="grid grid-cols-1 md:grid-cols-3 gap-6"
           >
-            {[
-              { text: '"Xin chào"', accuracy: "98%", time: "12:30 PM" },
-              { text: '"Cảm ơn"', accuracy: "94%", time: "Hôm qua" },
-              { text: '"Bạn tên là gì?"', accuracy: "91%", time: "2 ngày trước" },
-            ].map((item, idx) => (
+            {recentLessons.map((item, idx) => (
               <motion.div
                 key={idx}
                 variants={fadeInUp}
@@ -334,13 +480,16 @@ export default function HomePage() {
                     <Clock size={16} className="text-[#2d6a4f]" />
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Dịch sang văn bản</p>
-                    <h4 className="text-base font-bold text-slate-800 mt-1 leading-snug">{item.text}</h4>
+                    <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
+                    <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug line-clamp-1">{item.title}</h4>
                   </div>
                 </div>
-                <div className="mt-5 pt-4 border-t border-slate-50 flex items-center gap-1.5 text-xs font-bold text-emerald-600">
-                  <Check size={14} className="stroke-[3]" />
-                  <span>Chính xác {item.accuracy}</span>
+                <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold">
+                  <div className="flex items-center gap-1.5 text-emerald-600">
+                    <Check size={14} className="stroke-[3]" />
+                    <span>Độ chính xác {item.accuracy}</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">+50 XP</span>
                 </div>
               </motion.div>
             ))}

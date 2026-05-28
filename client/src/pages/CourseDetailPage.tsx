@@ -129,7 +129,7 @@ export default function CourseDetailPage() {
                   <Crown className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-[0.95rem] font-bold text-[#3a403f]">Đây là khóa học dành cho tài khoản Premium</p>
+                  <p className="text-[0.95rem] font-bold text-[#3a403f]">Đây là khóa học dành cho tài khoản Cao cấp</p>
                   <p className="text-sm text-[#86908c]">Nâng cấp tài khoản để truy cập toàn bộ nội dung khóa học này.</p>
                 </div>
               </div>
@@ -198,7 +198,7 @@ export default function CourseDetailPage() {
                 </Link>
               ) : (
                 <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold cursor-not-allowed">
-                  <Lock size={16} /> Yêu cầu tài khoản Premium
+                  <Lock size={16} /> Yêu cầu tài khoản Cao cấp
                 </button>
               )
             ) : (
