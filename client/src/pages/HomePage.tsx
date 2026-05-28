@@ -3,18 +3,19 @@ import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
-import { 
-  Zap, 
-  ArrowRight, 
-  Clock, 
-  ChevronRight, 
-  Video, 
-  BookOpen, 
-  Flame, 
-  Check, 
-  Activity 
+import {
+  Zap,
+  ArrowRight,
+  Clock,
+  ChevronRight,
+  Video,
+  BookOpen,
+  Flame,
+  Check,
+  Activity
 } from "lucide-react";
 import { notificationsApi } from "../lib/notifications";
+import flameCharacterWave from "../assets/flame_character_wave.gif";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -84,7 +85,7 @@ export default function HomePage() {
           setAvatarUrl(mediaData.fileUrl);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // Fetch courses
     fetch(`${API_BASE_URL}/api/courses`, { headers })
@@ -143,9 +144,8 @@ export default function HomePage() {
       .then(async (data) => {
         const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
         const userProgress = items.filter((p: any) => p.userId === user.id);
-        
+
         if (userProgress.length > 0) {
-          setHasJoined(true);
           // Sum hours
           const totalSeconds = userProgress.reduce((sum: number, p: any) => sum + (p.totalTimeSeconds || 0), 0);
           const calculatedHours = parseFloat((totalSeconds / 3600).toFixed(1));
@@ -154,20 +154,6 @@ export default function HomePage() {
           // Sum XP
           const totalXp = userProgress.reduce((sum: number, p: any) => sum + (p.xpEarned || 0), 0);
           setAccumulatedXp(totalXp);
-
-          // Find active course dynamically from recently updated progress
-          const latestProgress = [...userProgress].sort((a: any, b: any) => new Date(b.updatedAt || b.completedAt || 0).getTime() - new Date(a.updatedAt || a.completedAt || 0).getTime())[0];
-          if (latestProgress && latestProgress.courseId) {
-            try {
-              const cRes = await fetch(`${API_BASE_URL}/api/courses/${latestProgress.courseId}`, { headers });
-              if (cRes.ok) {
-                const cData = await cRes.json();
-                setActiveCourse(cData);
-              }
-            } catch (err) {
-              console.error("Error fetching active course details", err);
-            }
-          }
 
           // Fetch Recent Lessons Info
           const completedProgress = userProgress
@@ -191,7 +177,7 @@ export default function HomePage() {
                       isReal: true
                     };
                   }
-                } catch {}
+                } catch { }
                 return null;
               })
             );
@@ -204,29 +190,29 @@ export default function HomePage() {
           // Trigger Proactive Notification for Completed Lessons
           const latestCompleted = userProgress.find((p: any) => p.status === 2);
           if (latestCompleted) {
-            // Check if alert already exists in database
-            const currentAlerts = await notificationsApi.getUserNotifications(user.id);
-            const hasAlert = currentAlerts.some(
-              a => a.type === "learning" && a.message.includes(`Bài học #${latestCompleted.lessonId}`)
-            );
-            if (!hasAlert) {
-              // Fetch lesson details to get title
-              fetch(`${API_BASE_URL}/api/lessons/${latestCompleted.lessonId}`, { headers })
-                .then(res => res.ok ? res.json() : null)
-                .then(lessonObj => {
-                  const title = lessonObj?.title || `Bài học #${latestCompleted.lessonId}`;
+            // Fetch lesson details to get title first
+            fetch(`${API_BASE_URL}/api/lessons/${latestCompleted.lessonId}`, { headers })
+              .then(res => res.ok ? res.json() : null)
+              .then(async (lessonObj) => {
+                if (!lessonObj) return;
+                const title = lessonObj.title || `Bài học #${latestCompleted.lessonId}`;
+                const currentAlerts = await notificationsApi.getUserNotifications(user.id);
+                const hasAlert = currentAlerts.some(
+                  a => a.type === "learning" && (a.message.includes(`"${title}"`) || a.message.includes(`#${latestCompleted.lessonId}`))
+                );
+                if (!hasAlert) {
                   notificationsApi.createNotification(
                     user.id,
                     "Hoàn thành bài học!",
                     `Chúc mừng bạn đã hoàn thành bài học "${title}" và nhận được +${latestCompleted.xpEarned || 50} XP điểm thưởng!`,
                     "learning"
                   );
-                });
-            }
+                }
+              });
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // D. Trigger Proactive Notification for Subscription Registration
     fetch(`${API_BASE_URL}/api/user_subscriptions/current`, { headers })
@@ -248,12 +234,40 @@ export default function HomePage() {
           }
         }
       })
+      .catch(() => { });
+
+    // E. Fetch Enrollments & Active Course Real Progress
+    fetch(`${API_BASE_URL}/api/enrollments/user/${user.id}`, { headers })
+      .then(res => res.ok ? res.json() : [])
+      .then(async (enrollments) => {
+        const list = Array.isArray(enrollments) ? enrollments : [];
+        if (list.length > 0) {
+          setHasJoined(true);
+          const latestEnrollment = [...list].sort((a: any, b: any) => new Date(b.updatedAt || b.enrolledAt || 0).getTime() - new Date(a.updatedAt || a.enrolledAt || 0).getTime())[0];
+          if (latestEnrollment) {
+            try {
+              const cRes = await fetch(`${API_BASE_URL}/api/courses/${latestEnrollment.courseId}`, { headers });
+              if (cRes.ok) {
+                const cData = await cRes.json();
+                setActiveCourse({
+                  ...cData,
+                  progressPercent: latestEnrollment.progressPercent,
+                  enrollmentStatus: latestEnrollment.status
+                });
+              }
+            } catch (err) {
+              console.error("Error fetching active course details", err);
+            }
+          }
+        }
+      })
       .catch(() => {});
 
   }, [user]);
 
   // "Tiếp tục học" - fallback course if activeCourse is not set but user has courses
   const courseToShow = activeCourse || courses[0];
+  const courseProgress = (activeCourse as any)?.progressPercent ?? 0;
   const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
 
   return (
@@ -264,10 +278,10 @@ export default function HomePage() {
       className="min-h-screen bg-transparent py-8 md:py-10"
     >
       <div className="container max-w-6xl mx-auto px-4 md:px-6 space-y-8">
-        
+
         {/* ─── ROW 1: WELCOME BANNER & STATS ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          
+
           {/* Welcome glassmorphic banner */}
           <motion.div
             variants={fadeInUp}
@@ -279,9 +293,9 @@ export default function HomePage() {
                 <span className="bg-gradient-to-r from-[#2d6a4f] to-[#3a8e63] bg-clip-text text-transparent">{user?.fullName || "Người học"}!</span>
               </h1>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Học ngôn ngữ ký hiệu mở ra cánh cửa kết nối mới. Mỗi bài học là một bước tiến gần hơn đến sự sẻ chia và đồng cảm! 🚀
+                Học ngôn ngữ ký hiệu mở ra cánh cửa kết nối mới. Mỗi bài học là một bước tiến gần hơn đến sự sẻ chia và đồng cảm!
               </p>
-              
+
               {/* Badges */}
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-[10px] font-extrabold text-[#2d6a4f] select-none">
@@ -297,34 +311,21 @@ export default function HomePage() {
 
             {/* Premium waving greeting hand icon */}
             <div className="relative flex items-center justify-center h-28 w-28 shrink-0 select-none bg-gradient-to-br from-[#ebf5ef] to-[#d4ebde] rounded-[24px] border border-[#2d6a4f]/10 shadow-[0_8px_20px_rgba(45,106,79,0.05)] overflow-hidden group">
-              <style>{`
-                @keyframes wave {
-                  0% { transform: rotate(0.0deg); }
-                  10% { transform: rotate(14.0deg); }
-                  20% { transform: rotate(-8.0deg); }
-                  30% { transform: rotate(14.0deg); }
-                  40% { transform: rotate(-4.0deg); }
-                  50% { transform: rotate(10.0deg); }
-                  60% { transform: rotate(0.0deg); }
-                  100% { transform: rotate(0.0deg); }
-                }
-                .animate-wave {
-                  animation: wave 2.5s infinite;
-                  transform-origin: 70% 70%;
-                  display: inline-block;
-                }
-              `}</style>
               <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0)_60%)]" />
               <div className="absolute inset-2 rounded-[20px] border border-dashed border-[#2d6a4f]/20 animate-[spin_12s_linear_infinite]" />
-              <div className="absolute inset-3 rounded-[18px] bg-white/40 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-4xl animate-wave">👋</span>
+              <div className="absolute inset-3 rounded-[18px] bg-white/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                <img
+                  src={flameCharacterWave}
+                  alt="Waving Greeting"
+                  className="w-full h-full object-cover rounded-[15px]"
+                />
               </div>
             </div>
           </motion.div>
 
           {/* Right quick stats stacked (Equal height using flex flex-col items-stretch h-full) */}
           <div className="flex flex-col gap-4 h-full justify-between items-stretch">
-            
+
             {/* Stat 1: Word Count Widget */}
             <motion.div
               variants={fadeInUp}
@@ -364,7 +365,7 @@ export default function HomePage() {
 
         {/* ─── ROW 2: AI PRACTICE & ACTIVE LESSON ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          
+
           {/* AI Vision Card (60% width equivalent) */}
           <motion.div
             variants={fadeInUp}
@@ -372,10 +373,10 @@ export default function HomePage() {
           >
             {/* Cyber Grid/HUD backdrop */}
             <div className="absolute inset-0 bg-[linear-gradient(rgba(45,106,79,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(45,106,79,0.04)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-40" />
-            
+
             {/* Interactive glowing light blobs */}
             <div className="absolute top-1/4 right-1/4 w-32 h-32 rounded-full bg-[#2d6a4f]/10 blur-[60px] pointer-events-none group-hover:bg-[#2d6a4f]/15 transition-all duration-500" />
-            
+
             {/* Top high-tech tag */}
             <div className="relative z-10 flex items-center gap-2">
               <span className="flex h-2 w-2 relative">
@@ -436,7 +437,7 @@ export default function HomePage() {
                 Tiếp tục học: {hasJoined && courseToShow ? courseToShow.title : "Chưa tham gia"}
               </h4>
               <p className="text-[10px] text-slate-400 font-extrabold mt-1 uppercase tracking-wider">
-                {hasJoined && courseToShow ? `Cơ bản • ${courseToShow.level || "Bài học 1"}` : "Học ngay"}
+                {hasJoined && courseToShow ? `Cơ bản • Tiến độ ${Math.round(courseProgress)}%` : "Học ngay"}
               </p>
             </div>
 
@@ -444,10 +445,10 @@ export default function HomePage() {
             <div className="w-full px-2">
               <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-1.5">
                 <span>Tiến độ bài</span>
-                <span className="text-slate-600">{hasJoined && courseToShow ? "65%" : "0%"}</span>
+                <span className="text-slate-600">{hasJoined && courseToShow ? `${Math.round(courseProgress)}%` : "0%"}</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: hasJoined && courseToShow ? "65%" : "0%" }} />
+                <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: hasJoined && courseToShow ? `${courseProgress}%` : "0%" }} />
               </div>
             </div>
 
@@ -470,8 +471,8 @@ export default function HomePage() {
               <h2 className="text-xl font-black text-slate-800">Bài học gần đây</h2>
               <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tiến độ luyện tập bài học gần nhất</p>
             </div>
-            <Link 
-              to="/khoa-hoc" 
+            <Link
+              to="/khoa-hoc"
               className="text-xs font-bold text-[#2d6a4f] hover:underline flex items-center gap-0.5"
             >
               Xem tất cả <ChevronRight size={14} />
@@ -479,7 +480,7 @@ export default function HomePage() {
           </div>
 
           {recentLessons.length > 0 ? (
-            <motion.div 
+            <motion.div
               variants={sectionStagger}
               className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >

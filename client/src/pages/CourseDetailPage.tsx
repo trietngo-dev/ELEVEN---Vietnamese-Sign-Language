@@ -2,19 +2,21 @@ import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, PlayCircle, Lock, Crown } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
+import { useAuth } from "../context/AuthContext";
 import CourseImage from "../components/CourseImage";
 
 export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [course, setCourse] = useState<any>(null);
   const [modules, setModules] = useState<any[]>([]);
   const [lessons, setLessons] = useState<any[]>([]);
   const [completedLessonsCount, setCompletedLessonsCount] = useState(0);
+  const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUserPremium, setIsUserPremium] = useState(false);
-
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -44,22 +46,15 @@ export default function CourseDetailPage() {
         }
 
         // Fetch User Progress
-        let userId = 1; // default
-        if (authToken) {
-          try {
-            const payload = JSON.parse(atob(authToken.split('.')[1]));
-            if (payload.nameid) userId = parseInt(payload.nameid);
-          } catch (e) {
-            console.error("Lỗi parse token", e);
-          }
-        }
+        let userId = user?.id || 1;
         if (authToken && id) {
           try {
             const progRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress/user/${userId}/course/${id}`, { headers });
             if (progRes.ok) {
               const progData = await progRes.json();
-              const completedCount = progData.filter((p: any) => p.status === 2).length; // 2 = Completed
-              setCompletedLessonsCount(completedCount);
+              const completedList = progData.filter((p: any) => p.status === 2).map((p: any) => p.lessonId);
+              setCompletedLessonIds(completedList);
+              setCompletedLessonsCount(completedList.length);
             }
           } catch (err) {
             console.error("Lỗi tải tiến độ", err);
@@ -86,11 +81,16 @@ export default function CourseDetailPage() {
       }
     };
     if (id) loadData();
-  }, [id]);
-
+  }, [id, user]);
   const totalTimeMinutes = useMemo(() => {
     return lessons.reduce((acc, l) => acc + (l.estimatedMinutes || 0), 0);
   }, [lessons]);
+
+  const nextLessonId = useMemo(() => {
+    if (lessons.length === 0) return null;
+    const uncompleted = lessons.find(l => !completedLessonIds.includes(l.id));
+    return uncompleted ? uncompleted.id : (lessons[0]?.id || null);
+  }, [lessons, completedLessonIds]);
 
   const formatHours = (mins: number) => {
     if (mins < 60) return `${mins} phút`;
@@ -107,7 +107,6 @@ export default function CourseDetailPage() {
     return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Không tìm thấy khóa học.</div>;
   }
 
-  const firstLessonId = lessons.length > 0 ? lessons[0].id : null;
   const progressPercentage = lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
   const isPremiumCourse = course?.isPremium ?? false;
   const canStartLearning = !isPremiumCourse || isUserPremium;
@@ -191,10 +190,10 @@ export default function CourseDetailPage() {
               </div>
             </div>
 
-            {firstLessonId ? (
+            {nextLessonId ? (
               canStartLearning ? (
-                <Link to={`/bai-hoc/${firstLessonId}`} className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#315736] transition-all shadow-lg shadow-[#3c6d44]/20 hover:-translate-y-0.5">
-                  <PlayCircle size={18} /> Bắt đầu học
+                <Link to={`/bai-hoc/${nextLessonId}`} className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#315736] transition-all shadow-lg shadow-[#3c6d44]/20 hover:-translate-y-0.5">
+                  <PlayCircle size={18} /> {completedLessonsCount > 0 ? "Học tiếp" : "Bắt đầu học"}
                 </Link>
               ) : (
                 <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold cursor-not-allowed">
