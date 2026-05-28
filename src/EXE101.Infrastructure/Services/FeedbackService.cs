@@ -169,6 +169,24 @@ public sealed class FeedbackService(
         entity.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
+
+        // Create learner notification in database when Admin replies
+        if (!string.IsNullOrWhiteSpace(request.AdminReply))
+        {
+            var notification = new Notification
+            {
+                UserId = entity.UserId,
+                Title = "Bạn có phản hồi mới từ Admin",
+                Message = $"Phản hồi: \"{request.AdminReply}\"",
+                Type = "system",
+                IsRead = false,
+                ActionUrl = "/danh-gia",
+                CreatedAt = DateTime.UtcNow
+            };
+            _dbContext.Notifications.Add(notification);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         var response = Map(updated);
         await EnrichResponseAsync(response, cancellationToken);
         return response;
