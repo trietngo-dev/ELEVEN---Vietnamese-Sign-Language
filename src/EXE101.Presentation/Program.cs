@@ -208,6 +208,28 @@ using (var scope = app.Services.CreateScope())
         });
     }
 
+    if (!dbContext.FeedbackCategories.Any(x => x.Name == "Course"))
+    {
+        dbContext.FeedbackCategories.Add(new FeedbackCategory
+        {
+            Name = "Course",
+            Description = "Course Ratings and Reviews",
+            IsActive = true,
+            CreatedAt = now
+        });
+    }
+
+    if (!dbContext.FeedbackCategories.Any(x => x.Name == "Support"))
+    {
+        dbContext.FeedbackCategories.Add(new FeedbackCategory
+        {
+            Name = "Support",
+            Description = "User Help and Support Desk Requests",
+            IsActive = true,
+            CreatedAt = now
+        });
+    }
+
     dbContext.SaveChanges();
 }
 

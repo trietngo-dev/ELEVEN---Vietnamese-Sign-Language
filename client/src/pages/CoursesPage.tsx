@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Star } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../components/ui/button";
@@ -36,6 +36,9 @@ function CoursesPage() {
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  // Reviews integration
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [courseCategoryId, setCourseCategoryId] = useState<number | null>(null);
 
   const handleProtectedLink = (e: React.MouseEvent<HTMLAnchorElement>, _path: string) => {
     if (!isAuthenticated) {
@@ -51,9 +54,11 @@ function CoursesPage() {
         const authToken = tokenStorage.getToken();
         const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
 
-        const [catRes, courseRes] = await Promise.all([
+        const [catRes, courseRes, feedbackCatRes, reviewsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/course_categories`, { headers }),
-          fetch(`${API_BASE_URL}/api/courses`, { headers })
+          fetch(`${API_BASE_URL}/api/courses`, { headers }),
+          fetch(`${API_BASE_URL}/api/feedback_categories?pageSize=100`, { headers }),
+          fetch(`${API_BASE_URL}/api/feedbacks?pageSize=1000`, { headers })
         ]);
 
         if (catRes.ok) {
@@ -70,6 +75,19 @@ function CoursesPage() {
             c.status === "1"
           ) || []);
         }
+
+        if (feedbackCatRes.ok) {
+          const catData = await feedbackCatRes.json();
+          const courseCat = (catData.items || []).find((c: any) => c.name.toLowerCase() === "course");
+          if (courseCat) {
+            setCourseCategoryId(courseCat.id);
+          }
+        }
+
+        if (reviewsRes.ok) {
+          const revData = await reviewsRes.json();
+          setReviews(revData.items || []);
+        }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu trang khóa học", err);
       } finally {
@@ -85,6 +103,34 @@ function CoursesPage() {
     }
     return courses.filter((course) => course.categoryId === activeCategory);
   }, [activeCategory, courses]);
+
+  const courseRatingMap = useMemo(() => {
+    const map: Record<number, { sum: number; count: number }> = {};
+    if (courseCategoryId) {
+      reviews.forEach((r: any) => {
+        if (r.categoryId === courseCategoryId && r.subject && r.subject.startsWith("CourseId:")) {
+          const cid = parseInt(r.subject.split(":")[1]);
+          if (!isNaN(cid)) {
+            if (!map[cid]) {
+              map[cid] = { sum: 0, count: 0 };
+            }
+            map[cid].sum += r.rating;
+            map[cid].count += 1;
+          }
+        }
+      });
+    }
+    const finalMap: Record<number, { avg: number; count: number }> = {};
+    Object.keys(map).forEach((key) => {
+      const cid = parseInt(key);
+      const data = map[cid];
+      finalMap[cid] = {
+        avg: Math.round((data.sum / data.count) * 10) / 10,
+        count: data.count
+      };
+    });
+    return finalMap;
+  }, [reviews, courseCategoryId]);
 
   return (
     <motion.section
@@ -181,11 +227,16 @@ function CoursesPage() {
 
               {/* Compact content area */}
               <div className="px-4 pb-4 pt-3 flex flex-col flex-1">
-                {/* Level badge */}
-                <div className="flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-[0.03em] text-[#92a09d] h-5">
-                  <span className="rounded-full bg-[#eef4ef] px-2 py-0.5 text-[#5f776b]">
+                {/* Level badge + Star Rating */}
+                <div className="flex items-center justify-between text-[0.68rem] font-bold uppercase tracking-[0.03em] h-5">
+                  <span className="rounded-full bg-[#eef4ef] px-2.5 py-0.5 text-[#5f776b]">
                     {course.level || "Cơ bản"}
                   </span>
+                  {courseRatingMap[course.id] && (
+                    <span className="flex items-center gap-1 text-[#d9aa17] bg-[#fffbf2] px-2.5 py-0.5 rounded-full border border-[#f7ecd3]">
+                      <Star size={11} fill="currentColor" /> {courseRatingMap[course.id].avg} ({courseRatingMap[course.id].count})
+                    </span>
+                  )}
                 </div>
 
                 {/* Compact title */}

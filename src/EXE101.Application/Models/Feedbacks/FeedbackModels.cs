@@ -35,6 +35,9 @@ public sealed class FeedbackResponse
     public string? AdminReply { get; set; }
     public long? RespondedBy { get; set; }
     public DateTime? RespondedAt { get; set; }
+    public string? UserFullName { get; set; }
+    public string? UserAvatarUrl { get; set; }
+    public string? CourseTitle { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
