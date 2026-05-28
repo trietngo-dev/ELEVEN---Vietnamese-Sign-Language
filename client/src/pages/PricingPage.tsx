@@ -201,9 +201,13 @@ export default function PricingPage() {
               </li>
             </ul>
             
-            <button disabled className="w-full py-3.5 rounded-2xl bg-[#f8fbfa] text-slate-400 font-bold border border-slate-200">
-              Gói hiện tại
-            </button>
+            {(!isProActive && !isPremiumActive) ? (
+              <button disabled className="w-full py-3.5 rounded-2xl bg-[#f8fbfa] text-slate-400 font-bold border border-slate-200">
+                Gói hiện tại
+              </button>
+            ) : (
+              <div className="h-[54px]" />
+            )}
           </motion.div>
 
           {/* Pro Card */}
@@ -236,17 +240,17 @@ export default function PricingPage() {
               </li>
             </ul>
             
-            <button
-              onClick={() => handleUpgrade("pro")}
-              disabled={isProActive || isUpgrading !== null}
-              className={`w-full py-3.5 rounded-2xl font-bold transition-all ${
-                isProActive
-                  ? "bg-[#f8fbfa] text-slate-400 border border-slate-200 cursor-not-allowed"
-                  : "bg-[#3c6d44] text-white shadow-lg shadow-[#3c6d44]/30 hover:bg-[#315736] hover:scale-[1.02]"
-              }`}
-            >
-              {isProActive ? "Gói hiện tại" : isUpgrading === "pro" ? "Đang xử lý..." : "Nâng cấp ngay"}
-            </button>
+            {!isProActive && !isPremiumActive ? (
+              <button
+                onClick={() => handleUpgrade("pro")}
+                disabled={isUpgrading !== null}
+                className="w-full py-3.5 rounded-2xl font-bold transition-all bg-[#3c6d44] text-white shadow-lg shadow-[#3c6d44]/30 hover:bg-[#315736] hover:scale-[1.02]"
+              >
+                {isUpgrading === "pro" ? "Đang xử lý..." : "Nâng cấp ngay"}
+              </button>
+            ) : (
+              <div className="h-[54px]" />
+            )}
           </motion.div>
 
           {/* Premium Card */}
