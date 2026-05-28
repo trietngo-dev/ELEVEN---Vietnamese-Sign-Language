@@ -24,6 +24,17 @@ function Navbar() {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selectedNotif, setSelectedNotif] = useState<NotificationItem | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -103,18 +114,25 @@ function Navbar() {
     }
   };
 
-  const handleDeleteSingle = async (id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm("Bạn có chắc chắn muốn xóa thông báo này?")) {
-      return;
-    }
-    const ok = await notificationsApi.deleteNotification(id);
-    if (ok) {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-      setSelectedIds(prev => prev.filter(item => item !== id));
-    } else {
-      alert("Xóa thông báo thất bại.");
-    }
+  const handleDeleteSingle = async (id: number, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setConfirmModal({
+      isOpen: true,
+      title: "Xóa thông báo",
+      message: "Bạn có chắc chắn muốn xóa thông báo này? Hành động này không thể hoàn tác.",
+      onConfirm: async () => {
+        const ok = await notificationsApi.deleteNotification(id);
+        if (ok) {
+          setNotifications(prev => prev.filter(n => n.id !== id));
+          setSelectedIds(prev => prev.filter(item => item !== id));
+          if (selectedNotif?.id === id) {
+            setShowDetailModal(false);
+          }
+        } else {
+          alert("Xóa thông báo thất bại.");
+        }
+      }
+    });
   };
 
   const handleToggleSelect = (id: number, e: React.MouseEvent) => {
@@ -127,32 +145,40 @@ function Navbar() {
   const handleDeleteSelected = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (selectedIds.length === 0) return;
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} thông báo đã chọn?`)) {
-      return;
-    }
-    const success = await notificationsApi.deleteMultiple(selectedIds);
-    if (success) {
-      setNotifications(prev => prev.filter(n => !selectedIds.includes(n.id)));
-      setSelectedIds([]);
-    } else {
-      alert("Xóa một số thông báo thất bại. Vui lòng thử lại.");
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Xóa các thông báo đã chọn",
+      message: `Bạn có chắc chắn muốn xóa ${selectedIds.length} thông báo đã chọn? Hành động này không thể hoàn tác.`,
+      onConfirm: async () => {
+        const success = await notificationsApi.deleteMultiple(selectedIds);
+        if (success) {
+          setNotifications(prev => prev.filter(n => !selectedIds.includes(n.id)));
+          setSelectedIds([]);
+        } else {
+          alert("Xóa một số thông báo thất bại. Vui lòng thử lại.");
+        }
+      }
+    });
   };
 
   const handleDeleteAll = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (notifications.length === 0) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa toàn bộ thông báo? Hành động này không thể hoàn tác.")) {
-      return;
-    }
-    const ids = notifications.map(n => n.id);
-    const success = await notificationsApi.deleteMultiple(ids);
-    if (success) {
-      setNotifications([]);
-      setSelectedIds([]);
-    } else {
-      alert("Xóa thông báo thất bại.");
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Xóa tất cả thông báo",
+      message: "Bạn có chắc chắn muốn xóa toàn bộ thông báo? Hành động này không thể hoàn tác.",
+      onConfirm: async () => {
+        const ids = notifications.map(n => n.id);
+        const success = await notificationsApi.deleteMultiple(ids);
+        if (success) {
+          setNotifications([]);
+          setSelectedIds([]);
+        } else {
+          alert("Xóa thông báo thất bại.");
+        }
+      }
+    });
   };
 
   const handleNotificationClick = async (item: NotificationItem) => {
@@ -442,17 +468,7 @@ function Navbar() {
 
           <div className="flex justify-end gap-3">
             <button 
-              onClick={() => {
-                notificationsApi.deleteNotification(selectedNotif.id).then((ok) => {
-                  if (ok) {
-                    setNotifications(prev => prev.filter(n => n.id !== selectedNotif.id));
-                    setSelectedIds(prev => prev.filter(id => id !== selectedNotif.id));
-                    setShowDetailModal(false);
-                  } else {
-                    alert("Xóa thông báo thất bại.");
-                  }
-                });
-              }}
+              onClick={() => handleDeleteSingle(selectedNotif.id)}
               className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5"
             >
               <Trash2 size={14} /> Xóa thông báo
@@ -462,6 +478,40 @@ function Navbar() {
               className="px-5 py-2.5 bg-[#3c6c44] hover:bg-[#315736] text-white font-bold text-xs rounded-xl transition-all shadow-md"
             >
               Đóng
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+
+    {confirmModal.isOpen && createPortal(
+      <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-[24px] max-w-[400px] w-full p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col relative animate-in fade-in zoom-in-95 duration-150 text-center items-center">
+          <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-100/30 mb-4">
+            <Trash2 className="h-5 w-5 text-red-600 animate-pulse" />
+          </div>
+          
+          <h3 className="text-base font-bold text-slate-800 mb-2">{confirmModal.title}</h3>
+          <p className="text-xs text-slate-500 leading-relaxed mb-6 font-medium">
+            {confirmModal.message}
+          </p>
+
+          <div className="flex gap-3 w-full justify-center">
+            <button 
+              onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              className="flex-1 px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-xs transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={() => {
+                confirmModal.onConfirm();
+                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+              }}
+              className="flex-1 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            >
+              Xác nhận
             </button>
           </div>
         </div>
