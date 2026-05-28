@@ -116,7 +116,7 @@ export default function PricingPage() {
   }, []);
 
   const handleUpgrade = async (planCode: string) => {
-    const plan = plans.find(p => p.code === planCode);
+    const plan = plans.find(p => p.code && p.code.toLowerCase() === planCode.toLowerCase());
     if (!plan) {
       alert("Gói thanh toán không tồn tại hoặc chưa được tải.");
       return;
@@ -161,8 +161,11 @@ export default function PricingPage() {
     }
   };
 
-  const isProActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code === "pro";
-  const isPremiumActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code === "premium";
+  const isProActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code?.toLowerCase() === "pro";
+  const isPremiumActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code?.toLowerCase() === "premium";
+
+  const proPlan = plans.find(p => p.code && p.code.toLowerCase() === "pro");
+  const premiumPlan = plans.find(p => p.code && p.code.toLowerCase() === "premium");
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
@@ -253,10 +256,16 @@ export default function PricingPage() {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3c6d44] text-white text-[10px] font-bold uppercase tracking-widest py-1.5 px-4 rounded-full">
               Phổ biến nhất
             </div>
-            <h3 className="text-sm font-bold text-[#3c6d44] uppercase tracking-wider mb-4">Gói Chuyên nghiệp</h3>
+            <h3 className="text-sm font-bold text-[#3c6d44] uppercase tracking-wider mb-4">
+              {proPlan ? proPlan.name : "Gói Chuyên nghiệp"}
+            </h3>
             <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-4xl font-extrabold text-[#1f2937]">30.000 VNĐ</span>
-              <span className="text-slate-500 text-sm font-medium">/tháng</span>
+              <span className="text-4xl font-extrabold text-[#1f2937]">
+                {proPlan ? `${proPlan.priceVnd.toLocaleString("vi-VN")} VNĐ` : "30.000 VNĐ"}
+              </span>
+              <span className="text-slate-500 text-sm font-medium">
+                /{proPlan?.billingCycle === 'yearly' ? 'năm' : 'tháng'}
+              </span>
             </div>
             <p className="text-slate-500 text-sm mb-8">Đầy đủ tính năng hàng tháng</p>
             
@@ -296,10 +305,16 @@ export default function PricingPage() {
             <div className="absolute top-8 right-8 bg-[#fef3c7] text-[#d9aa17] text-[10px] font-bold uppercase tracking-widest py-1 px-3 rounded-full">
               Tiết kiệm 40%
             </div>
-            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Gói Cao cấp</h3>
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">
+              {premiumPlan ? premiumPlan.name : "Gói Cao cấp"}
+            </h3>
             <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-4xl font-extrabold text-[#1f2937]">50.000VNĐ</span>
-              <span className="text-slate-500 text-sm font-medium">/năm</span>
+              <span className="text-4xl font-extrabold text-[#1f2937]">
+                {premiumPlan ? `${premiumPlan.priceVnd.toLocaleString("vi-VN")} VNĐ` : "50.000 VNĐ"}
+              </span>
+              <span className="text-slate-500 text-sm font-medium">
+                /{premiumPlan?.billingCycle === 'yearly' ? 'năm' : 'tháng'}
+              </span>
             </div>
             <p className="text-slate-500 text-sm mb-8">Lựa chọn tốt nhất cho tương lai</p>
             

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Plus, Eye, ChevronLeft, ChevronRight, BookOpen, Edit, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Eye, ChevronLeft, ChevronRight, BookOpen, Edit, Trash2, Check, X, AlertTriangle } from "lucide-react";
 import AddCourseModal from "./AddCourseModal";
 import EditCourseModal from "./EditCourseModal";
 import CourseDetailModal from "./CourseDetailModal";
@@ -14,6 +15,15 @@ const AdminCourses: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [editingCourse, setEditingCourse] = useState<any>(null);
   const [viewingCourse, setViewingCourse] = useState<any>(null);
+  
+  // Custom Modal / Notification State
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error' | 'confirm';
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  } | null>(null);
 
   const fetchCourses = async () => {
     try {
@@ -55,20 +65,44 @@ const AdminCourses: React.FC = () => {
       });
       
       if (res.ok) {
+        setNotification({
+          isOpen: true,
+          type: 'success',
+          title: 'Thành công!',
+          message: `Đã ${course.status === 1 ? 'hủy xuất bản' : 'xuất bản'} khóa học "${course.title}" thành công.`
+        });
         fetchCourses();
       } else {
-        alert("Lỗi khi thay đổi trạng thái xuất bản");
+        setNotification({
+          isOpen: true,
+          type: 'error',
+          title: 'Lỗi xuất bản!',
+          message: 'Lỗi khi thay đổi trạng thái xuất bản.'
+        });
       }
     } catch (err) {
       console.error(err);
+      setNotification({
+        isOpen: true,
+        type: 'error',
+        title: 'Lỗi kết nối!',
+        message: 'Đã xảy ra lỗi khi kết nối với máy chủ.'
+      });
     }
   };
 
-  const handleDeleteCourse = async (course: any) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa khóa học "${course.title}"? Hành động này không thể hoàn tác.`)) {
-      return;
-    }
+  const handleDeleteCourse = (course: any) => {
+    setNotification({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Xác nhận xóa khóa học',
+      message: `Bạn có chắc chắn muốn xóa khóa học "${course.title}"? Hành động này không thể hoàn tác.`,
+      onConfirm: () => executeDeleteCourse(course)
+    });
+  };
 
+  const executeDeleteCourse = async (course: any) => {
+    setNotification(null);
     try {
       const authToken = tokenStorage.getToken();
       const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
@@ -79,13 +113,29 @@ const AdminCourses: React.FC = () => {
       });
       
       if (res.ok) {
+        setNotification({
+          isOpen: true,
+          type: 'success',
+          title: 'Thành công!',
+          message: `Đã xóa khóa học "${course.title}" thành công.`
+        });
         fetchCourses();
       } else {
-        alert("Lỗi khi xóa khóa học. Có thể khóa học này đang có dữ liệu liên quan.");
+        setNotification({
+          isOpen: true,
+          type: 'error',
+          title: 'Không thể xóa!',
+          message: 'Lỗi khi xóa khóa học. Có thể khóa học này đang có dữ liệu liên quan.'
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Đã xảy ra lỗi khi kết nối với máy chủ.");
+      setNotification({
+        isOpen: true,
+        type: 'error',
+        title: 'Lỗi kết nối!',
+        message: 'Đã xảy ra lỗi khi kết nối với máy chủ.'
+      });
     }
   };
 
@@ -268,6 +318,80 @@ const AdminCourses: React.FC = () => {
         course={viewingCourse}
         onClose={() => setViewingCourse(null)}
       />
+
+      {/* Custom Confirmation / Alert Modal */}
+      <AnimatePresence>
+        {notification && notification.isOpen && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl max-w-sm w-full text-center relative"
+            >
+              {notification.type !== 'confirm' && (
+                <button
+                  onClick={() => setNotification(null)}
+                  className="absolute top-6 right-6 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              )}
+
+              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
+                notification.type === 'success' 
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                  : notification.type === 'confirm'
+                    ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                    : 'bg-rose-50 text-rose-600 border border-rose-100'
+              }`}>
+                {notification.type === 'success' ? (
+                  <Check size={20} strokeWidth={3} />
+                ) : notification.type === 'confirm' ? (
+                  <AlertTriangle size={20} strokeWidth={2.5} className="text-amber-500" />
+                ) : (
+                  <X size={20} strokeWidth={3} />
+                )}
+              </div>
+
+              <h3 className="text-lg font-bold text-slate-900 mb-2">{notification.title}</h3>
+              <p className="text-xs text-slate-500 mb-6 leading-relaxed">{notification.message}</p>
+
+              {notification.type === 'confirm' ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setNotification(null)}
+                    className="flex-1 py-3 text-sm text-slate-500 font-bold border border-slate-200 rounded-2xl hover:bg-slate-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (notification.onConfirm) {
+                        notification.onConfirm();
+                      }
+                    }}
+                    className="flex-1 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 shadow-lg shadow-red-600/20 hover:shadow-xl transition-all text-sm"
+                  >
+                    Xóa ngay
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setNotification(null)}
+                  className={`w-full py-3 font-bold rounded-2xl transition-all shadow-md text-sm ${
+                    notification.type === 'success'
+                      ? 'bg-[#3c6c44] text-white hover:bg-[#315736] shadow-[#3c6c44]/20'
+                      : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/20'
+                  }`}
+                >
+                  Đồng ý
+                </button>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
