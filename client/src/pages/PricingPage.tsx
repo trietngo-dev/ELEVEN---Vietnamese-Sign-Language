@@ -131,10 +131,16 @@ export default function PricingPage() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
+      const returnUrl = `${window.location.origin}/nang-cap?status=PAID`;
+      const cancelUrl = `${window.location.origin}/nang-cap?status=CANCELLED`;
       const res = await fetch(`${API_BASE_URL}/api/payments/create-payment-link`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ planId: plan.id })
+        body: JSON.stringify({ 
+          planId: plan.id,
+          returnUrl,
+          cancelUrl
+        })
       });
 
       if (res.ok) {
