@@ -25,13 +25,13 @@ public sealed class PayOsService : IPayOsService
         _returnUrl = configuration["PayOS:ReturnUrl"] ?? string.Empty;
     }
 
-    public async Task<string> CreatePaymentLinkAsync(long orderCode, long amount, string description, CancellationToken cancellationToken)
+    public async Task<string> CreatePaymentLinkAsync(long orderCode, long amount, string description, string? returnUrl = null, string? cancelUrl = null, CancellationToken cancellationToken = default)
     {
-        var cancelUrl = _cancelUrl;
-        var returnUrl = _returnUrl;
+        var finalCancelUrl = !string.IsNullOrEmpty(cancelUrl) ? cancelUrl : _cancelUrl;
+        var finalReturnUrl = !string.IsNullOrEmpty(returnUrl) ? returnUrl : _returnUrl;
 
         // Generate signature using alphabetically sorted parameters: amount, cancelUrl, description, orderCode, returnUrl
-        var signatureData = $"amount={amount}&cancelUrl={cancelUrl}&description={description}&orderCode={orderCode}&returnUrl={returnUrl}";
+        var signatureData = $"amount={amount}&cancelUrl={finalCancelUrl}&description={description}&orderCode={orderCode}&returnUrl={finalReturnUrl}";
         var signature = ComputeHmacSha256(signatureData, _checksumKey);
 
         var payload = new
@@ -39,8 +39,8 @@ public sealed class PayOsService : IPayOsService
             orderCode = orderCode,
             amount = amount,
             description = description,
-            cancelUrl = cancelUrl,
-            returnUrl = returnUrl,
+            cancelUrl = finalCancelUrl,
+            returnUrl = finalReturnUrl,
             signature = signature
         };
 

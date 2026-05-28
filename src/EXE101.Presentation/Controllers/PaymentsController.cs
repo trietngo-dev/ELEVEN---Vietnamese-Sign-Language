@@ -57,6 +57,8 @@ public sealed class PaymentsController(
                 transaction.Id,
                 plan.PriceVnd,
                 desc,
+                request.ReturnUrl,
+                request.CancelUrl,
                 cancellationToken
             );
 
@@ -271,4 +273,6 @@ public sealed class PaymentsController(
 public sealed class CreatePaymentLinkRequest
 {
     public long PlanId { get; set; }
+    public string? ReturnUrl { get; set; }
+    public string? CancelUrl { get; set; }
 }
