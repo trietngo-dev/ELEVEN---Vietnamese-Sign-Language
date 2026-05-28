@@ -28,6 +28,35 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [activeSub, setActiveSub] = useState<any | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [coursesCount, setCoursesCount] = useState<number>(0);
+  const [vocabCount, setVocabCount] = useState<number>(0);
+  const [badgesCount, setBadgesCount] = useState<number>(0);
+  const [learningHours, setLearningHours] = useState<number>(0);
+  const [completedLessonsCount, setCompletedLessonsCount] = useState<number>(0);
+
+  // Load avatar dynamically from users and media_assets tables
+  useEffect(() => {
+    if (!user?.id) return;
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(`${API_BASE_URL}/api/users/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((userData) => {
+        if (userData && userData.avatarMediaId) {
+          return fetch(`${API_BASE_URL}/api/media_assets/${userData.avatarMediaId}`, { headers });
+        }
+        return null;
+      })
+      .then((res) => (res && res.ok ? res.json() : null))
+      .then((mediaData) => {
+        if (mediaData && mediaData.fileUrl) {
+          setAvatarUrl(mediaData.fileUrl);
+        }
+      })
+      .catch((e) => console.error("Error loading user avatar in ProfilePage", e));
+  }, [user]);
 
   // Load profile from API
   useEffect(() => {
@@ -94,8 +123,82 @@ export default function ProfilePage() {
       .catch(() => {});
   }, [user]);
 
+  // Load real user stats
+  useEffect(() => {
+    if (!user?.id) return;
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    // 1. Fetch learned words (vocabulary progress)
+    fetch(`${API_BASE_URL}/api/user_vocabulary_progress`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          const items = data.items || (Array.isArray(data) ? data : []);
+          const userVocabs = items.filter((v: any) => v.userId === user.id);
+          const completed = userVocabs.filter((v: any) => v.status === 2 || v.masteryLevel >= 0.8).length;
+          setVocabCount(completed);
+        } else {
+          setVocabCount(0);
+        }
+      })
+      .catch((e) => {
+        console.error("Error loading user vocab count", e);
+        setVocabCount(0);
+      });
+
+    // 2. Fetch lesson progress (completed lessons and learning hours)
+    fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          const items = data.items || (Array.isArray(data) ? data : []);
+          const userProgress = items.filter((p: any) => p.userId === user.id);
+          
+          // Completed lessons
+          const completed = userProgress.filter((p: any) => p.status === 2 || p.completedAt).length;
+          setCompletedLessonsCount(completed);
+
+          // Total learning hours
+          const totalSeconds = userProgress.reduce((sum: number, p: any) => sum + (p.totalTimeSeconds || 0), 0);
+          const calculatedHours = parseFloat((totalSeconds / 3600).toFixed(1));
+          setLearningHours(calculatedHours);
+
+          // Unique courses completed or active
+          const uniqueCourses = new Set(userProgress.map((p: any) => p.courseId).filter(Boolean));
+          setCoursesCount(uniqueCourses.size);
+        } else {
+          setCompletedLessonsCount(0);
+          setLearningHours(0);
+          setCoursesCount(0);
+        }
+      })
+      .catch((e) => {
+        console.error("Error loading user lesson stats", e);
+        setCompletedLessonsCount(0);
+        setLearningHours(0);
+        setCoursesCount(0);
+      });
+
+    // 3. Fetch user badges
+    fetch(`${API_BASE_URL}/api/user_badges`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          const items = data.items || (Array.isArray(data) ? data : []);
+          const filtered = items.filter((b: any) => b.userId === user.id);
+          setBadgesCount(filtered.length);
+        } else {
+          setBadgesCount(0);
+        }
+      })
+      .catch((e) => {
+        console.error("Error loading user badges", e);
+        setBadgesCount(0);
+      });
+  }, [user]);
+
   const activePlan = activeSub ? plans.find(p => p.id === activeSub.planId) : null;
-  const planName = activePlan ? activePlan.name : "Gói Cơ bản";
 
   const handleSave = async () => {
     if (!user?.id) return;
@@ -107,7 +210,7 @@ export default function ProfilePage() {
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
-    const body = JSON.stringify({ fullName: name, phone, bio });
+    const body = JSON.stringify({ fullName: name, phone, bio, avatarUrl: profile?.avatarUrl });
     try {
       let res: Response;
       if (profile) {
@@ -133,11 +236,161 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // 1. Upload to Supabase/storage
+      const uploadRes = await fetch(`${API_BASE_URL}/api/media_assets/upload`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("Tải ảnh lên thất bại");
+      }
+
+      const mediaAsset = await uploadRes.json();
+      const newAvatarUrl = mediaAsset.fileUrl; // Public URL of the uploaded image
+      const mediaId = mediaAsset.id;
+
+      // 2. Update user's avatar_media_id in users table
+      const patchRes = await fetch(`${API_BASE_URL}/api/users/${user.id}/avatar`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+        body: JSON.stringify({ avatarMediaId: mediaId }),
+      });
+
+      if (!patchRes.ok) {
+        throw new Error("Cập nhật avatar người dùng thất bại");
+      }
+
+      // 3. Update local state to show immediately
+      setAvatarUrl(newAvatarUrl);
+      
+      // 4. Update localStorage token user details
+      const authUser = tokenStorage.getUser();
+      if (authUser) {
+        authUser.avatarMediaId = mediaId;
+        tokenStorage.setUser(authUser);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi khi tải ảnh đại diện lên!");
+    }
+  };
+
   const displayName = name || user?.fullName || "Người dùng";
   const displayEmail = user?.email || "";
   const avatarSrc =
-    profile?.avatarUrl ||
+    avatarUrl ||
     `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`;
+
+  const renderSubscriptionCard = () => {
+    const planCode = activePlan?.code?.toLowerCase();
+
+    if (planCode === "premium") {
+      // Royal Gold Card with premium glowing borders and shimmer sweep
+      return (
+        <div className="bg-gradient-to-br from-[#33250b] via-[#52401c] to-[#33250b] rounded-3xl p-5 text-white relative overflow-hidden border-2 border-[#fed963] shadow-[0_0_20px_rgba(254,217,99,0.3)] animate-shimmer">
+          <style>{`
+            @keyframes shimmer-sweep {
+              0% { transform: translateX(-150%) rotate(45deg); }
+              100% { transform: translateX(150%) rotate(45deg); }
+            }
+            .animate-shimmer {
+              position: relative;
+              overflow: hidden;
+            }
+            .animate-shimmer::after {
+              content: '';
+              position: absolute;
+              top: 0; left: -50%; width: 200%; height: 100%;
+              background: linear-gradient(
+                to right,
+                rgba(255,255,255,0) 0%,
+                rgba(255,255,255,0.3) 50%,
+                rgba(255,255,255,0) 100%
+              );
+              transform: skewX(-25deg);
+              animation: shimmer-sweep 3.5s infinite linear;
+            }
+          `}</style>
+          <div className="absolute top-0 right-0 w-28 h-28 bg-[#fed963]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-1">
+              <Crown size={16} className="text-[#fed963] animate-bounce" />
+              <span className="text-xs font-bold text-[#fed963] uppercase tracking-widest text-[10px]">Tài khoản</span>
+            </div>
+            <h3 className="text-xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-[#ffe58f] via-white to-[#ffe58f]">Gói Cao cấp</h3>
+            <p className="text-xs text-[#fed963]/80 mb-4 font-semibold text-[11px]">Trải nghiệm không giới hạn</p>
+            {activeSub && (
+              <p className="text-xs text-[#dcd1b3] mb-1">
+                Hết hạn: {new Date(activeSub.endAt).toLocaleDateString("vi-VN")}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (planCode === "pro") {
+      // Deep Sapphire/Metal Card with glowing silver/blue borders
+      return (
+        <div className="bg-gradient-to-br from-[#152332] via-[#213b56] to-[#152332] rounded-3xl p-5 text-white relative overflow-hidden border border-[#52a6ff]/50 shadow-[0_0_15px_rgba(82,166,255,0.2)]">
+          <div className="absolute top-0 right-0 w-28 h-28 bg-[#52a6ff]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-1">
+              <Crown size={16} className="text-[#52a6ff]" />
+              <span className="text-xs font-bold text-[#52a6ff] uppercase tracking-widest text-[10px]">Tài khoản</span>
+            </div>
+            <h3 className="text-xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-[#90c6ff] via-white to-[#90c6ff]">Gói Chuyên nghiệp</h3>
+            <p className="text-xs text-[#90c6ff]/80 mb-4 font-semibold text-[11px]">Mở khóa tính năng nâng cao</p>
+            {activeSub && (
+              <p className="text-xs text-[#b8c6d4] mb-1">
+                Hết hạn: {new Date(activeSub.endAt).toLocaleDateString("vi-VN")}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Default: Organic forest green (Cơ bản)
+    return (
+      <div className="bg-gradient-to-br from-[#162a20] to-[#244c38] rounded-3xl p-5 text-white relative overflow-hidden border border-[#52b788]/30 shadow-[0_4px_20px_rgba(36,76,56,0.15)]">
+        <div className="absolute top-0 right-0 w-28 h-28 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-1">
+            <Crown size={16} className="text-[#52b788]" />
+            <span className="text-xs font-bold text-[#52b788] uppercase tracking-widest text-[10px]">Tài khoản</span>
+          </div>
+          <h3 className="text-xl font-black mb-1 text-transparent bg-clip-text bg-gradient-to-r from-[#80ed99] via-white to-[#80ed99]">Gói Cơ bản</h3>
+          <p className="text-xs text-[#a3b899] mb-4 text-[11px]">Đang sử dụng phiên bản miễn phí</p>
+          <Link
+            to="/nang-cap"
+            className="block w-full py-2.5 rounded-xl bg-white text-slate-900 font-bold text-sm text-center hover:bg-slate-100 transition-colors shadow-sm text-[13px]"
+          >
+            Nâng cấp Premium
+          </Link>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#f6f8f7] py-10">
@@ -167,6 +420,7 @@ export default function ProfilePage() {
                   type="file"
                   accept="image/*"
                   className="hidden"
+                  onChange={handleAvatarChange}
                 />
               </div>
 
@@ -175,9 +429,9 @@ export default function ProfilePage() {
 
               <div className="w-full border-t border-slate-100 mt-5 pt-5 grid grid-cols-3 gap-2 text-center">
                 {[
-                  { label: "Khóa học", value: "12" },
-                  { label: "Từ vựng", value: "158" },
-                  { label: "Huy hiệu", value: "5" },
+                  { label: "Khóa học", value: coursesCount },
+                  { label: "Từ vựng", value: vocabCount },
+                  { label: "Huy hiệu", value: badgesCount },
                 ].map((s) => (
                   <div key={s.label}>
                     <p className="text-lg font-black text-slate-800">{s.value}</p>
@@ -188,32 +442,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Card: subscription */}
-            <div className="bg-gradient-to-br from-[#1a2e22] to-[#2d5a3d] rounded-3xl p-5 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-28 h-28 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-1">
-                  <Crown size={16} className="text-amber-400" />
-                  <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Tài khoản</span>
-                </div>
-                <h3 className="text-xl font-black mb-1">{planName}</h3>
-                {activeSub && (
-                  <p className="text-xs text-[#a3b899] mb-4">
-                    Hết hạn: {new Date(activeSub.endAt).toLocaleDateString("vi-VN")}
-                  </p>
-                )}
-                {!activeSub && (
-                  <>
-                    <p className="text-xs text-[#a3b899] mb-4">Đang sử dụng phiên bản miễn phí</p>
-                    <Link
-                      to="/nang-cap"
-                      className="block w-full py-2.5 rounded-xl bg-white text-slate-900 font-bold text-sm text-center hover:bg-slate-100 transition-colors"
-                    >
-                      Nâng cấp Premium
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
+            {renderSubscriptionCard()}
 
             {/* Logout */}
             <button
@@ -302,7 +531,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <p className="text-[13px] font-semibold text-slate-500">Thời gian học tuần này</p>
-                          <p className="text-xl font-black text-slate-800">4.5 giờ</p>
+                          <p className="text-xl font-black text-slate-800">{learningHours} giờ</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
@@ -311,7 +540,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <p className="text-[13px] font-semibold text-slate-500">Bài học hoàn thành</p>
-                          <p className="text-xl font-black text-slate-800">12 bài</p>
+                          <p className="text-xl font-black text-slate-800">{completedLessonsCount} bài</p>
                         </div>
                       </div>
                     </div>

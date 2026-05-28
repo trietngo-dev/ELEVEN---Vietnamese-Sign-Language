@@ -180,7 +180,7 @@ export default function PricingPage() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
             className="relative bg-white rounded-3xl p-8 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col"
           >
-            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Gói miễn phí</h3>
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Gói Cơ bản</h3>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-4xl font-extrabold text-[#1f2937]">0 VNĐ</span>
             </div>
@@ -201,9 +201,13 @@ export default function PricingPage() {
               </li>
             </ul>
             
-            <button disabled className="w-full py-3.5 rounded-2xl bg-[#f8fbfa] text-slate-400 font-bold border border-slate-200">
-              Gói hiện tại
-            </button>
+            {(!isProActive && !isPremiumActive) ? (
+              <button disabled className="w-full py-3.5 rounded-2xl bg-[#f8fbfa] text-slate-400 font-bold border border-slate-200">
+                Gói hiện tại
+              </button>
+            ) : (
+              <div className="h-[54px]" />
+            )}
           </motion.div>
 
           {/* Pro Card */}
@@ -214,7 +218,7 @@ export default function PricingPage() {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#3c6d44] text-white text-[10px] font-bold uppercase tracking-widest py-1.5 px-4 rounded-full">
               Phổ biến nhất
             </div>
-            <h3 className="text-sm font-bold text-[#3c6d44] uppercase tracking-wider mb-4">Gói Pro</h3>
+            <h3 className="text-sm font-bold text-[#3c6d44] uppercase tracking-wider mb-4">Gói Chuyên nghiệp</h3>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-4xl font-extrabold text-[#1f2937]">30.000 VNĐ</span>
               <span className="text-slate-500 text-sm font-medium">/tháng</span>
@@ -236,17 +240,17 @@ export default function PricingPage() {
               </li>
             </ul>
             
-            <button
-              onClick={() => handleUpgrade("pro")}
-              disabled={isProActive || isUpgrading !== null}
-              className={`w-full py-3.5 rounded-2xl font-bold transition-all ${
-                isProActive
-                  ? "bg-[#f8fbfa] text-slate-400 border border-slate-200 cursor-not-allowed"
-                  : "bg-[#3c6d44] text-white shadow-lg shadow-[#3c6d44]/30 hover:bg-[#315736] hover:scale-[1.02]"
-              }`}
-            >
-              {isProActive ? "Gói hiện tại" : isUpgrading === "pro" ? "Đang xử lý..." : "Nâng cấp ngay"}
-            </button>
+            {!isProActive && !isPremiumActive ? (
+              <button
+                onClick={() => handleUpgrade("pro")}
+                disabled={isUpgrading !== null}
+                className="w-full py-3.5 rounded-2xl font-bold transition-all bg-[#3c6d44] text-white shadow-lg shadow-[#3c6d44]/30 hover:bg-[#315736] hover:scale-[1.02]"
+              >
+                {isUpgrading === "pro" ? "Đang xử lý..." : "Nâng cấp ngay"}
+              </button>
+            ) : (
+              <div className="h-[54px]" />
+            )}
           </motion.div>
 
           {/* Premium Card */}
@@ -257,7 +261,7 @@ export default function PricingPage() {
             <div className="absolute top-8 right-8 bg-[#fef3c7] text-[#d9aa17] text-[10px] font-bold uppercase tracking-widest py-1 px-3 rounded-full">
               Tiết kiệm 40%
             </div>
-            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Gói Premium</h3>
+            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Gói Cao cấp</h3>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-4xl font-extrabold text-[#1f2937]">50.000VNĐ</span>
               <span className="text-slate-500 text-sm font-medium">/năm</span>
@@ -301,8 +305,8 @@ export default function PricingPage() {
               <thead>
                 <tr className="border-b border-slate-100">
                   <th className="py-4 px-2 text-xs font-bold text-slate-400 uppercase tracking-widest w-1/3">Tính năng</th>
-                  <th className="py-4 px-2 text-xs font-bold text-slate-400 uppercase tracking-widest w-1/3">Miễn phí</th>
-                  <th className="py-4 px-2 text-xs font-bold text-[#3c6d44] uppercase tracking-widest w-1/3">Pro (Tháng)</th>
+                  <th className="py-4 px-2 text-xs font-bold text-slate-400 uppercase tracking-widest w-1/3">Cơ bản</th>
+                  <th className="py-4 px-2 text-xs font-bold text-[#3c6d44] uppercase tracking-widest w-1/3">Chuyên nghiệp</th>
                 </tr>
               </thead>
               <tbody>

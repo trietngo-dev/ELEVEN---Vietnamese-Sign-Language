@@ -208,7 +208,7 @@ function DictionaryPage() {
       initial="hidden"
       animate="show"
       variants={sectionStagger}
-      className="min-h-screen bg-[#f7f9f8] py-8 md:py-10"
+      className="min-h-screen bg-transparent py-8 md:py-10"
     >
       <div className="container">
         {/* Hero Header */}

@@ -187,6 +187,64 @@ public sealed class PaymentsController(
             return Forbid();
         }
 
+        // Active Polling & Sync with PayOS API if still Pending
+        if (transaction.Status == PaymentStatus.Pending)
+        {
+            var payOsStatus = await payOsService.GetPaymentStatusAsync(orderCode, cancellationToken);
+            if (payOsStatus != null)
+            {
+                if (payOsStatus == "PAID")
+                {
+                    transaction.Status = PaymentStatus.Paid;
+                    transaction.PaidAt = DateTime.UtcNow;
+
+                    // Find matching subscription plan by amount
+                    var plan = await dbContext.SubscriptionPlans
+                        .FirstOrDefaultAsync(p => p.PriceVnd == transaction.AmountVnd && p.IsActive, cancellationToken);
+
+                    if (plan != null)
+                    {
+                        // Expire existing active subscriptions for this user
+                        var existingSubs = await dbContext.UserSubscriptions
+                            .Where(s => s.UserId == transaction.UserId && s.Status == SubscriptionStatus.Active)
+                            .ToListAsync(cancellationToken);
+
+                        foreach (var sub in existingSubs)
+                        {
+                            sub.Status = SubscriptionStatus.Expired;
+                        }
+
+                        // Create new subscription
+                        var userSub = new UserSubscription
+                        {
+                            UserId = transaction.UserId,
+                            PlanId = plan.Id,
+                            Status = SubscriptionStatus.Active,
+                            StartAt = DateTime.UtcNow,
+                            EndAt = plan.BillingCycle.ToLower() == "yearly" 
+                                ? DateTime.UtcNow.AddYears(1) 
+                                : DateTime.UtcNow.AddMonths(1),
+                            AutoRenew = true,
+                            Source = "PayOS",
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        dbContext.UserSubscriptions.Add(userSub);
+                        await dbContext.SaveChangesAsync(cancellationToken);
+
+                        transaction.UserSubscriptionId = userSub.Id;
+                    }
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                else if (payOsStatus == "CANCELLED")
+                {
+                    transaction.Status = PaymentStatus.Failed;
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+        }
+
         return Ok(new
         {
             orderCode = transaction.Id,

@@ -4,10 +4,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import AIPracticePopup from "../components/AIPracticePopup";
 import videoXinChao from "../assets/videoCourse/W00489.mp4";
 import { tokenStorage } from "../lib/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function LessonDetailPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
 
   const [showAI, setShowAI] = useState(false);
   const [lesson, setLesson] = useState<any>(null);
@@ -19,6 +21,7 @@ export default function LessonDetailPage() {
   const [aiScore, setAiScore] = useState<number | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [nextLesson, setNextLesson] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -27,6 +30,8 @@ export default function LessonDetailPage() {
         const authToken = tokenStorage.getToken();
         const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+        const userId = user?.id || 1;
 
         const res = await fetch(`${API_BASE_URL}/api/lessons/${id}`, { headers });
         if (res.ok) {
@@ -40,6 +45,41 @@ export default function LessonDetailPage() {
               setVideoUrl(mediaData.fileUrl);
             }
           }
+
+          // Fetch next lesson in course
+          const allLessonsRes = await fetch(`${API_BASE_URL}/api/lessons`, { headers });
+          if (allLessonsRes.ok) {
+            const allLesData = await allLessonsRes.json();
+            const items = allLesData.items || Array.isArray(allLesData) ? (Array.isArray(allLesData) ? allLesData : allLesData.items) : [];
+            const courseLessons = items
+              .filter((l: any) => l.courseId === data.courseId)
+              .sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+
+            const currentIdx = courseLessons.findIndex((l: any) => l.id === data.id);
+            if (currentIdx !== -1 && currentIdx < courseLessons.length - 1) {
+              setNextLesson(courseLessons[currentIdx + 1]);
+            } else {
+              setNextLesson(null);
+            }
+          }
+
+          // Fetch the lesson's progress to check if it's already completed
+          const progRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers });
+          if (progRes.ok) {
+            const progData = await progRes.json();
+            const items = progData.items || Array.isArray(progData) ? (Array.isArray(progData) ? progData : progData.items) : [];
+            const userProgress = items.find((p: any) => p.userId === userId && p.lessonId === data.id);
+            if (userProgress && userProgress.status === 2) {
+              setIsCompleted(true);
+              setIsVideoWatched(true);
+              setAiScore(userProgress.bestAccuracy || 100);
+            } else {
+              // Reset states for new uncompleted lesson
+              setIsCompleted(false);
+              setIsVideoWatched(false);
+              setAiScore(null);
+            }
+          }
         }
       } catch (err) {
         console.error("Lỗi tải bài học", err);
@@ -48,23 +88,14 @@ export default function LessonDetailPage() {
       }
     };
     if (id) loadData();
-  }, [id]);
+  }, [id, user]);
 
   useEffect(() => {
     const completeLesson = async () => {
       if (isVideoWatched && aiScore !== null && !isCompleted && lesson) {
         try {
           const authToken = tokenStorage.getToken();
-          // Extract userId from token payload
-          let userId = 1; // default if error
-          if (authToken) {
-            try {
-              const payload = JSON.parse(atob(authToken.split('.')[1]));
-              if (payload.nameid) userId = parseInt(payload.nameid);
-            } catch (e) {
-              console.error("Lỗi parse token", e);
-            }
-          }
+          const userId = user?.id || 1;
 
           const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
           const res = await fetch(`${API_BASE_URL}/api/user_lesson_progress/upsert`, {
@@ -99,7 +130,7 @@ export default function LessonDetailPage() {
     };
 
     completeLesson();
-  }, [isVideoWatched, aiScore, isCompleted, lesson]);
+  }, [isVideoWatched, aiScore, isCompleted, lesson, user]);
 
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Đang tải bài học...</div>;
@@ -238,49 +269,84 @@ export default function LessonDetailPage() {
           {/* Sidebar Area */}
           <div className="flex flex-col gap-6">
 
-            {/* Từ vựng liên quan */}
-            <div className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm">
-              <h3 className="text-[15px] font-extrabold text-[#1f2937] flex items-center gap-2 mb-6">
-                <span className="text-[#d9aa17]">✨</span> Từ vựng liên quan
+            {/* Vòng tròn tiến độ & Các bước học tập */}
+            <div className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm flex flex-col items-center">
+              <h3 className="text-[15px] font-extrabold text-[#1f2937] flex items-center gap-2 mb-6 w-full text-left">
+                <span className="text-[#3c6d44]">🎯</span> Tiến độ bài học
               </h3>
 
-              <div className="flex flex-col gap-5 mb-6">
-
-                <div className="flex items-center gap-4 cursor-pointer group">
-                  <div className="w-12 h-12 rounded-full bg-[#fdf8e9] flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                    🙅‍♂️
-                  </div>
-                  <div>
-                    <h4 className="text-[15px] font-bold text-slate-800 group-hover:text-[#3c6d44] transition-colors">Không có chi</h4>
-                    <p className="text-[11px] font-medium text-slate-400">Giao tiếp • Cơ bản</p>
-                  </div>
+              {/* Progress Ring */}
+              <div className="relative flex items-center justify-center w-36 h-36 mb-6">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="40"
+                    className="text-slate-100"
+                    strokeWidth="8"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="40"
+                    className="text-[#3c6d44] transition-all duration-500"
+                    strokeWidth="8"
+                    strokeDasharray={2 * Math.PI * 40}
+                    strokeDashoffset={2 * Math.PI * 40 - ((isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0) / 100) * 2 * Math.PI * 40}
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-2xl font-black text-slate-800">{isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0}%</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tiến trình</span>
                 </div>
-
-                <div className="flex items-center gap-4 cursor-pointer group">
-                  <div className="w-12 h-12 rounded-full bg-[#eadecd] flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                    🙏
-                  </div>
-                  <div>
-                    <h4 className="text-[15px] font-bold text-slate-800 group-hover:text-[#3c6d44] transition-colors">Xin lỗi</h4>
-                    <p className="text-[11px] font-medium text-slate-400">Giao tiếp • Cơ bản</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 cursor-pointer group">
-                  <div className="w-12 h-12 rounded-full bg-[#eef7ee] flex items-center justify-center text-xl shadow-inner group-hover:scale-110 transition-transform">
-                    👋
-                  </div>
-                  <div>
-                    <h4 className="text-[15px] font-bold text-slate-800 group-hover:text-[#3c6d44] transition-colors">Xin chào</h4>
-                    <p className="text-[11px] font-medium text-slate-400">Giao tiếp • Cơ bản</p>
-                  </div>
-                </div>
-
               </div>
 
-              <button className="w-full text-center text-sm font-bold text-[#3c6d44] hover:underline">
-                Xem tất cả chủ đề
-              </button>
+              {/* Steps List */}
+              <div className="flex flex-col gap-4 w-full border-t border-slate-50 pt-5">
+                {/* Step 1 */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {isVideoWatched ? "✓" : "1"}
+                    </span>
+                    <span className={`font-semibold ${isVideoWatched ? "text-slate-700" : "text-slate-400"}`}>1. Xem video giảng dạy</span>
+                  </div>
+                  <span className={`font-bold px-2 py-0.5 rounded-md ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
+                    {isVideoWatched ? "Đã xem" : "Chưa xem"}
+                  </span>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${aiScore !== null ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {aiScore !== null ? "✓" : "2"}
+                    </span>
+                    <span className={`font-semibold ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra với AI</span>
+                  </div>
+                  <span className={`font-bold px-2 py-0.5 rounded-md ${aiScore !== null ? "bg-[#fdf8e9] text-[#71540a]" : "bg-slate-50 text-slate-400"}`}>
+                    {aiScore !== null ? `Đạt ${Math.round(aiScore)}%` : "Chưa làm"}
+                  </span>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {isCompleted ? "✓" : "3"}
+                    </span>
+                    <span className={`font-semibold ${isCompleted ? "text-slate-700" : "text-slate-400"}`}>3. Hoàn thành bài học</span>
+                  </div>
+                  <span className={`font-bold px-2 py-0.5 rounded-md ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
+                    {isCompleted ? "Hoàn thành" : "Chưa đạt"}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Daily Challenge */}
@@ -306,8 +372,29 @@ export default function LessonDetailPage() {
             </div>
 
             {/* Next Button */}
-            <button className="w-full py-4 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center font-bold hover:bg-[#315736] transition-all shadow-xl shadow-[#3c6d44]/20 hover:-translate-y-0.5">
-              Từ tiếp theo
+            <button
+              disabled={!isCompleted}
+              onClick={() => {
+                if (nextLesson) {
+                  // Reset player completion states for the next lesson
+                  setIsVideoWatched(false);
+                  setAiScore(null);
+                  setIsCompleted(false);
+                  setShowCompletionModal(false);
+                  // Navigate to the next lesson page
+                  navigate(`/bai-hoc/${nextLesson.id}`);
+                } else {
+                  // Navigate back to course detail page
+                  navigate(`/khoa-hoc/${lesson.courseId}`);
+                }
+              }}
+              className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold transition-all shadow-xl ${
+                isCompleted
+                  ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
+                  : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+              }`}
+            >
+              {nextLesson ? "Từ tiếp theo" : "Hoàn thành khóa học"}
             </button>
 
           </div>

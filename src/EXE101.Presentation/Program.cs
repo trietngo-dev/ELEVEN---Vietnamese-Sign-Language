@@ -173,7 +173,7 @@ using (var scope = app.Services.CreateScope())
         dbContext.SubscriptionPlans.Add(new SubscriptionPlan
         {
             Code = "pro",
-            Name = "Gói Pro (Tháng)",
+            Name = "Gói Chuyên nghiệp (Tháng)",
             BillingCycle = "monthly",
             PriceVnd = 30000,
             DailyTranslationLimit = 99999,
@@ -193,7 +193,7 @@ using (var scope = app.Services.CreateScope())
         dbContext.SubscriptionPlans.Add(new SubscriptionPlan
         {
             Code = "premium",
-            Name = "Gói Premium (Năm)",
+            Name = "Gói Cao cấp (Năm)",
             BillingCycle = "yearly",
             PriceVnd = 50000,
             DailyTranslationLimit = 99999,

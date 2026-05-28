@@ -110,6 +110,37 @@ public sealed class PayOsService : IPayOsService
         }
     }
 
+    public async Task<string?> GetPaymentStatusAsync(long orderCode, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var requestMessage = new HttpRequestMessage(HttpMethod.Get, $"https://api-merchant.payos.vn/v2/payment-requests/{orderCode}");
+            requestMessage.Headers.Add("x-client-id", _clientId);
+            requestMessage.Headers.Add("x-api-key", _apiKey);
+
+            var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            using var doc = JsonDocument.Parse(responseContent);
+            var root = doc.RootElement;
+
+            if (root.GetProperty("code").GetString() != "00")
+            {
+                return null;
+            }
+
+            return root.GetProperty("data").GetProperty("status").GetString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string ComputeHmacSha256(string data, string key)
     {
         var keyBytes = Encoding.UTF8.GetBytes(key);
