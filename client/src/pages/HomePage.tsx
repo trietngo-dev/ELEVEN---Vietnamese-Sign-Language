@@ -61,13 +61,7 @@ export default function HomePage() {
   const [accumulatedXp, setAccumulatedXp] = useState<number>(0);
   const [hasJoined, setHasJoined] = useState<boolean>(false);
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
-  const [recentLessons, setRecentLessons] = useState<RecentLessonInfo[]>([
-    { title: "Giao tiếp: Xin chào", accuracy: "98%", time: "12:30 PM" },
-    { title: "Giao tiếp: Cảm ơn", accuracy: "94%", time: "Hôm qua" },
-    { title: "Giao tiếp: Bạn tên là gì?", accuracy: "91%", time: "2 ngày trước" },
-  ]);
-
-  const firstName = (user?.fullName || "bạn").split(" ").at(-1);
+  const [recentLessons, setRecentLessons] = useState<RecentLessonInfo[]>([]);
 
   // 1. Fetch avatar and courses
   useEffect(() => {
@@ -282,10 +276,10 @@ export default function HomePage() {
             <div className="space-y-4 max-w-md text-center md:text-left">
               <h1 className="text-3xl font-black text-slate-800 leading-tight">
                 Chào mừng trở lại,<br />
-                <span className="bg-gradient-to-r from-[#2d6a4f] to-[#3a8e63] bg-clip-text text-transparent">{firstName}!</span>
+                <span className="bg-gradient-to-r from-[#2d6a4f] to-[#3a8e63] bg-clip-text text-transparent">{user?.fullName || "Người học"}!</span>
               </h1>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Bạn đang làm rất tốt. Chỉ còn 15% nữa là hoàn thành chứng chỉ Cử chỉ Giao tiếp Cơ bản.
+                Học ngôn ngữ ký hiệu mở ra cánh cửa kết nối mới. Mỗi bài học là một bước tiến gần hơn đến sự sẻ chia và đồng cảm! 🚀
               </p>
               
               {/* Badges */}
@@ -301,32 +295,29 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Radial progress bar */}
-            <div className="relative flex items-center justify-center h-28 w-28 shrink-0 select-none">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="44"
-                  className="stroke-slate-100"
-                  strokeWidth="10"
-                  fill="transparent"
-                />
-                <circle
-                  cx="56"
-                  cy="56"
-                  r="44"
-                  className="stroke-[#2d6a4f]"
-                  strokeWidth="10"
-                  fill="transparent"
-                  strokeDasharray={2 * Math.PI * 44}
-                  strokeDashoffset={2 * Math.PI * 44 * (1 - 0.85)}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-xl font-black text-slate-800">85%</span>
-                <span className="text-[8px] font-extrabold text-slate-400 uppercase tracking-widest leading-none mt-0.5">Tiến độ</span>
+            {/* Premium waving greeting hand icon */}
+            <div className="relative flex items-center justify-center h-28 w-28 shrink-0 select-none bg-gradient-to-br from-[#ebf5ef] to-[#d4ebde] rounded-[24px] border border-[#2d6a4f]/10 shadow-[0_8px_20px_rgba(45,106,79,0.05)] overflow-hidden group">
+              <style>{`
+                @keyframes wave {
+                  0% { transform: rotate(0.0deg); }
+                  10% { transform: rotate(14.0deg); }
+                  20% { transform: rotate(-8.0deg); }
+                  30% { transform: rotate(14.0deg); }
+                  40% { transform: rotate(-4.0deg); }
+                  50% { transform: rotate(10.0deg); }
+                  60% { transform: rotate(0.0deg); }
+                  100% { transform: rotate(0.0deg); }
+                }
+                .animate-wave {
+                  animation: wave 2.5s infinite;
+                  transform-origin: 70% 70%;
+                  display: inline-block;
+                }
+              `}</style>
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0)_60%)]" />
+              <div className="absolute inset-2 rounded-[20px] border border-dashed border-[#2d6a4f]/20 animate-[spin_12s_linear_infinite]" />
+              <div className="absolute inset-3 rounded-[18px] bg-white/40 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-4xl animate-wave">👋</span>
               </div>
             </div>
           </motion.div>
@@ -487,36 +478,52 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <motion.div 
-            variants={sectionStagger}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-          >
-            {recentLessons.map((item, idx) => (
-              <motion.div
-                key={idx}
-                variants={fadeInUp}
-                className="relative bg-white rounded-3xl border border-slate-100 p-6 flex flex-col justify-between shadow-[0_8px_20px_rgba(24,35,51,0.02)] hover:shadow-[0_12px_25px_rgba(24,35,51,0.04)] transition-all duration-300 cursor-pointer"
-              >
-                <span className="absolute top-5 right-5 text-[9px] font-bold text-slate-400">{item.time}</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100/30">
-                    <Clock size={16} className="text-[#2d6a4f]" />
+          {recentLessons.length > 0 ? (
+            <motion.div 
+              variants={sectionStagger}
+              className="grid grid-cols-1 md:grid-cols-3 gap-6"
+            >
+              {recentLessons.map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  variants={fadeInUp}
+                  className="relative bg-white rounded-3xl border border-slate-100 p-6 flex flex-col justify-between shadow-[0_8px_20px_rgba(24,35,51,0.02)] hover:shadow-[0_12px_25px_rgba(24,35,51,0.04)] transition-all duration-300 cursor-pointer"
+                >
+                  <span className="absolute top-5 right-5 text-[9px] font-bold text-slate-400">{item.time}</span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100/30">
+                      <Clock size={16} className="text-[#2d6a4f]" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
+                      <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug line-clamp-1">{item.title}</h4>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
-                    <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug line-clamp-1">{item.title}</h4>
+                  <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold">
+                    <div className="flex items-center gap-1.5 text-emerald-600">
+                      <Check size={14} className="stroke-[3]" />
+                      <span>Độ chính xác {item.accuracy}</span>
+                    </div>
+                    <span className="text-[10px] font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">+50 XP</span>
                   </div>
-                </div>
-                <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold">
-                  <div className="flex items-center gap-1.5 text-emerald-600">
-                    <Check size={14} className="stroke-[3]" />
-                    <span>Độ chính xác {item.accuracy}</span>
-                  </div>
-                  <span className="text-[10px] font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">+50 XP</span>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              variants={fadeInUp}
+              className="bg-white rounded-3xl border border-slate-100 p-8 flex flex-col items-center text-center justify-center shadow-[0_8px_20px_rgba(24,35,51,0.015)]"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-3 text-slate-400">
+                <BookOpen size={20} />
+              </div>
+              <p className="text-sm font-bold text-slate-700">Chưa tham gia luyện tập bài học nào</p>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm">Hãy bắt đầu bài học đầu tiên của bạn để theo dõi tiến độ học tập và rèn luyện ngôn ngữ ký hiệu nhé!</p>
+              <Link to="/khoa-hoc" className="mt-4 px-5 py-2.5 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-xl transition-all duration-300 shadow-sm">
+                Học ngay
+              </Link>
+            </motion.div>
+          )}
         </div>
 
       </div>
