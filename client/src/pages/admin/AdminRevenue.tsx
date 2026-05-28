@@ -27,6 +27,14 @@ const containerVariants = {
     }
 };
 
+const getPlanDisplayName = (code: string) => {
+    const c = code.toLowerCase();
+    if (c === 'pro') return 'Chuyên nghiệp';
+    if (c === 'premium') return 'Cao cấp';
+    if (c === 'free' || c === 'basic') return 'Cơ bản';
+    return code;
+};
+
 const AdminRevenue: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'overview' | 'plans'>('overview');
     
@@ -53,6 +61,14 @@ const AdminRevenue: React.FC = () => {
     const [newTranslationLimit, setNewTranslationLimit] = useState(0);
     const [newPracticeLimit, setNewPracticeLimit] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // Notification custom modal state
+    const [notification, setNotification] = useState<{
+        isOpen: boolean;
+        type: 'success' | 'error';
+        title: string;
+        message: string;
+    } | null>(null);
 
     // Initial Data loading
     const loadAllData = () => {
@@ -280,14 +296,29 @@ const AdminRevenue: React.FC = () => {
 
             if (res.ok) {
                 setIsEditModalOpen(false);
-                alert(`Cập nhật gói ${newName} thành công!`);
+                setNotification({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'Thành công!',
+                    message: `Cập nhật cấu hình gói ${newName} thành công!`
+                });
                 loadAllData(); // Reload stats and lists
             } else {
                 const errData = await res.json().catch(() => ({}));
-                alert(errData.message || 'Lỗi khi cập nhật cấu hình bảng giá.');
+                setNotification({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Cập nhật thất bại!',
+                    message: errData.message || 'Lỗi khi cập nhật cấu hình bảng giá.'
+                });
             }
         } catch (err) {
-            alert('Không thể kết nối đến máy chủ.');
+            setNotification({
+                isOpen: true,
+                type: 'error',
+                title: 'Lỗi kết nối!',
+                message: 'Không thể kết nối đến máy chủ.'
+            });
         } finally {
             setIsSaving(false);
         }
@@ -658,7 +689,7 @@ const AdminRevenue: React.FC = () => {
                                     <Award size={20} />
                                 </div>
 
-                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Gói {plan.code}</h3>
+                                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Gói {getPlanDisplayName(plan.code)}</h3>
                                 <h2 className="text-xl font-black text-slate-800 mb-2">{plan.name}</h2>
                                 <div className="flex items-baseline gap-1 mb-6">
                                     <span className="text-3xl font-extrabold text-slate-900">
@@ -815,6 +846,51 @@ const AdminRevenue: React.FC = () => {
                                     </button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Custom Confirmation / Notification Modal */}
+                {notification && notification.isOpen && (
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl max-w-sm w-full text-center relative"
+                        >
+                            <button
+                                onClick={() => setNotification(null)}
+                                className="absolute top-6 right-6 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
+                                notification.type === 'success' 
+                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                                    : 'bg-rose-50 text-rose-600 border border-rose-100'
+                            }`}>
+                                {notification.type === 'success' ? (
+                                    <Check size={20} strokeWidth={3} />
+                                ) : (
+                                    <X size={20} strokeWidth={3} />
+                                )}
+                            </div>
+
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">{notification.title}</h3>
+                            <p className="text-xs text-slate-500 mb-6 leading-relaxed">{notification.message}</p>
+
+                            <button
+                                onClick={() => setNotification(null)}
+                                className={`w-full py-3 font-bold rounded-2xl transition-all shadow-md text-sm ${
+                                    notification.type === 'success'
+                                        ? 'bg-[#3c6c44] text-white hover:bg-[#315736] shadow-[#3c6c44]/20'
+                                        : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/20'
+                                }`}
+                            >
+                                Đồng ý
+                            </button>
                         </motion.div>
                     </div>
                 )}
