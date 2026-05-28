@@ -55,10 +55,12 @@ export default function HomePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Dynamic Statistics States
-  const [loginDays, setLoginDays] = useState<number>(7);
-  const [learnedWords, setLearnedWords] = useState<number>(128);
-  const [learningHours, setLearningHours] = useState<number>(4.5);
-  const [accumulatedXp, setAccumulatedXp] = useState<number>(1240);
+  const [loginDays, setLoginDays] = useState<number>(0);
+  const [learnedWords, setLearnedWords] = useState<number>(0);
+  const [learningHours, setLearningHours] = useState<number>(0);
+  const [accumulatedXp, setAccumulatedXp] = useState<number>(0);
+  const [hasJoined, setHasJoined] = useState<boolean>(false);
+  const [activeCourse, setActiveCourse] = useState<Course | null>(null);
   const [recentLessons, setRecentLessons] = useState<RecentLessonInfo[]>([
     { title: "Giao tiếp: Xin chào", accuracy: "98%", time: "12:30 PM" },
     { title: "Giao tiếp: Cảm ơn", accuracy: "94%", time: "Hôm qua" },
@@ -119,10 +121,14 @@ export default function HomePage() {
           const uniqueDays = new Set(
             userLogs.map((log: any) => new Date(log.createdAt || log.timestamp).toDateString())
           );
-          setLoginDays(Math.max(7, uniqueDays.size));
+          setLoginDays(uniqueDays.size);
+        } else {
+          setLoginDays(0);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setLoginDays(0);
+      });
 
     // B. Fetch Learned Words Progress
     fetch(`${API_BASE_URL}/api/user_vocabulary_progress`, { headers })
@@ -131,9 +137,11 @@ export default function HomePage() {
         const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
         const userVocabs = items.filter((v: any) => v.userId === user.id);
         const completed = userVocabs.filter((v: any) => v.status === 2 || v.masteryLevel >= 0.8).length;
-        setLearnedWords(completed > 0 ? completed : 128);
+        setLearnedWords(completed);
       })
-      .catch(() => {});
+      .catch(() => {
+        setLearnedWords(0);
+      });
 
     // C. Fetch Completed Lessons & Time & XP
     fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers })
@@ -143,14 +151,29 @@ export default function HomePage() {
         const userProgress = items.filter((p: any) => p.userId === user.id);
         
         if (userProgress.length > 0) {
+          setHasJoined(true);
           // Sum hours
           const totalSeconds = userProgress.reduce((sum: number, p: any) => sum + (p.totalTimeSeconds || 0), 0);
           const calculatedHours = parseFloat((totalSeconds / 3600).toFixed(1));
-          setLearningHours(calculatedHours > 0 ? calculatedHours : 4.5);
+          setLearningHours(calculatedHours);
 
           // Sum XP
           const totalXp = userProgress.reduce((sum: number, p: any) => sum + (p.xpEarned || 0), 0);
-          setAccumulatedXp(totalXp > 0 ? totalXp : 1240);
+          setAccumulatedXp(totalXp);
+
+          // Find active course dynamically from recently updated progress
+          const latestProgress = [...userProgress].sort((a: any, b: any) => new Date(b.updatedAt || b.completedAt || 0).getTime() - new Date(a.updatedAt || a.completedAt || 0).getTime())[0];
+          if (latestProgress && latestProgress.courseId) {
+            try {
+              const cRes = await fetch(`${API_BASE_URL}/api/courses/${latestProgress.courseId}`, { headers });
+              if (cRes.ok) {
+                const cData = await cRes.json();
+                setActiveCourse(cData);
+              }
+            } catch (err) {
+              console.error("Error fetching active course details", err);
+            }
+          }
 
           // Fetch Recent Lessons Info
           const completedProgress = userProgress
@@ -235,8 +258,8 @@ export default function HomePage() {
 
   }, [user]);
 
-  // "Tiếp tục học" - first course in list as active
-  const activeCourse = courses[0];
+  // "Tiếp tục học" - fallback course if activeCourse is not set but user has courses
+  const courseToShow = activeCourse || courses[0];
   const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
 
   return (
@@ -419,10 +442,10 @@ export default function HomePage() {
 
             <div className="w-full">
               <h4 className="text-base font-bold text-slate-800 leading-snug">
-                Tiếp tục học: {activeCourse ? activeCourse.title : "Khoá học mới"}
+                Tiếp tục học: {hasJoined && courseToShow ? courseToShow.title : "Chưa tham gia"}
               </h4>
               <p className="text-[10px] text-slate-400 font-extrabold mt-1 uppercase tracking-wider">
-                {activeCourse ? `Cơ bản • ${activeCourse.level || "Bài học 1"}` : "Cơ bản • Trung cấp"}
+                {hasJoined && courseToShow ? `Cơ bản • ${courseToShow.level || "Bài học 1"}` : "Học ngay"}
               </p>
             </div>
 
@@ -430,19 +453,19 @@ export default function HomePage() {
             <div className="w-full px-2">
               <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-1.5">
                 <span>Tiến độ bài</span>
-                <span className="text-slate-600">65%</span>
+                <span className="text-slate-600">{hasJoined && courseToShow ? "65%" : "0%"}</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#2d6a4f] rounded-full" style={{ width: "65%" }} />
+                <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: hasJoined && courseToShow ? "65%" : "0%" }} />
               </div>
             </div>
 
             {/* CTA Button */}
             <Link
-              to={activeCourse ? `/khoa-hoc/${activeCourse.id}` : "/khoa-hoc"}
+              to={hasJoined && courseToShow ? `/khoa-hoc/${courseToShow.id}` : "/khoa-hoc"}
               className="w-full h-11 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300"
             >
-              Học tiếp
+              {hasJoined && courseToShow ? "Học tiếp" : "Học ngay"}
               <ArrowRight size={14} />
             </Link>
           </motion.div>

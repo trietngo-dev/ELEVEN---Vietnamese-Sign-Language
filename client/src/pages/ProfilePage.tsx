@@ -137,14 +137,14 @@ export default function ProfilePage() {
           const items = data.items || (Array.isArray(data) ? data : []);
           const userVocabs = items.filter((v: any) => v.userId === user.id);
           const completed = userVocabs.filter((v: any) => v.status === 2 || v.masteryLevel >= 0.8).length;
-          setVocabCount(completed > 0 ? completed : 158); // 158 as dynamic fallback if zero
+          setVocabCount(completed);
         } else {
-          setVocabCount(158);
+          setVocabCount(0);
         }
       })
       .catch((e) => {
         console.error("Error loading user vocab count", e);
-        setVocabCount(158);
+        setVocabCount(0);
       });
 
     // 2. Fetch lesson progress (completed lessons and learning hours)
@@ -157,27 +157,27 @@ export default function ProfilePage() {
           
           // Completed lessons
           const completed = userProgress.filter((p: any) => p.status === 2 || p.completedAt).length;
-          setCompletedLessonsCount(completed > 0 ? completed : 12);
+          setCompletedLessonsCount(completed);
 
           // Total learning hours
           const totalSeconds = userProgress.reduce((sum: number, p: any) => sum + (p.totalTimeSeconds || 0), 0);
           const calculatedHours = parseFloat((totalSeconds / 3600).toFixed(1));
-          setLearningHours(calculatedHours > 0 ? calculatedHours : 4.5);
+          setLearningHours(calculatedHours);
 
           // Unique courses completed or active
           const uniqueCourses = new Set(userProgress.map((p: any) => p.courseId).filter(Boolean));
-          setCoursesCount(uniqueCourses.size > 0 ? uniqueCourses.size : 12);
+          setCoursesCount(uniqueCourses.size);
         } else {
-          setCompletedLessonsCount(12);
-          setLearningHours(4.5);
-          setCoursesCount(12);
+          setCompletedLessonsCount(0);
+          setLearningHours(0);
+          setCoursesCount(0);
         }
       })
       .catch((e) => {
         console.error("Error loading user lesson stats", e);
-        setCompletedLessonsCount(12);
-        setLearningHours(4.5);
-        setCoursesCount(12);
+        setCompletedLessonsCount(0);
+        setLearningHours(0);
+        setCoursesCount(0);
       });
 
     // 3. Fetch user badges
@@ -187,14 +187,14 @@ export default function ProfilePage() {
         if (data) {
           const items = data.items || (Array.isArray(data) ? data : []);
           const filtered = items.filter((b: any) => b.userId === user.id);
-          setBadgesCount(filtered.length > 0 ? filtered.length : 5);
+          setBadgesCount(filtered.length);
         } else {
-          setBadgesCount(5);
+          setBadgesCount(0);
         }
       })
       .catch((e) => {
         console.error("Error loading user badges", e);
-        setBadgesCount(5);
+        setBadgesCount(0);
       });
   }, [user]);
 
