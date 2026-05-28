@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { NavLink, useLocation } from "react-router-dom";
 import { viText } from "../locales/vi";
 import { cn } from "../lib/utils";
@@ -181,8 +182,9 @@ function Navbar() {
   const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
 
   return (
-    <header className={cn(
-      "z-50 transition-all duration-300",
+    <>
+      <header className={cn(
+        "z-50 transition-all duration-300",
       isLandingPage 
         ? scrolled
           ? "fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-emerald-50/10 shadow-sm shadow-[#3c6c44]/[0.02]"
@@ -416,56 +418,58 @@ function Navbar() {
           )}
         </div>
       </div>
+    </header>
 
-      {/* Notification Details Modal */}
-      {showDetailModal && selectedNotif && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[24px] max-w-[450px] w-full p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col relative animate-in fade-in zoom-in-95 duration-150 text-left">
+    {/* Notification Details Modal */}
+    {showDetailModal && selectedNotif && createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-[24px] max-w-[450px] w-full p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col relative animate-in fade-in zoom-in-95 duration-150 text-left">
+          <button 
+            onClick={() => setShowDetailModal(false)}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1"
+          >
+            <X size={20} />
+          </button>
+          
+          <h3 className="text-lg font-bold text-slate-800 mb-1">{selectedNotif.title}</h3>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-4">
+            {new Date(selectedNotif.createdAt).toLocaleString("vi-VN")}
+          </span>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed mb-6">
+            {selectedNotif.message}
+          </div>
+
+          <div className="flex justify-end gap-3">
             <button 
-              onClick={() => setShowDetailModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1"
+              onClick={() => {
+                notificationsApi.deleteNotification(selectedNotif.id).then((ok) => {
+                  if (ok) {
+                    setNotifications(prev => prev.filter(n => n.id !== selectedNotif.id));
+                    setSelectedIds(prev => prev.filter(id => id !== selectedNotif.id));
+                    setShowDetailModal(false);
+                  } else {
+                    alert("Xóa thông báo thất bại.");
+                  }
+                });
+              }}
+              className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5"
             >
-              <X size={20} />
+              <Trash2 size={14} /> Xóa thông báo
             </button>
-            
-            <h3 className="text-lg font-bold text-slate-800 mb-1">{selectedNotif.title}</h3>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-4">
-              {new Date(selectedNotif.createdAt).toLocaleString("vi-VN")}
-            </span>
-
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed mb-6">
-              {selectedNotif.message}
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => {
-                  notificationsApi.deleteNotification(selectedNotif.id).then((ok) => {
-                    if (ok) {
-                      setNotifications(prev => prev.filter(n => n.id !== selectedNotif.id));
-                      setSelectedIds(prev => prev.filter(id => id !== selectedNotif.id));
-                      setShowDetailModal(false);
-                    } else {
-                      alert("Xóa thông báo thất bại.");
-                    }
-                  });
-                }}
-                className="px-4 py-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5"
-              >
-                <Trash2 size={14} /> Xóa thông báo
-              </button>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="px-5 py-2.5 bg-[#3c6c44] hover:bg-[#315736] text-white font-bold text-xs rounded-xl transition-all shadow-md"
-              >
-                Đóng
-              </button>
-            </div>
+            <button
+              onClick={() => setShowDetailModal(false)}
+              className="px-5 py-2.5 bg-[#3c6c44] hover:bg-[#315736] text-white font-bold text-xs rounded-xl transition-all shadow-md"
+            >
+              Đóng
+            </button>
           </div>
         </div>
-      )}
-    </header>
-  );
+      </div>,
+      document.body
+    )}
+  </>
+);
 }
 
 export default Navbar;
