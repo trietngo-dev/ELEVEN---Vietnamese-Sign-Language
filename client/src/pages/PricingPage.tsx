@@ -116,7 +116,7 @@ export default function PricingPage() {
   }, []);
 
   const handleUpgrade = async (planCode: string) => {
-    const plan = plans.find(p => p.code === planCode);
+    const plan = plans.find(p => p.code && p.code.toLowerCase() === planCode.toLowerCase());
     if (!plan) {
       alert("Gói thanh toán không tồn tại hoặc chưa được tải.");
       return;
@@ -161,11 +161,11 @@ export default function PricingPage() {
     }
   };
 
-  const isProActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code === "pro";
-  const isPremiumActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code === "premium";
+  const isProActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code?.toLowerCase() === "pro";
+  const isPremiumActive = activeSub && plans.find(p => p.id === activeSub.planId)?.code?.toLowerCase() === "premium";
 
-  const proPlan = plans.find(p => p.code === "pro");
-  const premiumPlan = plans.find(p => p.code === "premium");
+  const proPlan = plans.find(p => p.code && p.code.toLowerCase() === "pro");
+  const premiumPlan = plans.find(p => p.code && p.code.toLowerCase() === "premium");
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-800">
