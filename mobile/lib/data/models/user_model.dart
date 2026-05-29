@@ -14,12 +14,37 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {String? token}) {
+    final dynamic rawId = json['id'] ?? json['userId'] ?? json['UserId'];
+    final int parsedId = rawId is int 
+        ? rawId 
+        : (rawId != null ? int.tryParse(rawId.toString()) ?? 0 : 0);
+
+    final String? parsedToken = token ?? 
+        json['token'] ?? 
+        json['accessToken'] ?? 
+        json['sessionToken'] ?? 
+        json['AccessToken'] ?? 
+        json['SessionToken'];
+
+    final String parsedRole = (json['role'] ?? 
+        json['roleCode'] ?? 
+        json['RoleCode'] ?? 
+        'learner') as String;
+
+    final String parsedEmail = (json['email'] ?? json['Email'] ?? '') as String;
+
+    final String parsedFullName = (json['fullName'] ?? 
+        json['FullName'] ?? 
+        json['username'] ?? 
+        json['Username'] ?? 
+        '') as String;
+
     return UserModel(
-      id: json['id'] as int,
-      fullName: (json['fullName'] ?? json['username'] ?? '') as String,
-      email: (json['email'] ?? '') as String,
-      role: (json['role'] ?? 'learner') as String,
-      token: token ?? json['token'] as String?,
+      id: parsedId,
+      fullName: parsedFullName,
+      email: parsedEmail,
+      role: parsedRole,
+      token: parsedToken,
     );
   }
 

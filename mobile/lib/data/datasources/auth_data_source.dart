@@ -21,7 +21,11 @@ class AuthDataSource {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
-        final token = data['token'] as String?;
+        final token = (data['token'] ?? 
+            data['accessToken'] ?? 
+            data['sessionToken'] ?? 
+            data['AccessToken'] ?? 
+            data['SessionToken']) as String?;
         final userJson = data['user'] as Map<String, dynamic>? ?? data;
 
         final user = UserModel.fromJson(userJson, token: token);
@@ -60,7 +64,11 @@ class AuthDataSource {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
-        final token = data['token'] as String?;
+        final token = (data['token'] ?? 
+            data['accessToken'] ?? 
+            data['sessionToken'] ?? 
+            data['AccessToken'] ?? 
+            data['SessionToken']) as String?;
         final userJson = data['user'] as Map<String, dynamic>? ?? data;
 
         final user = UserModel.fromJson(userJson, token: token);
