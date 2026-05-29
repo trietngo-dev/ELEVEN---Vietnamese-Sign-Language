@@ -20,5 +20,7 @@ class ApiConstants {
   static String get lessons => "$baseUrl/api/lessons";
   static String get predictGesture => "$baseUrl/api/gesture/predict";
   static String get translateSentence => "$baseUrl/api/gesture/translate-sentence";
+  static String get feedbacks => "$baseUrl/api/feedbacks";
+  static String get feedbackCategories => "$baseUrl/api/feedback_categories";
   static String get userNotifications => "$baseUrl/api/notifications/user";
 }

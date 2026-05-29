@@ -111,4 +111,68 @@ class CourseDataSource {
       return false;
     }
   }
+
+  Future<List<dynamic>> getFeedbacks() async {
+    try {
+      final response = await _dioClient.dio.get("${ApiConstants.feedbacks}?pageSize=500");
+      if (response.statusCode == 200) {
+        final rawData = response.data;
+        if (rawData is List) {
+          return rawData;
+        } else if (rawData is Map) {
+          final items = rawData['items'] ?? rawData['Items'] ?? rawData['data'] ?? [];
+          if (items is List) {
+            return items;
+          }
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getFeedbackCategories() async {
+    try {
+      final response = await _dioClient.dio.get("${ApiConstants.feedbackCategories}?pageSize=100");
+      if (response.statusCode == 200) {
+        final rawData = response.data;
+        if (rawData is List) {
+          return rawData;
+        } else if (rawData is Map) {
+          final items = rawData['items'] ?? rawData['Items'] ?? rawData['data'] ?? [];
+          if (items is List) {
+            return items;
+          }
+        }
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> submitFeedback({
+    required int userId,
+    required int categoryId,
+    required int rating,
+    required String subject,
+    required String content,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.feedbacks,
+        data: {
+          'userId': userId,
+          'categoryId': categoryId,
+          'rating': rating,
+          'subject': subject,
+          'content': content,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
 }

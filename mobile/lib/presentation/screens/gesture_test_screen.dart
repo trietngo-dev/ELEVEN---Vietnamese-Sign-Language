@@ -165,7 +165,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: const Text(
             "Chúc Mừng!",
-            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+            style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
             textAlign: TextAlign.center,
           ),
           content: Column(
@@ -342,7 +342,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                         children: [
                           const Text(
                             "Từ vựng nhận diện được",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
                           ),
                           const SizedBox(height: 10),
                           Wrap(
@@ -365,7 +365,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                           const Divider(height: 32, color: Color(0xFFEDF6E4)),
                           const Text(
                             "Câu dịch hoàn chỉnh",
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
                           ),
                           const SizedBox(height: 8),
                           Text(
