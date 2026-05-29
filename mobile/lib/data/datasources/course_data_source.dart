@@ -23,7 +23,76 @@ class CourseDataSource {
             list = items;
           }
         }
-        return list.map((json) => CourseModel.fromJson(json as Map<String, dynamic>)).toList();
+
+        // 1. Fetch lessons to compute lessonsCount dynamically
+        List<dynamic> allLessons = [];
+        try {
+          final lessonsResponse = await _dioClient.dio.get(ApiConstants.lessons);
+          if (lessonsResponse.statusCode == 200) {
+            final lRaw = lessonsResponse.data;
+            if (lRaw is List) {
+              allLessons = lRaw;
+            } else if (lRaw is Map) {
+              allLessons = lRaw['items'] ?? lRaw['Items'] ?? lRaw['data'] ?? [];
+            }
+          }
+        } catch (_) {}
+
+        // 2. Fetch feedbacks and feedback categories to compute averageRating dynamically
+        List<dynamic> allFeedbacks = [];
+        int? courseCategoryId;
+        try {
+          final fbResponse = await _dioClient.dio.get("${ApiConstants.feedbacks}?pageSize=500");
+          if (fbResponse.statusCode == 200) {
+            final fbRaw = fbResponse.data;
+            if (fbRaw is List) {
+              allFeedbacks = fbRaw;
+            } else if (fbRaw is Map) {
+              allFeedbacks = fbRaw['items'] ?? fbRaw['Items'] ?? fbRaw['data'] ?? [];
+            }
+          }
+
+          final catResponse = await _dioClient.dio.get("${ApiConstants.feedbackCategories}?pageSize=100");
+          if (catResponse.statusCode == 200) {
+            final catRaw = catResponse.data;
+            List<dynamic> catsList = [];
+            if (catRaw is List) {
+              catsList = catRaw;
+            } else if (catRaw is Map) {
+              catsList = catRaw['items'] ?? catRaw['Items'] ?? catRaw['data'] ?? [];
+            }
+            final courseCat = catsList.firstWhere((c) => c['name']?.toString().toLowerCase() == 'course', orElse: () => null);
+            if (courseCat != null) {
+              courseCategoryId = courseCat['id'] as int?;
+            }
+          }
+        } catch (_) {}
+
+        return list.map((json) {
+          final Map<String, dynamic> map = Map<String, dynamic>.from(json as Map);
+          final int courseId = (map['id'] ?? 0) as int;
+
+          // Compute lessons count
+          final lessonsCount = allLessons.where((l) => (l['courseId'] ?? l['CourseId']) == courseId).length;
+          map['lessonsCount'] = lessonsCount;
+          map['LessonsCount'] = lessonsCount;
+
+          // Compute average rating
+          final courseFeedbacks = allFeedbacks.where((f) => 
+            (f['categoryId'] ?? f['CategoryId']) == courseCategoryId && 
+            (f['subject'] ?? f['Subject']) == 'CourseId:$courseId'
+          ).toList();
+          
+          double avgRating = 0.0;
+          if (courseFeedbacks.isNotEmpty) {
+            final sum = courseFeedbacks.fold<double>(0.0, (prev, element) => prev + (element['rating'] ?? element['Rating'] ?? 0.0).toDouble());
+            avgRating = double.parse((sum / courseFeedbacks.length).toStringAsFixed(1));
+          }
+          map['averageRating'] = avgRating;
+          map['AverageRating'] = avgRating;
+
+          return CourseModel.fromJson(map);
+        }).toList();
       }
       throw Exception('Không thể lấy danh sách khóa học.');
     } on DioException catch (e) {
@@ -35,7 +104,70 @@ class CourseDataSource {
     try {
       final response = await _dioClient.dio.get("${ApiConstants.courses}/$courseId");
       if (response.statusCode == 200) {
-        return CourseModel.fromJson(response.data as Map<String, dynamic>);
+        final Map<String, dynamic> map = Map<String, dynamic>.from(response.data as Map);
+
+        // Fetch lessons count dynamically
+        int lessonsCount = 0;
+        try {
+          final lessonsResponse = await _dioClient.dio.get(ApiConstants.lessons);
+          if (lessonsResponse.statusCode == 200) {
+            List<dynamic> allLessons = [];
+            final lRaw = lessonsResponse.data;
+            if (lRaw is List) {
+              allLessons = lRaw;
+            } else if (lRaw is Map) {
+              allLessons = lRaw['items'] ?? lRaw['Items'] ?? lRaw['data'] ?? [];
+            }
+            lessonsCount = allLessons.where((l) => (l['courseId'] ?? l['CourseId']) == courseId).length;
+          }
+        } catch (_) {}
+        map['lessonsCount'] = lessonsCount;
+        map['LessonsCount'] = lessonsCount;
+
+        // Fetch average rating dynamically
+        double avgRating = 0.0;
+        try {
+          final fbResponse = await _dioClient.dio.get("${ApiConstants.feedbacks}?pageSize=500");
+          if (fbResponse.statusCode == 200) {
+            List<dynamic> allFeedbacks = [];
+            final fbRaw = fbResponse.data;
+            if (fbRaw is List) {
+              allFeedbacks = fbRaw;
+            } else if (fbRaw is Map) {
+              allFeedbacks = fbRaw['items'] ?? fbRaw['Items'] ?? fbRaw['data'] ?? [];
+            }
+
+            final catResponse = await _dioClient.dio.get("${ApiConstants.feedbackCategories}?pageSize=100");
+            int? courseCategoryId;
+            if (catResponse.statusCode == 200) {
+              List<dynamic> catsList = [];
+              final catRaw = catResponse.data;
+              if (catRaw is List) {
+                catsList = catRaw;
+              } else if (catRaw is Map) {
+                catsList = catRaw['items'] ?? catRaw['Items'] ?? catRaw['data'] ?? [];
+              }
+              final courseCat = catsList.firstWhere((c) => c['name']?.toString().toLowerCase() == 'course', orElse: () => null);
+              if (courseCat != null) {
+                courseCategoryId = courseCat['id'] as int?;
+              }
+            }
+
+            final courseFeedbacks = allFeedbacks.where((f) => 
+              (f['categoryId'] ?? f['CategoryId']) == courseCategoryId && 
+              (f['subject'] ?? f['Subject']) == 'CourseId:$courseId'
+            ).toList();
+            
+            if (courseFeedbacks.isNotEmpty) {
+              final sum = courseFeedbacks.fold<double>(0.0, (prev, element) => prev + (element['rating'] ?? element['Rating'] ?? 0.0).toDouble());
+              avgRating = double.parse((sum / courseFeedbacks.length).toStringAsFixed(1));
+            }
+          }
+        } catch (_) {}
+        map['averageRating'] = avgRating;
+        map['AverageRating'] = avgRating;
+
+        return CourseModel.fromJson(map);
       }
       throw Exception('Không thể lấy chi tiết khóa học.');
     } on DioException catch (e) {
@@ -174,5 +306,16 @@ class CourseDataSource {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<String?> getVideoUrl(int mediaId) async {
+    try {
+      final response = await _dioClient.dio.get("${ApiConstants.baseUrl}/api/media_assets/$mediaId");
+      if (response.statusCode == 200) {
+        final data = response.data;
+        return (data['fileUrl'] ?? data['FileUrl']) as String?;
+      }
+    } catch (_) {}
+    return null;
   }
 }

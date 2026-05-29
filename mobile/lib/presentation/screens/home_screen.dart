@@ -451,7 +451,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             MaterialPageRoute(
                               builder: (_) => CourseDetailScreen(courseId: course.id),
                             ),
-                          );
+                          ).then((_) {
+                            if (mounted) {
+                              context.read<CourseBloc>().add(LoadCoursesRequested());
+                            }
+                          });
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
@@ -597,7 +601,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           MaterialPageRoute(
                             builder: (_) => CourseDetailScreen(courseId: course.id),
                           ),
-                        );
+                        ).then((_) {
+                          if (mounted) {
+                            context.read<CourseBloc>().add(LoadCoursesRequested());
+                          }
+                        });
                       },
                       borderRadius: BorderRadius.circular(24),
                       child: Container(
