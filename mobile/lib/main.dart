@@ -1,0 +1,73 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'core/network/dio_client.dart';
+import 'core/theme/app_theme.dart';
+import 'data/datasources/auth_data_source.dart';
+import 'data/datasources/course_data_source.dart';
+import 'data/datasources/gesture_data_source.dart';
+import 'presentation/bloc/auth_bloc.dart';
+import 'presentation/bloc/course_bloc.dart';
+import 'presentation/bloc/gesture_bloc.dart';
+import 'presentation/screens/login_screen.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 1. Initialize core dependencies
+  final dioClient = DioClient();
+  
+  final authDataSource = AuthDataSource(dioClient);
+  final courseDataSource = CourseDataSource(dioClient);
+  final gestureDataSource = GestureDataSource(dioClient);
+
+  runApp(
+    MyApp(
+      authDataSource: authDataSource,
+      courseDataSource: courseDataSource,
+      gestureDataSource: gestureDataSource,
+    ),
+  );
+}
+
+class MyApp extends StatelessWidget {
+  final AuthDataSource authDataSource;
+  final CourseDataSource courseDataSource;
+  final GestureDataSource gestureDataSource;
+
+  const MyApp({
+    super.key,
+    required this.authDataSource,
+    required this.courseDataSource,
+    required this.gestureDataSource,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<AuthDataSource>.value(value: authDataSource),
+        RepositoryProvider<CourseDataSource>.value(value: courseDataSource),
+        RepositoryProvider<GestureDataSource>.value(value: gestureDataSource),
+      ],
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthBloc>(
+            create: (context) => AuthBloc(authDataSource)..add(AuthCheckRequested()),
+          ),
+          BlocProvider<CourseBloc>(
+            create: (context) => CourseBloc(courseDataSource),
+          ),
+          BlocProvider<GestureBloc>(
+            create: (context) => GestureBloc(gestureDataSource),
+          ),
+        ],
+        child: MaterialApp(
+          title: 'Eleven VSL',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          home: const LoginScreen(),
+        ),
+      ),
+    );
+  }
+}
