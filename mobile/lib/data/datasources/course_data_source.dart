@@ -13,8 +13,17 @@ class CourseDataSource {
     try {
       final response = await _dioClient.dio.get(ApiConstants.courses);
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
-        return data.map((json) => CourseModel.fromJson(json as Map<String, dynamic>)).toList();
+        final rawData = response.data;
+        List<dynamic> list = [];
+        if (rawData is List) {
+          list = rawData;
+        } else if (rawData is Map) {
+          final items = rawData['items'] ?? rawData['Items'] ?? rawData['data'] ?? rawData['results'] ?? [];
+          if (items is List) {
+            list = items;
+          }
+        }
+        return list.map((json) => CourseModel.fromJson(json as Map<String, dynamic>)).toList();
       }
       throw Exception('Không thể lấy danh sách khóa học.');
     } on DioException catch (e) {
@@ -38,9 +47,18 @@ class CourseDataSource {
     try {
       final response = await _dioClient.dio.get(ApiConstants.lessons);
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data as List<dynamic>;
+        final rawData = response.data;
+        List<dynamic> list = [];
+        if (rawData is List) {
+          list = rawData;
+        } else if (rawData is Map) {
+          final items = rawData['items'] ?? rawData['Items'] ?? rawData['data'] ?? rawData['results'] ?? [];
+          if (items is List) {
+            list = items;
+          }
+        }
         // Filter lessons by courseId locally just like the web app
-        return data
+        return list
             .map((json) => LessonModel.fromJson(json as Map<String, dynamic>))
             .where((lesson) => lesson.courseId == courseId)
             .toList()

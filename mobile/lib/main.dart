@@ -8,7 +8,8 @@ import 'data/datasources/gesture_data_source.dart';
 import 'presentation/bloc/auth_bloc.dart';
 import 'presentation/bloc/course_bloc.dart';
 import 'presentation/bloc/gesture_bloc.dart';
-import 'presentation/screens/login_screen.dart';
+import 'presentation/screens/welcome_screen.dart';
+import 'presentation/screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +66,24 @@ class MyApp extends StatelessWidget {
           title: 'Eleven VSL',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
-          home: const LoginScreen(),
+          home: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              if (state is AuthAuthenticated) {
+                return const HomeScreen();
+              } else if (state is AuthUnauthenticated || state is AuthFailure) {
+                return const WelcomeScreen();
+              }
+              // Elegant green splash loader matching premium theme
+              return const Scaffold(
+                backgroundColor: Color(0xFF0A0F0D),
+                body: Center(
+                  child: CircularProgressIndicator(
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
