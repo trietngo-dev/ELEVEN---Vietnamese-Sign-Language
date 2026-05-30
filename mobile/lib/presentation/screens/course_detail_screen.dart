@@ -22,6 +22,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   List<dynamic> _filteredReviews = [];
   String _activeFilter = 'all';
   bool _isLoadingReviews = true;
+  String? _coverImageUrl;
+  bool _isLoadingCoverImage = false;
 
   // Star and Comment stats
   int _countAll = 0;
@@ -45,6 +47,40 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     setState(() {
       _userId = prefs.getInt('auth_user_id');
     });
+  }
+
+  Future<void> _loadCoverImage(int? mediaId, String title) async {
+    if (mediaId == null) {
+      if (mounted) {
+        setState(() {
+          _coverImageUrl = "https://ui-avatars.com/api/?name=${Uri.encodeComponent(title)}&background=10b981&color=fff&size=500";
+        });
+      }
+      return;
+    }
+    try {
+      final ds = context.read<CourseDataSource>();
+      final url = await ds.getVideoUrl(mediaId);
+      if (url != null && url.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _coverImageUrl = url;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _coverImageUrl = "https://ui-avatars.com/api/?name=${Uri.encodeComponent(title)}&background=10b981&color=fff&size=500";
+          });
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _coverImageUrl = "https://ui-avatars.com/api/?name=${Uri.encodeComponent(title)}&background=10b981&color=fff&size=500";
+        });
+      }
+    }
   }
 
   Future<void> _loadReviewsAndCategories() async {
@@ -328,6 +364,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               final course = state.course;
               final lessons = state.lessons;
 
+              // Load the cover image dynamically once details succeed
+              if (_coverImageUrl == null && !_isLoadingCoverImage) {
+                _isLoadingCoverImage = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _loadCoverImage(course.thumbnailMediaId, course.title);
+                });
+              }
+
               return CustomScrollView(
                 slivers: [
                   // App Bar with Dynamic Title
@@ -347,18 +391,23 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                           ],
                         ),
                       ),
-                      background: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFF0E1E16), Color(0xFF0C100E)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.school_rounded, size: 64, color: Colors.white24),
-                        ),
-                      ),
+                      background: _coverImageUrl != null
+                          ? Image.network(
+                              _coverImageUrl!,
+                              fit: BoxFit.cover,
+                            )
+                          : Container(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFF0E1E16), Color(0xFF0C100E)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.school_rounded, size: 64, color: Colors.white24),
+                              ),
+                            ),
                     ),
                   ),
 

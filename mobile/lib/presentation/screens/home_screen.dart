@@ -449,7 +449,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => CourseDetailScreen(courseId: course.id),
+                              builder: (_) => BlocProvider<CourseBloc>(
+                                create: (context) => CourseBloc(context.read<CourseDataSource>()),
+                                child: CourseDetailScreen(courseId: course.id),
+                              ),
                             ),
                           ).then((_) {
                             if (mounted) {
@@ -467,14 +470,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: mint.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(Icons.book_rounded, color: mint, size: 24),
+                              CourseImageWidget(
+                                coverMediaId: course.thumbnailMediaId,
+                                title: course.title,
+                                size: 56,
                               ),
                               const SizedBox(width: 14),
                               Expanded(
@@ -599,7 +598,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => CourseDetailScreen(courseId: course.id),
+                            builder: (_) => BlocProvider<CourseBloc>(
+                              create: (context) => CourseBloc(context.read<CourseDataSource>()),
+                              child: CourseDetailScreen(courseId: course.id),
+                            ),
                           ),
                         ).then((_) {
                           if (mounted) {
@@ -622,16 +624,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: mint.withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Center(
-                                    child: Icon(Icons.school_rounded, color: mint, size: 36),
-                                  ),
+                                CourseImageWidget(
+                                  coverMediaId: course.thumbnailMediaId,
+                                  title: course.title,
+                                  size: 80,
                                 ),
                                 const SizedBox(width: 16),
                                 Expanded(
@@ -1132,6 +1128,86 @@ class _HomeScreenState extends State<HomeScreen> {
       title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
       trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white30),
       onTap: onTap,
+    );
+  }
+}
+
+class CourseImageWidget extends StatefulWidget {
+  final int? coverMediaId;
+  final String title;
+  final double size;
+
+  const CourseImageWidget({
+    super.key,
+    required this.coverMediaId,
+    required this.title,
+    required this.size,
+  });
+
+  @override
+  State<CourseImageWidget> createState() => _CourseImageWidgetState();
+}
+
+class _CourseImageWidgetState extends State<CourseImageWidget> {
+  String? _url;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.coverMediaId != null) {
+      _loadUrl();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant CourseImageWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.coverMediaId != oldWidget.coverMediaId) {
+      _loadUrl();
+    }
+  }
+
+  Future<void> _loadUrl() async {
+    if (widget.coverMediaId == null) return;
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final ds = context.read<CourseDataSource>();
+      final fileUrl = await ds.getVideoUrl(widget.coverMediaId!);
+      if (mounted) {
+        setState(() {
+          _url = fileUrl;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final defaultUrl = "https://ui-avatars.com/api/?name=${Uri.encodeComponent(widget.title)}&background=10b981&color=fff&size=200";
+    
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: widget.size,
+        height: widget.size,
+        child: _isLoading 
+            ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981))))
+            : Image.network(
+                _url ?? defaultUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Image.network(defaultUrl, fit: BoxFit.cover),
+              ),
+      ),
     );
   }
 }
