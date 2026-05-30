@@ -148,9 +148,16 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
     );
 
     if (success && mounted) {
-      // Save local xp
+      // Save local progress and XP
       final currentXp = prefs.getInt('auth_user_xp') ?? 100;
       await prefs.setInt('auth_user_xp', currentXp + widget.lesson.xpEarned);
+      
+      // Save AI completion flag and update daily challenge progress
+      await prefs.setBool('ai_completed_${widget.lesson.id}', true);
+      final dailyCount = prefs.getInt('daily_challenge_count') ?? 2;
+      if (dailyCount < 5) {
+        await prefs.setInt('daily_challenge_count', dailyCount + 1);
+      }
 
       _showCompletionDialog();
     }
