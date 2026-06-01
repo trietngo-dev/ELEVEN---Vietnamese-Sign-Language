@@ -217,7 +217,7 @@ function CoursesPage() {
                 <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/20 to-transparent" />
                 {course.isPremium && (
                   <span className="absolute left-3 top-3 rounded-full bg-[#ebca4f] px-2.5 py-0.5 text-[10px] font-bold text-[#394041]">
-                    Cao cấp
+                    Pro
                   </span>
                 )}
                 <p className="absolute bottom-2.5 left-3 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-800 shadow-sm">

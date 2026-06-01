@@ -206,7 +206,7 @@ export default function PricingPage() {
             transition={{ delay: 0.1 }}
             className="text-lg text-slate-500 max-w-2xl mx-auto"
           >
-            Mở khóa toàn bộ tiềm năng học tập ngôn ngữ ký hiệu với gói Premium và sự hỗ trợ từ trí tuệ nhân tạo.
+            Mở khóa toàn bộ tiềm năng học tập ngôn ngữ ký hiệu với các gói Pro / Premium và sự hỗ trợ từ trí tuệ nhân tạo.
           </motion.p>
         </div>
 
@@ -271,16 +271,10 @@ export default function PricingPage() {
             
             <ul className="space-y-4 mb-8 flex-1">
               <li className="flex items-center gap-3 text-slate-700 text-sm font-semibold">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#fed963]/30 flex items-center justify-center text-[#d9aa17]"><Check size={12} strokeWidth={4}/></div> Toàn bộ khóa học nâng cao
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#fed963]/30 flex items-center justify-center text-[#d9aa17]"><Check size={12} strokeWidth={4}/></div> Truy cập tất cả khóa học trên ứng dụng
               </li>
               <li className="flex items-center gap-3 text-slate-700 text-sm font-semibold">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#fed963]/30 flex items-center justify-center text-[#d9aa17]"><Check size={12} strokeWidth={4}/></div> Dịch thuật AI không giới hạn
-              </li>
-              <li className="flex items-center gap-3 text-slate-700 text-sm font-semibold">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#fed963]/30 flex items-center justify-center text-[#d9aa17]"><Check size={12} strokeWidth={4}/></div> Phản hồi chi tiết từ AI
-              </li>
-              <li className="flex items-center gap-3 text-slate-700 text-sm font-semibold">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#fed963]/30 flex items-center justify-center text-[#d9aa17]"><Check size={12} strokeWidth={4}/></div> Hỗ trợ ưu tiên
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#fed963]/30 flex items-center justify-center text-[#d9aa17]"><Check size={12} strokeWidth={4}/></div> Tương tác 1:1 với AI bằng ngôn ngữ ký hiệu
               </li>
             </ul>
             
@@ -320,16 +314,10 @@ export default function PricingPage() {
             
             <ul className="space-y-4 mb-8 flex-1">
               <li className="flex items-center gap-3 text-slate-600 text-sm font-medium">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c6d44]/10 flex items-center justify-center text-[#3c6d44]"><Check size={12} strokeWidth={3}/></div> Tất cả tính năng Pro
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c6d44]/10 flex items-center justify-center text-[#3c6d44]"><Check size={12} strokeWidth={3}/></div> Bao gồm tất cả tính năng của gói Pro
               </li>
               <li className="flex items-center gap-3 text-slate-600 text-sm font-medium">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c6d44]/10 flex items-center justify-center text-[#3c6d44]"><Check size={12} strokeWidth={3}/></div> Truy cập ngoại tuyến
-              </li>
-              <li className="flex items-center gap-3 text-slate-600 text-sm font-medium">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c6d44]/10 flex items-center justify-center text-[#3c6d44]"><Check size={12} strokeWidth={3}/></div> Chứng chỉ hoàn thành
-              </li>
-              <li className="flex items-center gap-3 text-slate-600 text-sm font-medium">
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c6d44]/10 flex items-center justify-center text-[#3c6d44]"><Check size={12} strokeWidth={3}/></div> Hỗ trợ 1:1 từ chuyên gia
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#3c6d44]/10 flex items-center justify-center text-[#3c6d44]"><Check size={12} strokeWidth={3}/></div> Hỗ trợ dịch thuật ngôn ngữ ký hiệu thời gian thực bằng camera
               </li>
             </ul>
             

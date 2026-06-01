@@ -242,8 +242,8 @@ export default function CourseDetailPage() {
                   <Crown className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-[0.95rem] font-bold text-[#3a403f]">Đây là khóa học dành cho tài khoản Cao cấp</p>
-                  <p className="text-sm text-[#86908c]">Nâng cấp tài khoản để truy cập toàn bộ nội dung khóa học này.</p>
+                  <p className="text-[0.95rem] font-bold text-[#3a403f]">Đây là khóa học dành cho tài khoản Pro</p>
+                  <p className="text-sm text-[#86908c]">Nâng cấp tài khoản Pro để truy cập toàn bộ nội dung khóa học này.</p>
                 </div>
               </div>
               <Link to="/nang-cap" className="flex-shrink-0 h-9 px-5 rounded-lg bg-[#efca4c] text-[0.8rem] font-bold text-[#4b3c14] hover:bg-[#e7c13f] transition-colors inline-flex items-center">
@@ -318,7 +318,7 @@ export default function CourseDetailPage() {
                 </Link>
               ) : (
                 <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold cursor-not-allowed">
-                  <Lock size={16} /> Yêu cầu tài khoản Cao cấp
+                  <Lock size={16} /> Yêu cầu tài khoản Pro
                 </button>
               )
             ) : (

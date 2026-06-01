@@ -23,7 +23,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
 const TRANSLATE_SENTENCE_ENDPOINT = `${API_BASE_URL}/api/gesture/translate-sentence`;
-const CONFIDENCE_THRESHOLD = 0.7;
+const CONFIDENCE_THRESHOLD = 0.95; // Tăng độ tự tin tối thiểu lên 95% theo yêu cầu
 const HAND_SMOOTHING_ALPHA = 0.35;
 const MAX_HAND_HOLD_FRAMES = 4;
 
@@ -197,6 +197,27 @@ const SignLanguageTracker = () => {
     }
 
     return flatKeypoints;
+  };
+
+  const normalizeSpatial = (frame: number[]): number[] => {
+    // Tọa độ Mũi luôn nằm ở 3 số đầu tiên (index 0, 1, 2)
+    const noseX = frame[0];
+    const noseY = frame[1];
+    const noseZ = frame[2];
+
+    if (noseX === 0 && noseY === 0 && noseZ === 0) {
+      return frame;
+    }
+
+    const normFrame = [...frame];
+    for (let i = 0; i < normFrame.length; i += 3) {
+      if (normFrame[i] !== 0 || normFrame[i + 1] !== 0 || normFrame[i + 2] !== 0) {
+        normFrame[i] -= noseX;
+        normFrame[i + 1] -= noseY;
+        normFrame[i + 2] -= noseZ;
+      }
+    }
+    return normFrame;
   };
 
   const processSlidingWindow = async (
@@ -572,7 +593,8 @@ const SignLanguageTracker = () => {
           )
         ) {
           const frameKeypoints = extractFrameKeypoints(results);
-          frameBufferRef.current.push(frameKeypoints);
+          const normalizedKeypoints = normalizeSpatial(frameKeypoints);
+          frameBufferRef.current.push(normalizedKeypoints);
 
           const currentFrames = frameBufferRef.current.length;
           setCapturedFrames(currentFrames);
