@@ -58,7 +58,7 @@ class GestureBloc extends Bloc<GestureEvent, GestureState> {
   bool _isPredicting = false;
 
   static const int targetFrameCount = 50;
-  static const double confidenceThreshold = 0.7;
+  static const double confidenceThreshold = 0.95; // Tăng ngưỡng tự tin lên 95% đồng bộ với Web
 
   GestureBloc(this._gestureDataSource) : super(GestureInitial()) {
     on<GestureSessionReset>((event, emit) {
@@ -76,8 +76,8 @@ class GestureBloc extends Bloc<GestureEvent, GestureState> {
 
       _frameBuffer.add(event.frameFeatures);
       
-      // If idle frames (no hands) are captured, we should flush the buffer just like the web
-      final isIdleFrame = event.frameFeatures.skip(27 + 153).every((v) => v == 0.0); // Check hands coordinates
+      // If idle frames (no user pose) are captured, we should flush the buffer
+      final isIdleFrame = event.frameFeatures.take(27).every((v) => v == 0.0); // Check pose coordinates on Mobile
       if (isIdleFrame && _frameBuffer.length > 20) {
         // Flush buffer if idle too long
         _frameBuffer.clear();

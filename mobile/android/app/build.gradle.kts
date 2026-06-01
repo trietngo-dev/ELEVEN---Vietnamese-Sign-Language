@@ -42,3 +42,12 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    implementation("com.google.mediapipe:tasks-vision:0.10.14")
+    val cameraxVersion = "1.3.1"
+    implementation("androidx.camera:camera-core:$cameraxVersion")
+    implementation("androidx.camera:camera-camera2:$cameraxVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+    implementation("androidx.camera:camera-view:$cameraxVersion")
+}

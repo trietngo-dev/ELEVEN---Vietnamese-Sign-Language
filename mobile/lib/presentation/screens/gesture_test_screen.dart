@@ -31,6 +31,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
   List<String> _words = [];
   String _finalSentence = 'Câu hoàn chỉnh sẽ hiển thị tại đây!';
   String _status = 'Sẵn sàng kiểm tra cử chỉ';
+  List<double>? _latestFeatures;
 
   @override
   void initState() {
@@ -53,7 +54,9 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
         frontCamera,
         ResolutionPreset.medium,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.yuv420,
+        imageFormatGroup: defaultTargetPlatform == TargetPlatform.android
+            ? ImageFormatGroup.nv21
+            : ImageFormatGroup.bgra8888,
       );
 
       await _cameraController!.initialize();
@@ -83,6 +86,18 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
 
       final features = await _processor.processImage(inputImage);
       if (features.isNotEmpty && mounted) {
+        final rawFeatures = _processor.latestCroppedFeatures;
+        if (rawFeatures != null) {
+          if (_latestFeatures == null || _latestFeatures!.length != rawFeatures.length) {
+            _latestFeatures = List<double>.from(rawFeatures);
+          } else {
+            const double alpha = 0.35; // EMA smoothing factor (0.35 is perfect for fluidity vs latency)
+            for (int i = 0; i < rawFeatures.length; i++) {
+              _latestFeatures![i] = alpha * rawFeatures[i] + (1.0 - alpha) * _latestFeatures![i];
+            }
+          }
+        }
+        setState(() {});
         context.read<GestureBloc>().add(GestureFrameCaptured(features));
       }
     });
@@ -90,26 +105,102 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
 
   InputImage? _convertCameraImage(CameraImage image) {
     try {
-      final WriteBuffer allBytes = WriteBuffer();
-      for (final Plane plane in image.planes) {
-        allBytes.putUint8List(plane.bytes);
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final width = image.width;
+        final height = image.height;
+        
+        final yPlane = image.planes[0];
+        final yBytes = yPlane.bytes;
+        
+        // NV21 format: YYYYYYYY VUVU...
+        final nv21 = Uint8List(width * height + (width * height ~/ 2));
+        
+        // 1. Copy Y plane removing any rowStride padding
+        final yRowStride = yPlane.bytesPerRow;
+        if (yRowStride == width) {
+          nv21.setRange(0, width * height, yBytes);
+        } else {
+          for (int h = 0; h < height; h++) {
+            nv21.setRange(h * width, (h + 1) * width, yBytes, h * yRowStride);
+          }
+        }
+        
+        // 2. Copy and interleave U and V planes
+        final uvOffset = width * height;
+        if (image.planes.length == 2) {
+          final vuPlane = image.planes[1];
+          final vuBytes = vuPlane.bytes;
+          final vuRowStride = vuPlane.bytesPerRow;
+          final uvHeight = height ~/ 2;
+          
+          if (vuRowStride == width) {
+            nv21.setRange(uvOffset, uvOffset + width * uvHeight, vuBytes);
+          } else {
+            for (int h = 0; h < uvHeight; h++) {
+              nv21.setRange(
+                uvOffset + h * width,
+                uvOffset + (h + 1) * width,
+                vuBytes,
+                h * vuRowStride,
+              );
+            }
+          }
+        } else if (image.planes.length == 3) {
+          final uPlane = image.planes[1];
+          final vPlane = image.planes[2];
+          
+          final uBytes = uPlane.bytes;
+          final vBytes = vPlane.bytes;
+          
+          final uRowStride = uPlane.bytesPerRow;
+          final vRowStride = vPlane.bytesPerRow;
+          
+          final uPixelStride = uPlane.bytesPerPixel ?? 1;
+          final vPixelStride = vPlane.bytesPerPixel ?? 1;
+          
+          final uvWidth = width ~/ 2;
+          final uvHeight = height ~/ 2;
+          
+          int dstIdx = uvOffset;
+          
+          for (int h = 0; h < uvHeight; h++) {
+            for (int w = 0; w < uvWidth; w++) {
+              final uIdx = h * uRowStride + w * uPixelStride;
+              final vIdx = h * vRowStride + w * vPixelStride;
+              
+              nv21[dstIdx++] = vBytes[vIdx];
+              nv21[dstIdx++] = uBytes[uIdx];
+            }
+          }
+        }
+
+        final Size imageSize = Size(width.toDouble(), height.toDouble());
+        final inputImageMetadata = InputImageMetadata(
+          size: imageSize,
+          rotation: InputImageRotation.rotation270deg,
+          format: InputImageFormat.nv21,
+          bytesPerRow: width, // No padding in our custom packed NV21 buffer
+        );
+
+        return InputImage.fromBytes(bytes: nv21, metadata: inputImageMetadata);
+      } else {
+        // iOS or other platforms (BGRA8888)
+        final WriteBuffer allBytes = WriteBuffer();
+        for (final Plane plane in image.planes) {
+          allBytes.putUint8List(plane.bytes);
+        }
+        final bytes = allBytes.done().buffer.asUint8List();
+
+        final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
+        final inputImageMetadata = InputImageMetadata(
+          size: imageSize,
+          rotation: InputImageRotation.rotation270deg,
+          format: InputImageFormat.bgra8888,
+          bytesPerRow: image.planes[0].bytesPerRow,
+        );
+
+        return InputImage.fromBytes(bytes: bytes, metadata: inputImageMetadata);
       }
-      final bytes = allBytes.done().buffer.asUint8List();
-
-      final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
-      
-      // Fix description for rotation mapping based on front camera
-      final imageRotation = InputImageRotation.rotation270deg;
-      final imageFormat = InputImageFormat.yuv420;
-
-      final inputImageMetadata = InputImageMetadata(
-        size: imageSize,
-        rotation: imageRotation,
-        format: imageFormat,
-        bytesPerRow: image.planes[0].bytesPerRow,
-      );
-
-      return InputImage.fromBytes(bytes: bytes, metadata: inputImageMetadata);
     } catch (e) {
       debugPrint("Lỗi chuyển đổi ảnh: $e");
       return null;
@@ -121,12 +212,14 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
     if (_isCollecting) {
       setState(() {
         _isCollecting = false;
+        _latestFeatures = null;
         _status = 'Đang hoàn tất và trau chuốt bằng Gemini...';
       });
       gestureBloc.add(GesturePolishRequested());
     } else {
       setState(() {
         _isCollecting = true;
+        _latestFeatures = null;
         _capturedFrames = 0;
         _words.clear();
         _finalSentence = '';
@@ -276,25 +369,25 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                         fit: StackFit.expand,
                         children: [
                           _isCameraInitialized
-                              ? Transform(
-                                  alignment: Alignment.center,
-                                  transform: Matrix4.rotationY(3.14159), // Mirror camera preview
-                                  child: CameraPreview(_cameraController!),
-                                )
+                              ? CameraPreview(_cameraController!)
                               : const Center(
                                   child: CircularProgressIndicator(),
                                 ),
                           
-                          // Circular guides
+                          // Futuristic Half-Body Guide Overlay
                           Positioned.fill(
-                            child: Container(
-                              margin: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.white24, style: BorderStyle.solid, width: 2),
-                                borderRadius: BorderRadius.circular(24),
-                              ),
+                            child: CustomPaint(
+                              painter: HalfBodyGuidePainter(),
                             ),
                           ),
+                          
+                          // Live skeletal & facial landmarks overlay (Khung Landmark)
+                          if (_isCollecting && _latestFeatures != null)
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: LandmarksPainter(features: _latestFeatures!),
+                              ),
+                            ),
                           
                           // Countdown timer overlay
                           if (_isCollecting)
@@ -396,4 +489,233 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
       ),
     );
   }
+}
+
+class HalfBodyGuidePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+
+    final dashPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    // Draw Head Outline (Oval in top-middle)
+    final headCenter = Offset(size.width / 2, size.height * 0.28);
+    final headRadiusX = size.width * 0.16;
+    final headRadiusY = size.height * 0.18;
+    canvas.drawOval(
+      Rect.fromCenter(center: headCenter, width: headRadiusX * 2, height: headRadiusY * 2),
+      paint,
+    );
+
+    // Draw Shoulders (Arc below head)
+    final shoulderPath = Path()
+      ..moveTo(size.width * 0.15, size.height * 0.8)
+      ..quadraticBezierTo(
+        size.width * 0.15, size.height * 0.52,
+        size.width * 0.32, size.height * 0.52,
+      )
+      ..lineTo(size.width * 0.68, size.height * 0.52)
+      ..quadraticBezierTo(
+        size.width * 0.85, size.height * 0.52,
+        size.width * 0.85, size.height * 0.8,
+      );
+    canvas.drawPath(shoulderPath, paint);
+
+    // Draw Hand Capture zones (Left and Right dashed boxes)
+    // Left hand zone
+    final leftHandRect = Rect.fromLTWH(
+      size.width * 0.08,
+      size.height * 0.54,
+      size.width * 0.22,
+      size.height * 0.22,
+    );
+    _drawDashedRect(canvas, leftHandRect, dashPaint);
+
+    // Right hand zone
+    final rightHandRect = Rect.fromLTWH(
+      size.width * 0.70,
+      size.height * 0.54,
+      size.width * 0.22,
+      size.height * 0.22,
+    );
+    _drawDashedRect(canvas, rightHandRect, dashPaint);
+  }
+
+  void _drawDashedRect(Canvas canvas, Rect rect, Paint paint) {
+    const double dashWidth = 8;
+    const double dashSpace = 4;
+    
+    // Top line
+    double startX = rect.left;
+    while (startX < rect.right) {
+      canvas.drawLine(Offset(startX, rect.top), Offset(startX + dashWidth, rect.top), paint);
+      startX += dashWidth + dashSpace;
+    }
+    // Bottom line
+    startX = rect.left;
+    while (startX < rect.right) {
+      canvas.drawLine(Offset(startX, rect.bottom), Offset(startX + dashWidth, rect.bottom), paint);
+      startX += dashWidth + dashSpace;
+    }
+    // Left line
+    double startY = rect.top;
+    while (startY < rect.bottom) {
+      canvas.drawLine(Offset(rect.left, startY), Offset(rect.left, startY + dashWidth), paint);
+      startY += dashWidth + dashSpace;
+    }
+    // Right line
+    startY = rect.top;
+    while (startY < rect.bottom) {
+      canvas.drawLine(Offset(rect.right, startY), Offset(rect.right, startY + dashWidth), paint);
+      startY += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class LandmarksPainter extends CustomPainter {
+  final List<double> features;
+
+  LandmarksPainter({required this.features});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (features.length < 306) return;
+
+    final paintJoint = Paint()
+      ..color = const Color(0xFF00FFCC) // Neon teal
+      ..strokeWidth = 3.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final paintDot = Paint()
+      ..color = const Color(0xFF00FFCC)
+      ..style = PaintingStyle.fill;
+
+    final paintFace = Paint()
+      ..color = Colors.amberAccent.withValues(alpha: 0.85) // Premium warm amber dots
+      ..style = PaintingStyle.fill;
+
+    final paintHandJoint = Paint()
+      ..color = const Color(0xFFFF2A85) // Hot neon pink for hands
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final paintHandDot = Paint()
+      ..color = const Color(0xFFFF5EA2) // Bright pink for hand joints
+      ..style = PaintingStyle.fill;
+
+    // Helper to get Offset for keypoint index
+    Offset? getPoint(int index) {
+      final int start = index * 3;
+      final double x = features[start];
+      final double y = features[start + 1];
+      
+      // If point is empty/un-detected
+      if (x == 0.0 && y == 0.0) return null;
+
+      // Because front camera preview is mirrored on screen, we mirror the X coordinate
+      // to match what the user sees on the camera viewport.
+      final double drawX = (1.0 - x) * size.width;
+      final double drawY = y * size.height;
+      return Offset(drawX, drawY);
+    }
+
+    // 1. Draw Pose Joints
+    // Selected indices: 0 (nose), 11 (L shoulder), 12 (R shoulder), 13 (L elbow), 14 (R elbow), 15 (L wrist), 16 (R wrist), 23 (L hip), 24 (R hip)
+    // Map to indices 0 to 8:
+    final nose = getPoint(0);
+    final lShoulder = getPoint(1);
+    final rShoulder = getPoint(2);
+    final lElbow = getPoint(3);
+    final rElbow = getPoint(4);
+    final lWrist = getPoint(5);
+    final rWrist = getPoint(6);
+    final lHip = getPoint(7);
+    final rHip = getPoint(8);
+
+    // Draw connection lines
+    void drawLine(Offset? p1, Offset? p2) {
+      if (p1 != null && p2 != null) {
+        canvas.drawLine(p1, p2, paintJoint);
+      }
+    }
+
+    drawLine(lShoulder, rShoulder);
+    drawLine(lShoulder, lElbow);
+    drawLine(lElbow, lWrist);
+    drawLine(rShoulder, rElbow);
+    drawLine(rElbow, rWrist);
+    drawLine(lShoulder, lHip);
+    drawLine(rShoulder, rHip);
+    drawLine(lHip, rHip);
+
+    // Draw Pose dots
+    final posePoints = [nose, lShoulder, rShoulder, lElbow, rElbow, lWrist, rWrist, lHip, rHip];
+    for (final pt in posePoints) {
+      if (pt != null) {
+        canvas.drawCircle(pt, 5.0, paintDot);
+      }
+    }
+
+    // 2. Draw Face Contours
+    // Selected face indices mapping starts at keypoint index 9 up to 59 (51 points)
+    for (int i = 9; i < 60; i++) {
+      final pt = getPoint(i);
+      if (pt != null) {
+        canvas.drawCircle(pt, 2.0, paintFace);
+      }
+    }
+
+    // 3. Draw Hands Skeleton (Left Hand at index 60, Right Hand at index 81)
+    void drawHand(int baseIndex) {
+      final wrist = getPoint(baseIndex + 0);
+      
+      final thumb = List.generate(4, (i) => getPoint(baseIndex + 1 + i));
+      final indexFinger = List.generate(4, (i) => getPoint(baseIndex + 5 + i));
+      final middleFinger = List.generate(4, (i) => getPoint(baseIndex + 9 + i));
+      final ringFinger = List.generate(4, (i) => getPoint(baseIndex + 13 + i));
+      final pinkyFinger = List.generate(4, (i) => getPoint(baseIndex + 17 + i));
+
+      void drawFinger(Offset? start, List<Offset?> finger) {
+        Offset? prev = start;
+        for (final pt in finger) {
+          if (prev != null && pt != null) {
+            canvas.drawLine(prev, pt, paintHandJoint);
+          }
+          prev = pt;
+        }
+      }
+
+      drawFinger(wrist, thumb);
+      drawFinger(wrist, indexFinger);
+      drawFinger(wrist, middleFinger);
+      drawFinger(wrist, ringFinger);
+      drawFinger(wrist, pinkyFinger);
+
+      // Draw hand joints dots
+      for (int i = 0; i < 21; i++) {
+        final pt = getPoint(baseIndex + i);
+        if (pt != null) {
+          canvas.drawCircle(pt, 3.0, paintHandDot);
+        }
+      }
+    }
+
+    drawHand(60); // Left Hand
+    drawHand(81); // Right Hand
+  }
+
+  @override
+  bool shouldRepaint(covariant LandmarksPainter oldDelegate) => true;
 }

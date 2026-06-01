@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/course_bloc.dart';
 import '../../data/datasources/course_data_source.dart';
+import '../../data/models/lesson_model.dart';
 import 'course_detail_screen.dart';
+import 'gesture_test_screen.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -349,6 +351,39 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final testLesson = LessonModel(
+                        id: 999,
+                        courseId: 999,
+                        title: "Luyện Tập Tự Do",
+                        content: "Chức năng luyện tập tự do để kiểm tra và nhận diện cử chỉ bằng AI.",
+                        orderIndex: 1,
+                        xpEarned: 0,
+                      );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => GestureTestScreen(lesson: testLesson),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.videocam_rounded, size: 16),
+                    label: const Text(
+                      "Bắt đầu Luyện tập AI",
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF0F5A3E),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -656,7 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 borderRadius: BorderRadius.circular(6),
                                               ),
                                               child: const Text(
-                                                'PREMIUM',
+                                                'PRO',
                                                 style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold),
                                               ),
                                             ),

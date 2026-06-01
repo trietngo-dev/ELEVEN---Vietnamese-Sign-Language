@@ -518,7 +518,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
                     onChange={(e) => setCourseData({ ...courseData, isPremium: e.target.value === "true" })}
                   >
                     <option value="false">Miễn phí</option>
-                    <option value="true">Premium (Trả phí)</option>
+                    <option value="true">Pro (Trả phí)</option>
                   </select>
                 </div>
                 <div className="sm:col-span-2">
@@ -823,7 +823,7 @@ const AddCourseModal: React.FC<AddCourseModalProps> = ({ isOpen, onClose, onSucc
                     <p>
                       <strong>Khóa học:</strong> {courseData.title} 
                       <span className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded ml-1.5">{courseData.level}</span>
-                      {courseData.isPremium && <span className="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded ml-1">Premium</span>}
+                      {courseData.isPremium && <span className="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded ml-1">Pro</span>}
                     </p>
                     {imageFile && <p><strong>Ảnh bìa:</strong> {imageFile.name} ({(imageFile.size / (1024 * 1024)).toFixed(2)} MB)</p>}
                     

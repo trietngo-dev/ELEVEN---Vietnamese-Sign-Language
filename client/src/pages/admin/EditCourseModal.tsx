@@ -131,7 +131,7 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ isOpen, onClose, onSu
               className="w-full px-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/50"
             >
               <option value="false">Miễn phí</option>
-              <option value="true">Premium (Trả phí)</option>
+              <option value="true">Pro (Trả phí)</option>
             </select>
           </div>
           <div>
