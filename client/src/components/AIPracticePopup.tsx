@@ -4,7 +4,7 @@ import React, {
   useRef,
   type MutableRefObject,
 } from "react";
-import { Camera, CheckCircle, RefreshCcw, Info, Loader2, Sparkles, XCircle } from "lucide-react";
+import { Camera, CheckCircle, RefreshCcw, Loader2, XCircle, X } from "lucide-react";
 import {
   HolisticLandmarker,
   FilesetResolver,
@@ -14,6 +14,7 @@ import {
 interface AIPracticePopupProps {
   word: string;
   onSuccess?: (score: number) => void;
+  onClose?: () => void;
 }
 
 type Step =
@@ -39,6 +40,7 @@ const API_BASE_URL =
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
 const HAND_SMOOTHING_ALPHA = 0.35;
 const MAX_HAND_HOLD_FRAMES = 4;
+const FRAME_CAPTURE_INTERVAL = 70;
 
 // === TYPES ===
 type Keypoint = { x: number; y: number; z: number };
@@ -49,11 +51,12 @@ type PredictApiResponse = {
   label?: string;
 };
 
-const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) => {
+const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess, onClose }) => {
   const [step, setStep] = useState<Step>("READY");
   const [countdown, setCountdown] = useState(3);
   const [apiResult, setApiResult] = useState<PredictApiResponse | null>(null);
   const [progress, setProgress] = useState(0); // Progress for capturing 50 frames
+  const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -64,6 +67,7 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
 
   const frameBufferRef = useRef<number[][]>([]);
   const isRecordingRef = useRef(false);
+  const lastFrameTimeRef = useRef<number>(0);
 
   // Smoothing states
   const prevLeftHandRef = useRef<Keypoint[] | null>(null);
@@ -71,7 +75,11 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
   const missingLeftHandFramesRef = useRef(0);
   const missingRightHandFramesRef = useRef(0);
 
+  const retryTimerRef = useRef<any>(null);
+  const countdownTimerRef = useRef<any>(null);
+
   const cleanupCamera = () => {
+    isRecordingRef.current = false;
     if (animationIdRef.current !== null) {
       cancelAnimationFrame(animationIdRef.current);
       animationIdRef.current = null;
@@ -81,6 +89,16 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
       streamRef.current = null;
     }
     if (videoRef.current) videoRef.current.srcObject = null;
+
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    if (retryTimerRef.current) {
+      clearInterval(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    setRetryCountdown(null);
   };
 
   useEffect(() => {
@@ -89,7 +107,7 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
 
   const toFiniteNumber = (value: unknown) =>
     typeof value === "number" && Number.isFinite(value) ? value : 0;
-  
+
   const toKeypoint = (p?: {
     x?: number;
     y?: number;
@@ -203,6 +221,33 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
     return normFrame;
   };
 
+  const triggerCountdown = () => {
+    setStep("COUNTDOWN");
+    setCountdown(3);
+    setApiResult(null);
+    setProgress(0);
+
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+    }
+
+    let count = 3;
+    countdownTimerRef.current = setInterval(() => {
+      count--;
+      if (count > 0) {
+        setCountdown(count);
+      } else {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+        frameBufferRef.current = [];
+        lastFrameTimeRef.current = 0; // Reset last frame timestamp
+        setProgress(0);
+        setStep("RECORDING");
+        isRecordingRef.current = true;
+      }
+    }, 1000);
+  };
+
   const startPractice = async () => {
     setStep("INITIALIZING");
     setApiResult(null);
@@ -241,21 +286,11 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
           videoRef.current?.play();
-          setStep("COUNTDOWN");
-          setCountdown(3);
 
-          let count = 3;
-          const timer = setInterval(() => {
-            count--;
-            if (count > 0) {
-              setCountdown(count);
-            } else {
-              clearInterval(timer);
-              setStep("RECORDING");
-              isRecordingRef.current = true;
-              predictWebcam(); // Bắt đầu loop ghi hình
-            }
-          }, 1000);
+          isRecordingRef.current = false;
+          animationIdRef.current = requestAnimationFrame(predictWebcam);
+
+          triggerCountdown();
         };
       }
     } catch (err) {
@@ -267,7 +302,7 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
 
   const predictWebcam = () => {
     if (!videoRef.current || !canvasRef.current || !holisticRef.current) return;
-    if (!isRecordingRef.current) return; // Chỉ loop khi đang recording
+    if (!streamRef.current) return;
 
     const canvasCtx = canvasRef.current.getContext("2d");
     if (!canvasCtx) return;
@@ -295,13 +330,14 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
       size,
       size,
     );
+    canvasCtx.restore();
 
     const results = holisticRef.current.detectForVideo(
       canvasRef.current,
       performance.now(),
     );
 
-    // Vẽ khung xương neon mờ giống camera gối đầu
+    // Vẽ khung xương neon mờ
     const drawingUtils = new DrawingUtils(canvasCtx);
     if (results.poseLandmarks?.[0]) {
       drawingUtils.drawConnectors(
@@ -324,26 +360,29 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
         { color: "#FF2A85C0", lineWidth: 2 },
       );
     }
-    canvasCtx.restore();
 
-    // Lưu frame data & Chuẩn hóa đỉnh mũi cực kì quan trọng!
-    const frameKeypoints = extractFrameKeypoints(results);
-    const normalizedKeypoints = normalizeSpatial(frameKeypoints);
-    frameBufferRef.current.push(normalizedKeypoints);
-    setProgress(frameBufferRef.current.length);
+    // Chỉ lưu frame khi đang recording
+    if (isRecordingRef.current) {
+      const now = performance.now();
+      if (now - lastFrameTimeRef.current >= FRAME_CAPTURE_INTERVAL) {
+        lastFrameTimeRef.current = now;
+        const frameKeypoints = extractFrameKeypoints(results);
+        const normalizedKeypoints = normalizeSpatial(frameKeypoints);
+        frameBufferRef.current.push(normalizedKeypoints);
+        setProgress(frameBufferRef.current.length);
 
-    if (frameBufferRef.current.length >= TARGET_FRAME_COUNT) {
-      // Đã đủ 50 frame
-      isRecordingRef.current = false;
-      finishRecording(frameBufferRef.current);
-    } else {
-      animationIdRef.current = requestAnimationFrame(predictWebcam);
+        if (frameBufferRef.current.length >= TARGET_FRAME_COUNT) {
+          isRecordingRef.current = false;
+          finishRecording(frameBufferRef.current);
+        }
+      }
     }
+
+    animationIdRef.current = requestAnimationFrame(predictWebcam);
   };
 
   const finishRecording = async (frames: number[][]) => {
     setStep("ANALYZING");
-    cleanupCamera(); // Dừng camera ngay lập tức
 
     try {
       const features = frames.flat();
@@ -374,6 +413,11 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
       .replace(/[^a-z0-9]/g, "");
   };
 
+  const handleCloseModal = () => {
+    cleanupCamera();
+    if (onClose) onClose();
+  };
+
   const targetWord = normalizeWord(word);
   const predictedWord =
     normalizeWord(apiResult?.label) || normalizeWord(apiResult?.word);
@@ -382,190 +426,266 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess }) =>
     !!apiResult &&
     predictedWord === targetWord &&
     !!apiResult.confidence &&
-    apiResult.confidence >= 0.70; // Tăng lên 70% khớp tuyệt đối
+    apiResult.confidence >= 0.95; // 95% khớp tuyệt đối
 
   const confidenceScore = apiResult?.confidence
     ? Math.round(apiResult.confidence * 100)
     : 0;
 
   useEffect(() => {
-    if (step === "RESULT" && isMatch && onSuccess) {
-      onSuccess(confidenceScore);
+    if (step === "RESULT" && isMatch) {
+      cleanupCamera();
+      if (onSuccess) {
+        onSuccess(confidenceScore);
+      }
     }
   }, [step, isMatch, confidenceScore, onSuccess]);
 
-  return (
-    <div className="w-full h-full flex flex-col bg-[#0f172a] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl font-sans text-slate-100 min-h-[460px]">
-      {/* Header trạng thái */}
-      <div className="px-5 py-3.5 border-b border-slate-800 flex justify-between items-center bg-[#1e293b]/70 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#efca4c]" />
-          <h3 className="font-extrabold text-white text-sm tracking-wide uppercase truncate max-w-[150px]">
-            {word}
-          </h3>
-        </div>
-        <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${
-          step === "READY" ? "bg-slate-800 text-slate-300" :
-          step === "INITIALIZING" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-          step === "COUNTDOWN" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 animate-pulse" :
-          step === "RECORDING" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" :
-          step === "ANALYZING" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-          "bg-emerald-500 text-white"
-        }`}>
-          {step === "READY" && "Sẵn sàng"}
-          {step === "INITIALIZING" && "Đang tải AI..."}
-          {step === "COUNTDOWN" && "Chuẩn bị"}
-          {step === "RECORDING" && "Đang ghi hình"}
-          {step === "ANALYZING" && "Đang phân tích"}
-          {step === "RESULT" && "Kết quả"}
-        </span>
-      </div>
+  useEffect(() => {
+    if (step === "RESULT" && !isMatch) {
+      setRetryCountdown(6);
 
-      <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center bg-[#090d16]">
-        {/* Render ẩn video và canvas */}
-        <video ref={videoRef} className="hidden" playsInline muted />
-        <canvas
-          ref={canvasRef}
-          className={
-            step === "COUNTDOWN" || step === "RECORDING"
-              ? "w-full h-full object-contain aspect-square scale-x-[-1] drop-shadow-2xl"
-              : "hidden"
+      const interval = setInterval(() => {
+        setRetryCountdown((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(interval);
+            triggerCountdown();
+            return null;
           }
-        />
+          return prev - 1;
+        });
+      }, 1000);
 
-        {step === "READY" && (
-          <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-[#1e293b]/30 to-[#0f172a]/60">
-            <div className="w-16 h-16 rounded-full bg-[#3c6d44]/10 border border-[#3c6d44]/30 flex items-center justify-center mb-6 shadow-inner relative">
-              <Camera size={26} className="text-[#4e8b58] animate-pulse" />
-              <div className="absolute inset-0 rounded-full border border-dashed border-[#3c6d44]/40 animate-spin" style={{ animationDuration: '8s' }} />
-            </div>
-            <h4 className="font-extrabold text-base text-white tracking-wide mb-2.5">
-              Sẵn sàng thực hành chưa?
-            </h4>
-            <p className="text-xs text-slate-400 max-w-xs leading-relaxed mb-8">
-              Bạn có 3 giây chuẩn bị, và ~2 giây để thực hiện ký hiệu trước camera. Hệ thống sẽ tự động quét cơ thể bạn.
-            </p>
-            <button
-              onClick={startPractice}
-              className="bg-gradient-to-r from-[#3c6d44] to-[#4e8b58] hover:from-[#315736] hover:to-[#3e7248] text-white font-bold py-3 px-8 rounded-2xl shadow-lg shadow-[#3c6d44]/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2.5 text-sm"
-            >
-              <Camera size={18} /> Bắt đầu ngay
-            </button>
+      retryTimerRef.current = interval;
+
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else {
+      setRetryCountdown(null);
+      if (retryTimerRef.current) {
+        clearInterval(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    }
+  }, [step, isMatch]);
+
+  const handlePauseRetry = () => {
+    if (retryTimerRef.current) {
+      clearInterval(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    setRetryCountdown(null);
+  };
+
+  const handleRetryImmediately = () => {
+    handlePauseRetry();
+    triggerCountdown();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="bg-[#0f172a] rounded-3xl border border-slate-800 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col font-sans text-slate-100 min-h-[550px] animate-in zoom-in-95 duration-300">
+
+        {/* Header Modal */}
+        <div className="px-6 py-3 border-b border-slate-800 flex justify-between items-center bg-[#1e293b]/70 backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
+            <h3 className="font-extrabold text-white text-base tracking-wide uppercase truncate max-w-[250px]">
+              Kiểm tra: {word}
+            </h3>
           </div>
-        )}
+          <button
+            onClick={handleCloseModal}
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-full transition-all"
+            title="Đóng Modal"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-        {step === "INITIALIZING" && (
-          <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
-            <div className="relative mb-6">
-              <Loader2 size={44} className="text-[#3c6d44] animate-spin" />
-              <div className="absolute inset-0 size-11 border-2 border-dashed border-slate-700 rounded-full scale-125 animate-ping opacity-30" />
-            </div>
-            <h4 className="font-bold text-sm text-white tracking-wide">
-              Đang kết nối camera và thiết lập AI...
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-2">Vui lòng chờ trong giây lát</p>
-          </div>
-        )}
+        {/* Camera and visual frame area */}
+        <div className="flex-1 p-6 relative overflow-hidden flex flex-col items-center justify-center bg-[#090d16]/40 min-h-[400px]">
+          {/* Render ẩn video để ref luôn tồn tại */}
+          <video ref={videoRef} className="hidden" playsInline muted />
 
-        {(step === "COUNTDOWN" || step === "RECORDING") && (
-          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-transparent pointer-events-none">
-            {step === "COUNTDOWN" && (
-              <div className="absolute inset-0 bg-[#090d16]/75 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-auto">
-                <span className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-[#efca4c] to-amber-500 drop-shadow-[0_0_20px_rgba(239,202,76,0.3)] animate-bounce">
-                  {countdown}
-                </span>
-                <span className="text-white text-xs font-black tracking-[0.25em] mt-4 uppercase">
-                  Bắt đầu sau...
-                </span>
-              </div>
-            )}
+          {/* Wrapper chuẩn hóa tỉ lệ khung hình khối vuông giống y hệt khi train model */}
+          <div className="relative w-full max-w-[400px] aspect-square rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-[#090d16] flex items-center justify-center">
 
-            {step === "RECORDING" && (
-              <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
-                <div className="bg-rose-500/90 text-white px-4 py-1.5 rounded-full font-black text-[10px] tracking-wider uppercase flex items-center gap-2 shadow-lg shadow-rose-900/30 border border-rose-400/20">
-                  <div className="w-2.5 h-2.5 bg-white rounded-full animate-ping"></div> 
-                  Đang thu thập cử chỉ ({progress}/{TARGET_FRAME_COUNT})
+            {/* Thẻ canvas vẽ và trích xuất */}
+            <canvas
+              ref={canvasRef}
+              className={
+                step !== "READY" && step !== "INITIALIZING" && !(step === "RESULT" && isMatch)
+                  ? "w-full h-full object-cover block"
+                  : "hidden"
+              }
+            />
+
+            {step === "READY" && (
+              <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-[#1e293b]/30 to-[#0f172a]/60">
+                <div className="w-16 h-16 rounded-full bg-[#3c6d44]/15 border border-[#3c6d44]/30 flex items-center justify-center mb-6 shadow-inner relative">
+                  <Camera size={26} className="text-[#4e8b58] animate-pulse" />
+                  <div className="absolute inset-0 rounded-full border border-dashed border-[#3c6d44]/40 animate-spin" style={{ animationDuration: '8s' }} />
                 </div>
+                <h4 className="font-extrabold text-base text-white tracking-wide mb-2.5">
+                  Sẵn sàng thực hành?
+                </h4>
+                <p className="text-xs text-slate-400 max-w-xs leading-relaxed mb-8">
+                  Đặt thân người vào khung hình sao cho camera có thể nhìn rõ từ eo trở lên, hai tay của bạn cần được nhìn thấy rõ ràng để hệ thống có thể nhận diện được ký hiệu
+                </p>
+                <button
+                  onClick={startPractice}
+                  className="bg-gradient-to-r from-[#3c6d44] to-[#4e8b58] hover:from-[#315736] hover:to-[#3e7248] text-white font-bold py-3 px-8 rounded-2xl shadow-lg shadow-[#3c6d44]/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2.5 text-sm"
+                >
+                  <Camera size={18} /> Bắt đầu ngay
+                </button>
               </div>
             )}
-            
-            {/* Progress bar at the bottom */}
-            {step === "RECORDING" && (
-              <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-900 overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-rose-500 to-[#3c6d44] transition-all duration-75"
-                  style={{ width: `${(progress / TARGET_FRAME_COUNT) * 100}%` }}
-                />
+
+            {step === "INITIALIZING" && (
+              <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
+                <div className="relative mb-6">
+                  <Loader2 size={44} className="text-[#3c6d44] animate-spin" />
+                  <div className="absolute inset-0 size-11 border-2 border-dashed border-slate-700 rounded-full scale-125 animate-ping opacity-30" />
+                </div>
+                <h4 className="font-bold text-sm text-white tracking-wide">
+                  Đang thiết lập AI...
+                </h4>
+                <p className="text-[11px] text-slate-400 mt-2">Vui lòng chờ trong giây lát</p>
               </div>
             )}
-          </div>
-        )}
 
-        {step === "ANALYZING" && (
-          <div className="w-full h-full flex flex-col items-center justify-center text-center px-6">
-            <Loader2 size={44} className="text-[#3c6d44] animate-spin mb-6" />
-            <h4 className="font-bold text-sm text-white tracking-wide">AI đang dịch cử chỉ của bạn...</h4>
-            <p className="text-[11px] text-slate-400 mt-2 max-w-[240px] leading-relaxed">
-              Các tọa độ trích xuất đang được đối chiếu với từ điển mô hình ngôn ngữ ký hiệu.
-            </p>
-          </div>
-        )}
-
-        {step === "RESULT" && (
-          <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-[#1e293b]/40 to-[#0f172a]/70">
-            {isMatch ? (
-              <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
-                {/* Score Circle Progress */}
-                <div className="relative size-24 mb-6 flex items-center justify-center">
-                  <svg className="size-full -rotate-90">
-                    <circle cx="48" cy="48" r="42" stroke="#1e293b" strokeWidth="6" fill="transparent" />
-                    <circle cx="48" cy="48" r="42" stroke="#3c6d44" strokeWidth="6" fill="transparent"
-                      strokeDasharray={`${2 * Math.PI * 42}`}
-                      strokeDashoffset={`${2 * Math.PI * 42 * (1 - confidenceScore / 100)}`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute flex flex-col items-center">
-                    <span className="text-2xl font-black text-white">{confidenceScore}%</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Khớp</span>
+            {(step === "COUNTDOWN" || step === "RECORDING") && (
+              <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-transparent pointer-events-none">
+                {step === "COUNTDOWN" && (
+                  <div className="absolute inset-0 bg-[#090d16]/75 backdrop-blur-sm flex flex-col items-center justify-center pointer-events-auto">
+                    <span className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-br from-[#efca4c] to-amber-500 drop-shadow-[0_0_20px_rgba(239,202,76,0.3)] animate-bounce">
+                      {countdown}
+                    </span>
+                    <span className="text-white text-xs font-black tracking-[0.25em] mt-4 uppercase">
+                      Bắt đầu sau...
+                    </span>
                   </div>
-                </div>
+                )}
 
-                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20 mb-3">
-                  <CheckCircle size={14} /> Ký hiệu chính xác
-                </div>
-                <h4 className="text-lg font-extrabold text-white">Rất tốt, bạn đã vượt qua!</h4>
-                <p className="text-slate-400 mt-2 text-xs leading-relaxed max-w-[280px]">
-                  Dáng cử chỉ tay và nhịp điệu của bạn khớp cực kì chuẩn xác với từ mẫu.
+                {step === "RECORDING" && (
+                  <div className="absolute top-4 left-0 right-0 flex justify-center z-10">
+                    <div className="bg-rose-500/90 text-white px-4 py-1.5 rounded-full font-black text-[10px] tracking-wider uppercase flex items-center gap-2 shadow-lg shadow-rose-900/30 border border-rose-400/20">
+                      <div className="w-2.5 h-2.5 bg-white rounded-full animate-ping"></div>
+                      ĐANG GHI HÌNH ({progress}/{TARGET_FRAME_COUNT})
+                    </div>
+                  </div>
+                )}
+
+                {/* Progress bar at the bottom */}
+                {step === "RECORDING" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-900 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-rose-500 to-[#3c6d44] transition-all duration-75"
+                      style={{ width: `${(progress / TARGET_FRAME_COUNT) * 100}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {step === "ANALYZING" && (
+              <div className="absolute inset-0 bg-[#090d16]/80 backdrop-blur-sm flex flex-col items-center justify-center text-center px-6 z-10">
+                <Loader2 size={44} className="text-[#3c6d44] animate-spin mb-6" />
+                <h4 className="font-bold text-sm text-white tracking-wide">AI đang phân dịch cử chỉ...</h4>
+                <p className="text-[11px] text-slate-400 mt-2 max-w-[240px] leading-relaxed">
+                  Các tọa độ trích xuất đang được đối chiếu với từ điển mô hình ngôn ngữ ký hiệu.
                 </p>
               </div>
-            ) : (
-              <div className="flex flex-col items-center w-full animate-in zoom-in-95 duration-300">
-                <div className="size-16 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-5">
-                  <XCircle size={32} className="text-rose-500" />
-                </div>
-                
-                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-400 bg-rose-500/10 px-4 py-1.5 rounded-full border border-rose-500/20 mb-3">
-                  <Info size={14} /> Chưa chuẩn xác
-                </div>
-                <h4 className="text-base font-extrabold text-white">Cần điều chỉnh thêm động tác</h4>
-                
-                <div className="bg-[#1e293b]/55 border border-slate-800 rounded-xl p-3.5 mt-4 w-full text-left">
-                  <p className="text-slate-300 text-[11px] leading-relaxed">
-                    <span className="font-bold text-[#efca4c]">AI Nhận xét:</span> Bạn đã ký hiệu sang từ <b>"{apiResult?.label || apiResult?.word || "Không rõ"}"</b> (với độ tự tin {confidenceScore}%) thay vì <b>"{word}"</b>. Hãy điều chỉnh lại dáng ngón tay và góc xoay vai thật dứt khoát nhé.
+            )}
+
+            {step === "RESULT" && isMatch && (
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-[#1e293b]/40 to-[#0f172a]/70 animate-in zoom-in-95 duration-300">
+                <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
+                  {/* Score Circle Progress */}
+                  <div className="relative size-24 mb-6 flex items-center justify-center">
+                    <svg className="size-full -rotate-90">
+                      <circle cx="48" cy="48" r="42" stroke="#1e293b" strokeWidth="6" fill="transparent" />
+                      <circle cx="48" cy="48" r="42" stroke="#3c6d44" strokeWidth="6" fill="transparent"
+                        strokeDasharray={`${2 * Math.PI * 42}`}
+                        strokeDashoffset={`${2 * Math.PI * 42 * (1 - confidenceScore / 100)}`}
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="absolute flex flex-col items-center">
+                      <span className="text-2xl font-black text-white">{confidenceScore}%</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Khớp</span>
+                    </div>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-4 py-1.5 rounded-full border border-emerald-500/20 mb-3">
+                    <CheckCircle size={14} /> Ký hiệu chính xác
+                  </div>
+                  <h4 className="text-base font-extrabold text-white">Rất tốt, bạn đã vượt qua!</h4>
+                  <p className="text-slate-400 mt-1.5 text-[11px] leading-relaxed max-w-[280px]">
+                    Dáng cử chỉ tay và nhịp điệu của bạn khớp cực kì chuẩn xác với từ mẫu.
                   </p>
                 </div>
               </div>
             )}
 
-            <button
-              onClick={() => setStep("READY")}
-              className="mt-6 w-full bg-[#1e293b] hover:bg-[#334155] border border-slate-800 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all hover:scale-[1.01]"
-            >
-              <RefreshCcw size={14} /> Thực hành lại
-            </button>
+            {step === "RESULT" && !isMatch && (
+              <div className="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none">
+                {/* Top Warning Banner */}
+                <div className="self-center bg-rose-500/95 text-white px-4 py-1.5 rounded-full font-black text-[10px] tracking-wider uppercase flex items-center gap-2 shadow-lg border border-rose-400/20 pointer-events-auto">
+                  <XCircle size={14} className="text-white" />
+                  CHƯA CHUẨN XÁC
+                </div>
+
+                {/* Bottom Feedback Card */}
+                <div className="w-full bg-[#0f172a]/95 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 shadow-2xl pointer-events-auto flex flex-col gap-3">
+                  <p className="text-slate-300 text-[11px] leading-relaxed">
+                    <span className="font-bold text-[#efca4c]">AI Nhận xét:</span> Bạn đã ký hiệu sang từ <b>"{apiResult?.label || apiResult?.word || "Không rõ"}"</b> (với độ tự tin {confidenceScore}%) thay vì <b>"{word}"</b>. Hãy điều chỉnh động tác nhé.
+                  </p>
+
+                  <div className="flex items-center justify-between border-t border-slate-800/60 pt-3 mt-1">
+                    {retryCountdown !== null ? (
+                      <span className="text-[10px] font-medium text-slate-400">
+                        Tự động thử lại sau <span className="font-extrabold text-[#efca4c]">{retryCountdown}s</span>...
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-rose-400">
+                        Đã dừng tự động thử lại
+                      </span>
+                    )}
+
+                    <div className="flex gap-2">
+                      {retryCountdown !== null ? (
+                        <>
+                          <button
+                            onClick={handlePauseRetry}
+                            className="bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold py-1.5 px-3 rounded-lg transition-all"
+                          >
+                            Tạm dừng
+                          </button>
+                          <button
+                            onClick={handleRetryImmediately}
+                            className="bg-gradient-to-r from-[#3c6d44] to-[#4e8b58] hover:from-[#315736] hover:to-[#3e7248] text-white text-[10px] font-bold py-1.5 px-3 rounded-lg transition-all"
+                          >
+                            Thử ngay
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={handleRetryImmediately}
+                          className="w-full bg-gradient-to-r from-[#3c6d44] to-[#4e8b58] hover:from-[#315736] hover:to-[#3e7248] text-white text-[10px] font-bold py-1.5 px-4 rounded-lg transition-all flex items-center gap-1.5"
+                        >
+                          <RefreshCcw size={10} /> Thử lại
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
       </div>
     </div>
   );

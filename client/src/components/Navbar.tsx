@@ -6,7 +6,7 @@ import { cn } from "../lib/utils";
 import brand from "../assets/brand.jpg";
 
 import { useAuth } from "../context/AuthContext";
-import { LogOut, Bell, Crown, BookOpen, Clock, Trash2, Square, CheckSquare, X } from "lucide-react";
+import { LogOut, Bell, Crown, BookOpen, Clock, Trash2, Square, CheckSquare, X, Bookmark } from "lucide-react";
 import { tokenStorage } from "../lib/auth";
 import { notificationsApi, type NotificationItem } from "../lib/notifications";
 
@@ -395,6 +395,20 @@ function Navbar() {
                   </div>
                 )}
               </div>
+
+              {/* Saved Words Link */}
+              <NavLink
+                to="/tu-da-luu"
+                className={({ isActive }) =>
+                  cn(
+                    "p-2 text-slate-500 hover:text-[#3c6c44] hover:bg-slate-100/50 rounded-full transition-all duration-200 shrink-0",
+                    isActive && "bg-amber-50 text-[#efca4c]"
+                  )
+                }
+                title="Từ đã lưu"
+              >
+                <Bookmark className="h-5 w-5" />
+              </NavLink>
 
               {/* User details */}
               <div className="hidden md:flex flex-col items-end shrink-0">

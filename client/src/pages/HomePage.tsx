@@ -29,6 +29,7 @@ interface Course {
 }
 
 interface RecentLessonInfo {
+  lessonId?: number;
   title: string;
   accuracy: string;
   time: string;
@@ -105,45 +106,91 @@ export default function HomePage() {
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // A. Fetch Login Days (Activity Logs)
+    // Helper: Post Today Login Log
+    const postTodayLoginLog = async () => {
+      try {
+        await fetch(`${API_BASE_URL}/api/user_activity_logs`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...headers
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            actionType: "login",
+            entityType: "user",
+            entityId: user.id,
+            metadataJson: "{}"
+          })
+        });
+      } catch (err) {
+        console.error("Failed to post login activity log:", err);
+      }
+    };
+
+    // A. Fetch Login Days & Calculate Streak
     fetch(`${API_BASE_URL}/api/user_activity_logs`, { headers })
       .then(res => res.ok ? res.json() : { items: [] })
       .then(data => {
-        const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
-        const userLogs = items.filter((log: any) => log.userId === user.id);
-        if (userLogs.length > 0) {
-          // Unique days calculation
-          const uniqueDays = new Set(
-            userLogs.map((log: any) => new Date(log.createdAt || log.timestamp).toDateString())
-          );
-          setLoginDays(uniqueDays.size);
-        } else {
-          setLoginDays(0);
+        const items = data.items || (Array.isArray(data) ? data : data.items) || [];
+        const loginLogs = items.filter((log: any) => log.userId === user.id && log.actionType === "login");
+        
+        // Find all unique dates (YYYY-MM-DD format) in local time
+        const uniqueDates = Array.from(new Set(
+          loginLogs.map((log: any) => {
+            const date = new Date(log.createdAt || log.timestamp);
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split('T')[0];
+          })
+        )).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime()) as string[];
+
+        const todayStr = new Date(Date.now() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
+        const yesterdayStr = new Date(Date.now() - 86400000 - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
+
+        const hasLoginToday = uniqueDates.includes(todayStr);
+
+        if (!hasLoginToday) {
+          postTodayLoginLog();
+          if (!uniqueDates.includes(todayStr)) {
+            uniqueDates.unshift(todayStr);
+          }
         }
+
+        let streak = 0;
+        if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
+          streak = 1;
+          const startCheckStr = uniqueDates.includes(todayStr) ? todayStr : yesterdayStr;
+          const startIndex = uniqueDates.indexOf(startCheckStr);
+          let checkTime = new Date(startCheckStr).getTime();
+
+          for (let i = startIndex + 1; i < uniqueDates.length; i++) {
+            const prevTime = new Date(uniqueDates[i]).getTime();
+            const diffDays = Math.round((checkTime - prevTime) / 86400000);
+            if (diffDays === 1) {
+              streak++;
+              checkTime = prevTime;
+            } else if (diffDays > 1) {
+              break;
+            }
+          }
+        }
+        setLoginDays(streak);
       })
       .catch(() => {
         setLoginDays(0);
       });
 
-    // B. Fetch Learned Words Progress
-    fetch(`${API_BASE_URL}/api/user_vocabulary_progress`, { headers })
-      .then(res => res.ok ? res.json() : { items: [] })
-      .then(data => {
-        const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
-        const userVocabs = items.filter((v: any) => v.userId === user.id);
-        const completed = userVocabs.filter((v: any) => v.status === 2 || v.masteryLevel >= 0.8).length;
-        setLearnedWords(completed);
-      })
-      .catch(() => {
-        setLearnedWords(0);
-      });
-
-    // C. Fetch Completed Lessons & Time & XP
+    // B & C. Fetch Completed Lessons & Time & XP
     fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers })
       .then(res => res.ok ? res.json() : { items: [] })
       .then(async (data) => {
-        const items = data.items || Array.isArray(data) ? (Array.isArray(data) ? data : data.items) : [];
+        const items = data.items || (Array.isArray(data) ? data : data.items) || [];
         const userProgress = items.filter((p: any) => p.userId === user.id);
+
+        // Word Count: Number of completed lessons
+        const completedLessonsCount = userProgress.filter((p: any) => p.status === 2 || p.completedAt).length;
+        setLearnedWords(completedLessonsCount);
 
         if (userProgress.length > 0) {
           // Sum hours
@@ -171,6 +218,7 @@ export default function HomePage() {
                     const lessonObj = await lessonRes.json();
                     const completionDate = new Date(p.completedAt || p.updatedAt);
                     return {
+                      lessonId: p.lessonId,
                       title: lessonObj.title || `Bài học #${p.lessonId}`,
                       accuracy: `${Math.round((p.bestAccuracy || 0.9) * 100)}%`,
                       time: completionDate.toLocaleDateString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
@@ -190,7 +238,6 @@ export default function HomePage() {
           // Trigger Proactive Notification for Completed Lessons
           const latestCompleted = userProgress.find((p: any) => p.status === 2);
           if (latestCompleted) {
-            // Fetch lesson details to get title first
             fetch(`${API_BASE_URL}/api/lessons/${latestCompleted.lessonId}`, { headers })
               .then(res => res.ok ? res.json() : null)
               .then(async (lessonObj) => {
@@ -212,7 +259,11 @@ export default function HomePage() {
           }
         }
       })
-      .catch(() => { });
+      .catch(() => {
+        setLearnedWords(0);
+        setLearningHours(0);
+        setAccumulatedXp(0);
+      });
 
     // D. Trigger Proactive Notification for Subscription Registration
     fetch(`${API_BASE_URL}/api/user_subscriptions/current`, { headers })
@@ -485,29 +536,34 @@ export default function HomePage() {
               className="grid grid-cols-1 md:grid-cols-3 gap-6"
             >
               {recentLessons.map((item, idx) => (
-                <motion.div
+                <Link
+                  to={`/bai-hoc/${item.lessonId}`}
                   key={idx}
-                  variants={fadeInUp}
-                  className="relative bg-white rounded-3xl border border-slate-100 p-6 flex flex-col justify-between shadow-[0_8px_20px_rgba(24,35,51,0.02)] hover:shadow-[0_12px_25px_rgba(24,35,51,0.04)] transition-all duration-300 cursor-pointer"
+                  className="block hover:-translate-y-1 transition-transform duration-300"
                 >
-                  <span className="absolute top-5 right-5 text-[9px] font-bold text-slate-400">{item.time}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100/30">
-                      <Clock size={16} className="text-[#2d6a4f]" />
+                  <motion.div
+                    variants={fadeInUp}
+                    className="relative bg-white rounded-3xl border border-slate-100 p-6 flex flex-col justify-between shadow-[0_8px_20px_rgba(24,35,51,0.02)] hover:shadow-[0_12px_25px_rgba(24,35,51,0.04)] h-full min-h-[170px]"
+                  >
+                    <span className="absolute top-5 right-5 text-[9px] font-bold text-slate-400">{item.time}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100/30">
+                        <Clock size={16} className="text-[#2d6a4f]" />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
+                        <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug line-clamp-1">{item.title}</h4>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
-                      <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug line-clamp-1">{item.title}</h4>
+                    <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold">
+                      <div className="flex items-center gap-1.5 text-emerald-600">
+                        <Check size={14} className="stroke-[3]" />
+                        <span>Độ chính xác {item.accuracy}</span>
+                      </div>
+                      <span className="text-[10px] font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">+50 XP</span>
                     </div>
-                  </div>
-                  <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold">
-                    <div className="flex items-center gap-1.5 text-emerald-600">
-                      <Check size={14} className="stroke-[3]" />
-                      <span>Độ chính xác {item.accuracy}</span>
-                    </div>
-                    <span className="text-[10px] font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">+50 XP</span>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                </Link>
               ))}
             </motion.div>
           ) : (

@@ -561,8 +561,6 @@ const SignLanguageTracker = () => {
         }
       }
 
-      canvasCtx.restore();
-
       if (isCollectingRef.current) {
         const hasLeftHand =
           results.leftHandLandmarks && results.leftHandLandmarks.length > 0;

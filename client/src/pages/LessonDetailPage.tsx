@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Maximize, Bot, Bookmark, Share2, Info, ListChecks, Trophy, X } from "lucide-react";
+import { ArrowLeft, Bot, Bookmark, Share2, Info, ListChecks, Trophy, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import AIPracticePopup from "../components/AIPracticePopup";
 import videoXinChao from "../assets/videoCourse/W00489.mp4";
@@ -22,6 +22,13 @@ export default function LessonDetailPage() {
   const [isCompleted, setIsCompleted] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [nextLesson, setNextLesson] = useState<any>(null);
+
+  // Bookmark/Save states
+  const [isSaved, setIsSaved] = useState(false);
+  const [vocabId, setVocabId] = useState<number | null>(null);
+  const [progressId, setProgressId] = useState<number | null>(null);
+  const [existingProgress, setExistingProgress] = useState<any>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -50,7 +57,7 @@ export default function LessonDetailPage() {
           const allLessonsRes = await fetch(`${API_BASE_URL}/api/lessons`, { headers });
           if (allLessonsRes.ok) {
             const allLesData = await allLessonsRes.json();
-            const items = allLesData.items || Array.isArray(allLesData) ? (Array.isArray(allLesData) ? allLesData : allLesData.items) : [];
+            const items = allLesData.items || (Array.isArray(allLesData) ? allLesData : allLesData.items) || [];
             const courseLessons = items
               .filter((l: any) => l.courseId === data.courseId)
               .sort((a: any, b: any) => a.sortOrder - b.sortOrder);
@@ -67,7 +74,7 @@ export default function LessonDetailPage() {
           const progRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers });
           if (progRes.ok) {
             const progData = await progRes.json();
-            const items = progData.items || Array.isArray(progData) ? (Array.isArray(progData) ? progData : progData.items) : [];
+            const items = progData.items || (Array.isArray(progData) ? progData : progData.items) || [];
             const userProgress = items.find((p: any) => p.userId === userId && p.lessonId === data.id);
             if (userProgress && userProgress.status === 2) {
               setIsCompleted(true);
@@ -78,6 +85,39 @@ export default function LessonDetailPage() {
               setIsCompleted(false);
               setIsVideoWatched(false);
               setAiScore(null);
+            }
+          }
+
+          // Fetch lesson vocabularies mapping
+          const lessonVocabRes = await fetch(`${API_BASE_URL}/api/lesson_vocabularies?pageSize=1000`, { headers });
+          if (lessonVocabRes.ok) {
+            const lessonVocabData = await lessonVocabRes.json();
+            const lessonVocabItems = lessonVocabData.items || (Array.isArray(lessonVocabData) ? lessonVocabData : lessonVocabData.items) || [];
+            const mapping = lessonVocabItems.find((lv: any) => lv.lessonId === data.id);
+            if (mapping) {
+              setVocabId(mapping.vocabularyId);
+              
+              // Fetch user vocabulary progress
+              const vocabProgRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress?pageSize=1000`, { headers });
+              if (vocabProgRes.ok) {
+                const vocabProgData = await vocabProgRes.json();
+                const vocabProgItems = vocabProgData.items || (Array.isArray(vocabProgData) ? vocabProgData : vocabProgData.items) || [];
+                const userProg = vocabProgItems.find((p: any) => p.userId === userId && p.vocabularyId === mapping.vocabularyId);
+                if (userProg) {
+                  setProgressId(userProg.id);
+                  setIsSaved(userProg.isSaved);
+                  setExistingProgress(userProg);
+                } else {
+                  setProgressId(null);
+                  setIsSaved(false);
+                  setExistingProgress(null);
+                }
+              }
+            } else {
+              setVocabId(null);
+              setProgressId(null);
+              setIsSaved(false);
+              setExistingProgress(null);
             }
           }
         }
@@ -132,28 +172,151 @@ export default function LessonDetailPage() {
     completeLesson();
   }, [isVideoWatched, aiScore, isCompleted, lesson, user]);
 
+  const handleToggleSave = async () => {
+    if (isSaving || !lesson) return;
+    setIsSaving(true);
+    try {
+      const authToken = tokenStorage.getToken();
+      const headers = {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+      };
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      const userId = user?.id || 1;
+
+      let currentVocabId = vocabId;
+      let currentProgressId = progressId;
+      let currentExistingProgress = existingProgress;
+
+      // 1. If vocabId doesn't exist, create vocabulary and map to lesson
+      if (!currentVocabId) {
+        // Find "general" category first
+        let categoryId = 1;
+        try {
+          const catRes = await fetch(`${API_BASE_URL}/api/vocabulary_categories?pageSize=1000`, { headers });
+          if (catRes.ok) {
+            const catData = await catRes.json();
+            const catItems = catData.items || (Array.isArray(catData) ? catData : catData.items) || [];
+            const generalCat = catItems.find((c: any) => c.slug === "general");
+            if (generalCat) {
+              categoryId = generalCat.id;
+            }
+          }
+        } catch (catErr) {
+          console.error("Lỗi lấy danh mục từ vựng, dùng fallback id 1:", catErr);
+        }
+
+        // Create vocabulary
+        const vocabRes = await fetch(`${API_BASE_URL}/api/vocabularies`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            categoryId: categoryId,
+            code: `lesson_${lesson.id}`,
+            termVi: lesson.title,
+            description: lesson.shortDescription || "Từ vựng chung",
+            difficultyLevel: lesson.difficultyLevel || "Cơ bản",
+            isFeatured: false,
+            createdBy: userId
+          })
+        });
+
+        if (!vocabRes.ok) throw new Error("Không thể tạo từ vựng");
+        const newVocab = await vocabRes.json();
+        currentVocabId = newVocab.id;
+        setVocabId(newVocab.id);
+
+        // Map vocabulary to lesson
+        const mappingRes = await fetch(`${API_BASE_URL}/api/lesson_vocabularies`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            lessonId: lesson.id,
+            vocabularyId: newVocab.id,
+            sortOrder: 1,
+            isRequired: true,
+            expectedAccuracy: 80
+          })
+        });
+
+        if (!mappingRes.ok) throw new Error("Không thể liên kết từ vựng với bài học");
+      }
+
+      // 2. Handle UserVocabularyProgress
+      if (!currentProgressId) {
+        // Create progress
+        const progRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            userId: userId,
+            vocabularyId: currentVocabId,
+            status: 0,
+            isSaved: true
+          })
+        });
+
+        if (!progRes.ok) throw new Error("Không thể lưu tiến trình từ vựng");
+        const newProg = await progRes.json();
+        setProgressId(newProg.id);
+        setIsSaved(true);
+        setExistingProgress(newProg);
+      } else {
+        // Toggle saved status
+        const nextSaved = !isSaved;
+        const body = {
+          status: currentExistingProgress?.status || 0,
+          firstLearnedAt: currentExistingProgress?.firstLearnedAt || null,
+          lastPracticedAt: currentExistingProgress?.lastPracticedAt || null,
+          masteryLevel: currentExistingProgress?.masteryLevel || 0,
+          totalPracticeCount: currentExistingProgress?.totalPracticeCount || 0,
+          correctCount: currentExistingProgress?.correctCount || 0,
+          bestConfidence: currentExistingProgress?.bestConfidence || 0,
+          isSaved: nextSaved
+        };
+
+        const updateRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress/${currentProgressId}`, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify(body)
+        });
+
+        if (!updateRes.ok) throw new Error("Không thể cập nhật trạng thái lưu từ vựng");
+        const updatedProg = await updateRes.json();
+        setIsSaved(nextSaved);
+        setExistingProgress(updatedProg);
+      }
+    } catch (err) {
+      console.error("Lỗi khi thay đổi trạng thái lưu từ:", err);
+      alert("Đã xảy ra lỗi khi lưu từ. Vui lòng thử lại!");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Đang tải bài học...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-white text-slate-800">Đang tải bài học...</div>;
   }
 
   if (!lesson) {
-    return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Không tìm thấy bài học.</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-white text-slate-800">Không tìm thấy bài học.</div>;
   }
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-800">
+    <div className="min-h-screen bg-white text-slate-800">
       <div className="mx-auto max-w-[1200px] px-6 py-6">
 
         {/* Back Button */}
-        <button onClick={() => navigate(-1)} className="inline-flex items-center mb-4 gap-2.5 px-5 py-2.5 rounded-2xl bg-[#3b7948] text-white font-bold text-sm hover:bg-[#336a40] transition-all active:scale-95 shadow-md">
-          <ArrowLeft size={18} /> Quay lại
-        </button>
+        <div className="my-6">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors font-bold text-sm">
+            <ArrowLeft size={16} /> Quay lại
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
 
           {/* Main Content Area */}
           <div className="flex flex-col gap-6">
-
             {/* Video Player */}
             <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
               <video
@@ -162,43 +325,12 @@ export default function LessonDetailPage() {
                 className="w-full h-full object-contain"
                 onEnded={() => setIsVideoWatched(true)}
               />
-
-              {/* AI Overlay Box */}
-              {showAI && (
-                <div className="absolute top-4 right-4 w-[280px] h-[400px] bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200 z-50 flex flex-col animate-in fade-in zoom-in duration-150">
-                  <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b border-slate-100 shadow-sm z-10">
-                    <span className="text-sm font-bold text-slate-700 flex items-center gap-2"><Bot size={16} className="text-[#3c6d44]" /> Trợ lý AI Điểm Trình</span>
-                    <button onClick={() => setShowAI(false)} className="text-slate-400 hover:text-red-500 bg-slate-100 hover:bg-red-50 rounded-full p-1 transition-colors">
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <div className="flex-1 relative bg-slate-900 flex flex-col">
-                    {/* KHU VỰC HIỂN THỊ AIPracticePopup (Chỉ Camera -> Review) */}
-                    <AIPracticePopup
-                      word={lesson.title || "Xin chào"}
-                      onSuccess={(score) => setAiScore(score)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Controls */}
-              <div className="absolute bottom-6 left-6 flex items-center gap-2 bg-black/40 backdrop-blur-md rounded-full px-4 py-2 text-white">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
-                <span className="text-xs font-bold ml-1">Chế độ chậm</span>
-                <div className="w-8 h-4 rounded-full bg-white/30 ml-2 relative">
-                  <div className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white"></div>
-                </div>
-              </div>
-              <button className="absolute bottom-6 right-6 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition-colors">
-                <Maximize size={16} />
-              </button>
             </div>
 
             {/* Title & Actions Row */}
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4">
               <div>
-                <h1 className="text-4xl font-extrabold text-[#1f2937] mb-3">{lesson.title}</h1>
+                <h1 className="text-4xl font-black text-slate-800 mb-3">{lesson.title}</h1>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-slate-400">Cấp độ: {lesson.difficultyLevel || "Cơ bản"}</span>
                   {lesson.xpReward && (
@@ -215,8 +347,17 @@ export default function LessonDetailPage() {
                 >
                   <Bot size={18} /> Tương tác với AI
                 </button>
-                <button className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all">
-                  <Bookmark size={18} className="fill-current" /> Lưu từ
+                <button
+                  onClick={handleToggleSave}
+                  disabled={isSaving}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-75 ${
+                    isSaved
+                      ? "bg-[#efca4c] text-[#4b3c14] hover:bg-[#e7c13f] shadow-[#efca4c]/20"
+                      : "bg-[#3c6d44] text-white hover:bg-[#315736] shadow-[#3c6d44]/20"
+                  }`}
+                >
+                  <Bookmark size={18} className={isSaved ? "fill-[#4b3c14] text-[#4b3c14]" : "text-white"} />
+                  {isSaved ? "Đã lưu" : "Lưu từ"}
                 </button>
                 <button className="w-10 h-10 rounded-2xl border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 transition-colors">
                   <Share2 size={18} />
@@ -226,10 +367,9 @@ export default function LessonDetailPage() {
 
             {/* Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4 border-t border-slate-100 pt-8">
-
               {/* Ý nghĩa */}
               <div>
-                <h3 className="text-[15px] font-extrabold text-[#1f2937] flex items-center gap-2 mb-4">
+                <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-4">
                   <Info size={18} className="text-[#3c6d44]" /> Ý nghĩa & Sử dụng
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed mb-4">
@@ -244,7 +384,7 @@ export default function LessonDetailPage() {
 
               {/* Mẹo thực hiện */}
               <div>
-                <h3 className="text-[15px] font-extrabold text-[#1f2937] flex items-center gap-2 mb-4">
+                <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-4">
                   <ListChecks size={18} className="text-[#3c6d44]" /> Thông tin bổ sung
                 </h3>
                 <ul className="space-y-4">
@@ -262,17 +402,15 @@ export default function LessonDetailPage() {
                   </li>
                 </ul>
               </div>
-
             </div>
           </div>
 
           {/* Sidebar Area */}
           <div className="flex flex-col gap-6">
-
             {/* Vòng tròn tiến độ & Các bước học tập */}
             <div className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm flex flex-col items-center">
-              <h3 className="text-[15px] font-extrabold text-[#1f2937] flex items-center gap-2 mb-6 w-full text-left">
-                <span className="text-[#3c6d44]">🎯</span> Tiến độ bài học
+              <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-6 w-full text-left">
+                <span className="text-[#3c6d44]">Tiến độ bài học</span>
               </h3>
 
               {/* Progress Ring */}
@@ -353,7 +491,7 @@ export default function LessonDetailPage() {
             <div className="bg-[#f4fbf6] rounded-[32px] border border-[#eef7ee] p-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
 
-              <h3 className="text-sm font-extrabold text-[#3c6d44] mb-2 relative z-10">Thử thách hàng ngày</h3>
+              <h3 className="text-sm font-black text-[#3c6d44] mb-2 relative z-10">Thử thách hàng ngày</h3>
               <p className="text-xs text-[#3c6d44]/70 font-medium mb-6 relative z-10 leading-relaxed">
                 Hoàn thành 5 từ vựng giao tiếp để nhận huy hiệu mới!
               </p>
@@ -388,18 +526,16 @@ export default function LessonDetailPage() {
                   navigate(`/khoa-hoc/${lesson.courseId}`);
                 }
               }}
-              className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold transition-all shadow-xl ${
-                isCompleted
-                  ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-              }`}
+              className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold transition-all shadow-xl ${isCompleted
+                ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                }`}
             >
               {nextLesson ? "Từ tiếp theo" : "Hoàn thành khóa học"}
             </button>
-
           </div>
-        </div>
 
+        </div>
       </div>
 
       {/* Completion Modal */}
@@ -415,7 +551,7 @@ export default function LessonDetailPage() {
               <Trophy size={48} className="text-[#3c6d44]" />
             </div>
 
-            <h2 className="text-2xl font-extrabold text-slate-800 mb-2 relative z-10">Hoàn thành bài học!</h2>
+            <h2 className="text-2xl font-black text-slate-800 mb-2 relative z-10">Hoàn thành bài học!</h2>
             <p className="text-sm text-slate-500 mb-6 leading-relaxed relative z-10">
               Tuyệt vời! Bạn đã xem xong video và thực hành cử chỉ cực chuẩn với AI đạt <strong>{aiScore}%</strong>.
             </p>
@@ -436,6 +572,14 @@ export default function LessonDetailPage() {
             </button>
           </div>
         </div>
+      )}
+      {/* AI Practice Modal Overlay */}
+      {showAI && (
+        <AIPracticePopup
+          word={lesson.title || "Xin chào"}
+          onSuccess={(score) => setAiScore(score)}
+          onClose={() => setShowAI(false)}
+        />
       )}
     </div>
   );

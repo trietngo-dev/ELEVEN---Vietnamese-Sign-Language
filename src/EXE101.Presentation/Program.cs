@@ -230,6 +230,17 @@ using (var scope = app.Services.CreateScope())
         });
     }
 
+    if (!dbContext.VocabularyCategories.Any(x => x.Slug == "general"))
+    {
+        dbContext.VocabularyCategories.Add(new VocabularyCategory
+        {
+            Name = "General",
+            Slug = "general",
+            Description = "General vocabulary",
+            CreatedAt = now
+        });
+    }
+
     dbContext.SaveChanges();
 }
 
