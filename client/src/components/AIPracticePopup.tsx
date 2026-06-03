@@ -4,7 +4,7 @@ import React, {
   useRef,
   type MutableRefObject,
 } from "react";
-import { Camera, CheckCircle, RefreshCcw, Loader2, Sparkles, XCircle, X } from "lucide-react";
+import { Camera, CheckCircle, RefreshCcw, Loader2, XCircle, X } from "lucide-react";
 import {
   HolisticLandmarker,
   FilesetResolver,

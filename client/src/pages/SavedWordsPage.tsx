@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
 import {
@@ -9,8 +9,6 @@ import {
   Trash2,
   Play,
   ArrowLeft,
-  BookOpen,
-  Award,
   Sparkles,
   Clock,
   Loader2
@@ -32,12 +30,12 @@ interface SavedWordItem {
   lessonDuration: number;
 }
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 15 },
   show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
 };
 
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -60,7 +58,7 @@ export default function SavedWordsPage() {
     try {
       setIsLoading(true);
       const token = tokenStorage.getToken();
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
       // 1. Fetch user vocabulary progress
       const progressRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress?pageSize=1000`, { headers });
@@ -137,7 +135,7 @@ export default function SavedWordsPage() {
     setUnsavingId(vocabId);
     try {
       const token = tokenStorage.getToken();
-      const headers = {
+      const headers: Record<string, string> = {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       };

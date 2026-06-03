@@ -145,7 +145,7 @@ export default function ProfilePage() {
             const localDate = new Date(date.getTime() - (offset * 60 * 1000));
             return localDate.toISOString().split('T')[0];
           })
-        )).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        )).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime()) as string[];
 
         const todayStr = new Date(Date.now() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
         const yesterdayStr = new Date(Date.now() - 86400000 - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Maximize, Bot, Bookmark, Share2, Info, ListChecks, Trophy, X } from "lucide-react";
+import { ArrowLeft, Bot, Bookmark, Share2, Info, ListChecks, Trophy, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import AIPracticePopup from "../components/AIPracticePopup";
 import videoXinChao from "../assets/videoCourse/W00489.mp4";
