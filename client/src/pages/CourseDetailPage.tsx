@@ -214,11 +214,11 @@ export default function CourseDetailPage() {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Đang tải dữ liệu...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-white text-slate-800">Đang tải dữ liệu...</div>;
   }
 
   if (!course) {
-    return <div className="min-h-screen flex items-center justify-center bg-white font-sans text-slate-800">Không tìm thấy khóa học.</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-white text-slate-800">Không tìm thấy khóa học.</div>;
   }
 
   const progressPercentage = lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
@@ -226,13 +226,13 @@ export default function CourseDetailPage() {
   const canStartLearning = !isPremiumCourse || isUserPremium;
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-800">
+    <div className="min-h-screen bg-white text-slate-800">
       <div className="mx-auto max-w-5xl px-6 py-10">
 
         {/* Top Bar: Back Button + Premium Notice */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-[#3b7948] text-white font-bold text-sm hover:bg-[#336a40] transition-all active:scale-95 shadow-md">
-            <ArrowLeft size={18} /> Quay lại
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors font-bold text-sm">
+            <ArrowLeft size={16} /> Quay lại
           </button>
 
           {isPremiumCourse && !canStartLearning && (
@@ -275,7 +275,7 @@ export default function CourseDetailPage() {
                     </span>
                   )}
                 </div>
-                <h1 className="text-3xl md:text-4xl font-extrabold text-white">{course.title}</h1>
+                <h1 className="text-3xl md:text-4xl font-black text-white">{course.title}</h1>
               </div>
             </div>
             <p className="text-slate-500 leading-relaxed text-[15px]">
@@ -285,7 +285,7 @@ export default function CourseDetailPage() {
 
           {/* Right: Progress Card */}
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 h-fit">
-            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-6">
+            <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 mb-6">
               <span className="w-6 h-6 rounded-lg bg-[#eef7ee] flex items-center justify-center text-[#3c6d44]"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg></span>
               Thông tin khóa học
             </h3>
@@ -332,7 +332,7 @@ export default function CourseDetailPage() {
         {/* Curriculum Section */}
         <div>
           <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-4">
-            <h2 className="text-2xl font-extrabold text-[#1f2937]">Nội dung khóa học</h2>
+            <h2 className="text-2xl font-black text-slate-800">Nội dung khóa học</h2>
             <span className="text-sm font-medium text-slate-500">{modules.length} Học phần • {lessons.length} Bài giảng</span>
           </div>
 
@@ -344,7 +344,7 @@ export default function CourseDetailPage() {
               return (
                 <div key={module.id}>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-3">
+                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black ${isLocked ? "bg-slate-100 text-slate-500" : "bg-[#f4fbf6] text-[#3c6d44]"}`}>{mIdx + 1}</span>
                       {module.title}
                     </h3>
@@ -399,7 +399,7 @@ export default function CourseDetailPage() {
         <div className="mt-16 border-t border-slate-100 pt-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h2 className="text-2xl font-extrabold text-[#1f2937]">Đánh giá từ học viên</h2>
+              <h2 className="text-2xl font-black text-slate-800">Đánh giá từ học viên</h2>
               <p className="text-sm text-slate-500 mt-1">Ý kiến và đóng góp thực tế từ những người đã trải nghiệm khóa học này.</p>
             </div>
             {user && (
@@ -546,7 +546,7 @@ export default function CourseDetailPage() {
         {showReviewModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white rounded-[32px] max-w-[500px] w-full p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col relative animate-in fade-in zoom-in-95 duration-200">
-              <h3 className="text-xl font-extrabold text-slate-800 mb-2">Đánh giá khóa học</h3>
+              <h3 className="text-xl font-black text-slate-800 mb-2">Đánh giá khóa học</h3>
               <p className="text-xs text-slate-400 mb-6">Hãy chia sẻ cảm nhận thực tế của bạn để cùng hoàn thiện cộng đồng học tập.</p>
 
               <form onSubmit={handleSubmitReview} className="space-y-5">

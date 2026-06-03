@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Camera, Edit2, LogOut, Settings, Bell, BookOpen, Clock, Crown, ChevronRight, X, Save } from "lucide-react";
+import { Camera, Edit2, LogOut, Settings, Bell, BookOpen, Clock, Crown, ChevronRight, X, Save, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
 
@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [badgesCount, setBadgesCount] = useState<number>(0);
   const [learningHours, setLearningHours] = useState<number>(0);
   const [completedLessonsCount, setCompletedLessonsCount] = useState<number>(0);
+  const [loginStreak, setLoginStreak] = useState<number>(0);
 
   // Load avatar dynamically from users and media_assets tables
   useEffect(() => {
@@ -129,22 +130,49 @@ export default function ProfilePage() {
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // 1. Fetch learned words (vocabulary progress)
-    fetch(`${API_BASE_URL}/api/user_vocabulary_progress`, { headers })
-      .then((res) => (res.ok ? res.json() : null))
+    // 1. Fetch activity logs to calculate login streak
+    fetch(`${API_BASE_URL}/api/user_activity_logs`, { headers })
+      .then((res) => (res.ok ? res.json() : { items: [] }))
       .then((data) => {
-        if (data) {
-          const items = data.items || (Array.isArray(data) ? data : []);
-          const userVocabs = items.filter((v: any) => v.userId === user.id);
-          const completed = userVocabs.filter((v: any) => v.status === 2 || v.masteryLevel >= 0.8).length;
-          setVocabCount(completed);
-        } else {
-          setVocabCount(0);
+        const items = data.items || (Array.isArray(data) ? data : data.items) || [];
+        const loginLogs = items.filter((log: any) => log.userId === user.id && log.actionType === "login");
+        
+        // Find all unique dates (YYYY-MM-DD format) in local time
+        const uniqueDates = Array.from(new Set(
+          loginLogs.map((log: any) => {
+            const date = new Date(log.createdAt || log.timestamp);
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split('T')[0];
+          })
+        )).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+        const todayStr = new Date(Date.now() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
+        const yesterdayStr = new Date(Date.now() - 86400000 - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
+
+        let streak = 0;
+        if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
+          streak = 1;
+          const startCheckStr = uniqueDates.includes(todayStr) ? todayStr : yesterdayStr;
+          const startIndex = uniqueDates.indexOf(startCheckStr);
+          let checkTime = new Date(startCheckStr).getTime();
+
+          for (let i = startIndex + 1; i < uniqueDates.length; i++) {
+            const prevTime = new Date(uniqueDates[i]).getTime();
+            const diffDays = Math.round((checkTime - prevTime) / 86400000);
+            if (diffDays === 1) {
+              streak++;
+              checkTime = prevTime;
+            } else if (diffDays > 1) {
+              break;
+            }
+          }
         }
+        setLoginStreak(streak);
       })
       .catch((e) => {
-        console.error("Error loading user vocab count", e);
-        setVocabCount(0);
+        console.error("Error loading user login streak", e);
+        setLoginStreak(0);
       });
 
     // 2. Fetch lesson progress (completed lessons and learning hours)
@@ -158,6 +186,7 @@ export default function ProfilePage() {
           // Completed lessons
           const completed = userProgress.filter((p: any) => p.status === 2 || p.completedAt).length;
           setCompletedLessonsCount(completed);
+          setVocabCount(completed); // Align vocabCount with completed lessons count
 
           // Total learning hours
           const totalSeconds = userProgress.reduce((sum: number, p: any) => sum + (p.totalTimeSeconds || 0), 0);
@@ -169,6 +198,7 @@ export default function ProfilePage() {
           setCoursesCount(uniqueCourses.size);
         } else {
           setCompletedLessonsCount(0);
+          setVocabCount(0);
           setLearningHours(0);
           setCoursesCount(0);
         }
@@ -176,6 +206,7 @@ export default function ProfilePage() {
       .catch((e) => {
         console.error("Error loading user lesson stats", e);
         setCompletedLessonsCount(0);
+        setVocabCount(0);
         setLearningHours(0);
         setCoursesCount(0);
       });
@@ -524,9 +555,9 @@ export default function ProfilePage() {
                   {/* Stats */}
                   <div>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-[0.1em] mb-4">Hoạt động gần đây</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div className="w-11 h-11 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center">
+                        <div className="w-11 h-11 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
                           <Clock size={18} />
                         </div>
                         <div>
@@ -535,12 +566,21 @@ export default function ProfilePage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                        <div className="w-11 h-11 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center">
+                        <div className="w-11 h-11 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center shrink-0">
                           <BookOpen size={18} />
                         </div>
                         <div>
                           <p className="text-[13px] font-semibold text-slate-500">Bài học hoàn thành</p>
                           <p className="text-xl font-black text-slate-800">{completedLessonsCount} bài</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                          <Flame size={18} />
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-semibold text-slate-500">Chuỗi đăng nhập liên tiếp</p>
+                          <p className="text-xl font-black text-slate-800">{loginStreak} ngày liên tiếp</p>
                         </div>
                       </div>
                     </div>

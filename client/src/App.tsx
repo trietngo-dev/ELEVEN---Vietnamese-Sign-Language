@@ -22,6 +22,7 @@ import ProfilePage from "./pages/ProfilePage";
 import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
+import SavedWordsPage from "./pages/SavedWordsPage";
 import AdminRevenue from "./pages/admin/AdminRevenue";
 import AvaterScene from "./components/AvatarScene";
 
@@ -112,6 +113,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="tu-da-luu"
+            element={
+              <ProtectedRoute>
+                <SavedWordsPage />
               </ProtectedRoute>
             }
           />
