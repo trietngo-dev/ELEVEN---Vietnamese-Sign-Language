@@ -6,7 +6,7 @@ import { cn } from "../lib/utils";
 import brand from "../assets/brand.jpg";
 
 import { useAuth } from "../context/AuthContext";
-import { LogOut, Bell, Crown, BookOpen, Clock, Trash2, Square, CheckSquare, X, Bookmark } from "lucide-react";
+import { LogOut, Bell, Crown, BookOpen, Clock, Trash2, Square, CheckSquare, X, Bookmark, Store } from "lucide-react";
 import { tokenStorage } from "../lib/auth";
 import { notificationsApi, type NotificationItem } from "../lib/notifications";
 
@@ -42,7 +42,7 @@ function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   // Sync avatar image
-  useEffect(() => {
+  const fetchAvatar = () => {
     if (!isAuthenticated || !user?.id) {
       setAvatarUrl(null);
       return;
@@ -62,9 +62,24 @@ function Navbar() {
       .then((mediaData) => {
         if (mediaData && mediaData.fileUrl) {
           setAvatarUrl(mediaData.fileUrl);
+        } else {
+          setAvatarUrl(null);
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchAvatar();
+
+    const handleAvatarChange = () => {
+      fetchAvatar();
+    };
+
+    window.addEventListener("avatarChanged", handleAvatarChange);
+    return () => {
+      window.removeEventListener("avatarChanged", handleAvatarChange);
+    };
   }, [isAuthenticated, user]);
 
   // Load user notifications
@@ -205,7 +220,8 @@ function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isLandingPage]);
 
-  const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
+  const displayName = user?.fullName || "User";
+  const avatarSrc = avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`;
 
   return (
     <>
@@ -408,6 +424,20 @@ function Navbar() {
                 title="Từ đã lưu"
               >
                 <Bookmark className="h-5 w-5" />
+              </NavLink>
+
+              {/* Store (Cửa hàng khung) Link */}
+              <NavLink
+                to="/cua-hang-khung"
+                className={({ isActive }) =>
+                  cn(
+                    "p-2 text-slate-500 hover:text-[#3c6c44] hover:bg-slate-100/50 rounded-full transition-all duration-200 shrink-0",
+                    isActive && "bg-emerald-50 text-[#3c6c44]"
+                  )
+                }
+                title="Cửa hàng khung"
+              >
+                <Store className="h-5 w-5" />
               </NavLink>
 
               {/* User details */}

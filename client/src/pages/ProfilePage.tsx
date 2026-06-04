@@ -168,7 +168,7 @@ export default function ProfilePage() {
           setPlans(data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user]);
 
   // Load real user stats & login streak
@@ -183,7 +183,7 @@ export default function ProfilePage() {
       .then((data) => {
         const items = data.items || (Array.isArray(data) ? data : data.items) || [];
         const loginLogs = items.filter((log: any) => log.userId === user.id && log.actionType === "login");
-        
+
         const uniqueDates = Array.from(new Set(
           loginLogs.map((log: any) => {
             const date = new Date(log.createdAt || log.timestamp);
@@ -228,7 +228,7 @@ export default function ProfilePage() {
         if (data) {
           const items = data.items || (Array.isArray(data) ? data : []);
           const userProgress = items.filter((p: any) => p.userId === user.id);
-          
+
           const completed = userProgress.filter((p: any) => p.status === 2 || p.completedAt).length;
           setCompletedLessonsCount(completed);
           setVocabCount(completed);
@@ -278,7 +278,7 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    
+
     setIsSaving(true);
     setProfileSuccess("");
     setProfileError("");
@@ -288,7 +288,7 @@ export default function ProfilePage() {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     };
-    
+
     const body = JSON.stringify({
       fullName: name,
       phone,
@@ -334,7 +334,7 @@ export default function ProfilePage() {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    
+
     setPasswordError("");
     setPasswordSuccess("");
 
@@ -434,7 +434,8 @@ export default function ProfilePage() {
       }
 
       setAvatarUrl(newAvatarUrl);
-      
+      window.dispatchEvent(new Event("avatarChanged"));
+
       const authUser = tokenStorage.getUser();
       if (authUser) {
         authUser.avatarMediaId = mediaId;
@@ -490,7 +491,7 @@ export default function ProfilePage() {
             <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-[#ffe885] via-white to-[#ffe885]">Gói Cao cấp</h3>
           </div>
           <div className="mt-3 relative z-10 border-t border-[#efca4c]/20 pt-2.5 flex items-center justify-between text-[11px]">
-            <span className="text-[#efe8d5]/70">Trạng thái: Trọn đời</span>
+            <span className="text-[#efe8d5]/70">Trạng thái: Đang hoạt động</span>
             {activeSub && (
               <span className="text-[#efca4c] font-bold">
                 Hạn: {new Date(activeSub.endAt).toLocaleDateString("vi-VN")}
@@ -548,7 +549,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-[#f8faf9] py-8 md:py-12 text-slate-700">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        
+
         {/* Banner Cover Photo */}
         <div className="relative h-44 md:h-64 w-full rounded-t-3xl overflow-hidden shadow-sm">
           <img
@@ -562,10 +563,10 @@ export default function ProfilePage() {
         {/* Profile Card Header (Normal Flow - No Overlap into Cover Photo) */}
         <div className="bg-white rounded-b-3xl border-x border-b border-slate-100 p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative z-10 mb-8">
           <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-6">
-            
+
             {/* Left Column: Avatar + Profile text info */}
             <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left w-full">
-              
+
               {/* Avatar (NO NEGATIVE MARGIN) */}
               <div
                 className="relative cursor-pointer group z-20 shrink-0"
@@ -596,7 +597,7 @@ export default function ProfilePage() {
                     {user?.role === "admin" ? "Quản trị viên" : "Học viên VSL"}
                   </span>
                 </div>
-                
+
                 <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-1.5 text-xs font-bold text-slate-400">
                   <span className="flex items-center gap-1">
                     <Mail size={13} /> {displayEmail}
@@ -617,7 +618,7 @@ export default function ProfilePage() {
             <div className="w-full md:w-72 shrink-0 z-10 mt-2 md:mt-0">
               {renderSubscriptionCard()}
             </div>
-            
+
           </div>
         </div>
 
@@ -625,11 +626,10 @@ export default function ProfilePage() {
         <div className="flex border-b border-slate-200 mb-8 gap-8">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${
-              activeTab === "overview"
+            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${activeTab === "overview"
                 ? "border-[#2d6a4f] text-[#2d6a4f]"
                 : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
+              }`}
           >
             <span className="flex items-center gap-1.5">
               <Trophy size={15} /> Tổng quan học tập
@@ -637,11 +637,10 @@ export default function ProfilePage() {
           </button>
           <button
             onClick={() => setActiveTab("settings")}
-            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${
-              activeTab === "settings"
+            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${activeTab === "settings"
                 ? "border-[#2d6a4f] text-[#2d6a4f]"
                 : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
+              }`}
           >
             <span className="flex items-center gap-1.5">
               <Settings size={15} /> Cài đặt
@@ -662,12 +661,12 @@ export default function ProfilePage() {
                 animation: fadeIn 0.3s ease-out forwards;
               }
             `}</style>
-            
+
             {/* Bento Grid Stats */}
             <div>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Các chỉ số học tập</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                
+
                 {/* Courses count */}
                 <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-[0_4px_12px_rgba(24,35,51,0.015)] hover:shadow-md transition-shadow duration-300">
                   <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/30">
@@ -751,9 +750,9 @@ export default function ProfilePage() {
                   <p className="text-[11px] text-slate-400 font-bold uppercase mt-1 tracking-wide">Mở khóa thông qua tiến độ học tập hàng ngày</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-6">
-                
+
                 {/* Badge 1: Quyết tâm */}
                 <div className="flex flex-col items-center text-center gap-2 group cursor-pointer">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-100 to-amber-300 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
@@ -794,7 +793,7 @@ export default function ProfilePage() {
 
               </div>
             </div>
-            
+
             {/* Account Details Box */}
             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_4px_20px_rgba(24,35,51,0.01)]">
               <h3 className="text-base font-black text-slate-800 mb-5">Liên kết tài khoản</h3>
@@ -825,7 +824,7 @@ export default function ProfilePage() {
         ) : (
           /* SETTINGS TAB CONTENT - INLINE */
           <div className="space-y-6 animate-fadeIn">
-            
+
             {/* Success/Error displays for Profile save */}
             {profileSuccess && (
               <div className="p-4 rounded-2xl bg-emerald-55 bg-emerald-50 border border-emerald-100 text-emerald-700 font-semibold text-xs leading-none">
@@ -881,7 +880,7 @@ export default function ProfilePage() {
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#2d6a4f] focus:ring-4 focus:ring-[#2d6a4f]/10 transition-all text-xs font-semibold text-slate-700 resize-none"
                   />
                 </div>
-                
+
                 <div className="pt-2">
                   <button
                     type="submit"
@@ -954,7 +953,7 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="pt-2">
                   <button
                     type="submit"
