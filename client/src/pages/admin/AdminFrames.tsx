@@ -91,12 +91,8 @@ const AdminFrames: React.FC = () => {
       if (frameFile) {
         const formData = new FormData();
         formData.append("file", frameFile);
-        formData.append("storageProvider", "local");
-        formData.append("fileName", frameFile.name);
-        formData.append("mediaType", "Image");
-        formData.append("mimeType", frameFile.type);
 
-        const uploadRes = await fetch(`${API_BASE_URL}/api/media_assets`, {
+        const uploadRes = await fetch(`${API_BASE_URL}/api/media_assets/upload`, {
           method: "POST",
           headers,
           body: formData,
