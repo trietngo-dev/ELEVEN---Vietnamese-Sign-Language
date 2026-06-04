@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { notificationsApi } from "../lib/notifications";
 import flameCharacterWave from "../assets/flame_character_wave.gif";
+import CourseImage from "../components/CourseImage";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -54,7 +55,6 @@ const sectionStagger: Variants = {
 export default function HomePage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Dynamic Statistics States
   const [loginDays, setLoginDays] = useState<number>(0);
@@ -70,23 +70,6 @@ export default function HomePage() {
     if (!user?.id) return;
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-
-    // Fetch avatar
-    fetch(`${API_BASE_URL}/api/users/${user.id}`, { headers })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((userData) => {
-        if (userData && userData.avatarMediaId) {
-          return fetch(`${API_BASE_URL}/api/media_assets/${userData.avatarMediaId}`, { headers });
-        }
-        return null;
-      })
-      .then((res) => (res && res.ok ? res.json() : null))
-      .then((mediaData) => {
-        if (mediaData && mediaData.fileUrl) {
-          setAvatarUrl(mediaData.fileUrl);
-        }
-      })
-      .catch(() => { });
 
     // Fetch courses
     fetch(`${API_BASE_URL}/api/courses`, { headers })
@@ -319,7 +302,6 @@ export default function HomePage() {
   // "Tiếp tục học" - fallback course if activeCourse is not set but user has courses
   const courseToShow = activeCourse || courses[0];
   const courseProgress = (activeCourse as any)?.progressPercent ?? 0;
-  const avatarSrc = avatarUrl || `https://ui-avatars.com/api/?name=${user?.fullName || "User"}&background=3c6d44&color=fff`;
 
   return (
     <motion.div
@@ -476,9 +458,9 @@ export default function HomePage() {
           >
             {/* Circular Illustration */}
             <div className="relative w-24 h-24 rounded-full overflow-hidden bg-slate-50 border-4 border-slate-100 shadow-sm flex items-center justify-center shrink-0">
-              <img
-                src={avatarSrc}
-                alt="User Avatar"
+              <CourseImage
+                coverMediaId={courseToShow?.coverMediaId}
+                title={courseToShow?.title || "VSL"}
                 className="w-full h-full object-cover animate-fade-in"
               />
             </div>

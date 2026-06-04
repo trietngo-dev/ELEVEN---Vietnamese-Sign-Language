@@ -38,4 +38,26 @@ public sealed class UserProfilesController(IUserProfileService userProfileServic
 
         return Ok(result);
     }
+
+    [HttpPost("{userId:long}/add-xp")]
+    public async Task<IActionResult> AddXp([FromRoute] long userId, [FromBody] AddXpRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.XpToAdd <= 0)
+        {
+            return BadRequest(new { message = "XpToAdd must be greater than zero." });
+        }
+
+        var result = await userProfileService.AddXpAsync(userId, request.XpToAdd, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(new { message = "User not found or profile could not be updated." });
+        }
+
+        return Ok(result);
+    }
+}
+
+public sealed class AddXpRequest
+{
+    public int XpToAdd { get; set; }
 }

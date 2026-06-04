@@ -37,6 +37,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<UserBadge> UserBadges => Set<UserBadge>();
     public DbSet<UserActivityLog> UserActivityLogs => Set<UserActivityLog>();
     public DbSet<AdminActionLog> AdminActionLogs => Set<AdminActionLog>();
+    public DbSet<AvatarFrame> AvatarFrames => Set<AvatarFrame>();
+    public DbSet<UserAvatarFrame> UserAvatarFrames => Set<UserAvatarFrame>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +76,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         modelBuilder.Entity<UserBadge>().ToTable("user_badges");
         modelBuilder.Entity<UserActivityLog>().ToTable("user_activity_logs");
         modelBuilder.Entity<AdminActionLog>().ToTable("admin_action_logs");
+        modelBuilder.Entity<AvatarFrame>().ToTable("avatar_frames");
+        modelBuilder.Entity<UserAvatarFrame>().ToTable("user_avatar_frames");
 
         modelBuilder.Entity<Role>().HasKey(x => x.Id);
 
@@ -199,6 +203,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .WithOne()
             .HasForeignKey<UserProfile>(x => x.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserProfile>()
+            .HasOne<AvatarFrame>()
+            .WithMany()
+            .HasForeignKey(x => x.ActiveFrameId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<UserSetting>().HasKey(x => x.UserId);
 
@@ -1175,5 +1185,45 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .WithMany()
             .HasForeignKey(x => x.AdminUserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AvatarFrame>().HasKey(x => x.Id);
+        modelBuilder.Entity<AvatarFrame>()
+            .Property(x => x.Code)
+            .HasMaxLength(100)
+            .IsRequired();
+        modelBuilder.Entity<AvatarFrame>()
+            .Property(x => x.Name)
+            .HasMaxLength(200)
+            .IsRequired();
+        modelBuilder.Entity<AvatarFrame>()
+            .Property(x => x.ImageUrl)
+            .IsRequired();
+        modelBuilder.Entity<AvatarFrame>()
+            .Property(x => x.XpPrice)
+            .IsRequired();
+        modelBuilder.Entity<AvatarFrame>()
+            .Property(x => x.IsActive)
+            .IsRequired();
+        modelBuilder.Entity<AvatarFrame>()
+            .Property(x => x.CreatedAt)
+            .IsRequired();
+        modelBuilder.Entity<AvatarFrame>()
+            .HasIndex(x => x.Code)
+            .IsUnique();
+
+        modelBuilder.Entity<UserAvatarFrame>().HasKey(x => x.Id);
+        modelBuilder.Entity<UserAvatarFrame>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserAvatarFrame>()
+            .HasOne<AvatarFrame>()
+            .WithMany()
+            .HasForeignKey(x => x.AvatarFrameId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<UserAvatarFrame>()
+            .HasIndex(x => new { x.UserId, x.AvatarFrameId })
+            .IsUnique();
     }
 }

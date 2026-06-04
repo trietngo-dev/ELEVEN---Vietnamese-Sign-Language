@@ -23,6 +23,8 @@ import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
 import SavedWordsPage from "./pages/SavedWordsPage";
+import AdminFrames from "./pages/admin/AdminFrames";
+import FrameStorePage from "./pages/FrameStorePage";
 import AdminRevenue from "./pages/admin/AdminRevenue";
 import AvaterScene from "./components/AvatarScene";
 
@@ -125,6 +127,14 @@ function App() {
             }
           />
           <Route
+            path="cua-hang-khung"
+            element={
+              <ProtectedRoute>
+                <FrameStorePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="nang-cap"
             element={
               <ProtectedRoute>
@@ -171,7 +181,8 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="courses" element={<AdminCourses />} />
-          <Route path="vocabulary" element={<AdminVocabulary />} />
+           <Route path="vocabulary" element={<AdminVocabulary />} />
+          <Route path="frames" element={<AdminFrames />} />
           <Route path="feedback" element={<AdminFeedback />} />
           <Route path="revenue" element={<AdminRevenue />} />
         </Route>

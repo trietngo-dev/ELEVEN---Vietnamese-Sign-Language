@@ -76,6 +76,7 @@ public sealed class UserLessonProgressService(
 
         var created = await _repository.AddAsync(entity, cancellationToken);
         await SyncEnrollmentProgressAsync(request.UserId, request.LessonId, request.Status, cancellationToken);
+        await AddXpToUserProfileAsync(request.UserId, request.XpEarned, cancellationToken);
         var lesson = await _dbContext.Lessons.AsNoTracking().FirstOrDefaultAsync(l => l.Id == created.LessonId, cancellationToken);
         return Map(created, lesson?.CourseId ?? 0);
     }
@@ -90,6 +91,7 @@ public sealed class UserLessonProgressService(
 
         ValidateMetrics(request.LastPositionSeconds, request.AttemptsCount, request.BestAccuracy, request.BestScore, request.TotalTimeSeconds, request.XpEarned);
 
+        var oldXp = entity.XpEarned;
         entity.Status = request.Status;
         entity.StartedAt = request.StartedAt;
         entity.CompletedAt = request.CompletedAt;
@@ -103,6 +105,10 @@ public sealed class UserLessonProgressService(
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
         await SyncEnrollmentProgressAsync(entity.UserId, entity.LessonId, request.Status, cancellationToken);
+        if (request.XpEarned > oldXp)
+        {
+            await AddXpToUserProfileAsync(entity.UserId, request.XpEarned - oldXp, cancellationToken);
+        }
         var lesson = await _dbContext.Lessons.AsNoTracking().FirstOrDefaultAsync(l => l.Id == updated.LessonId, cancellationToken);
         return Map(updated, lesson?.CourseId ?? 0);
     }
@@ -125,12 +131,17 @@ public sealed class UserLessonProgressService(
             if (request.BestAccuracy > existing.BestAccuracy) existing.BestAccuracy = request.BestAccuracy;
             if (request.BestScore > existing.BestScore) existing.BestScore = request.BestScore;
             
+            var oldXp = existing.XpEarned;
             existing.TotalTimeSeconds += request.TotalTimeSeconds;
             if (request.XpEarned > existing.XpEarned) existing.XpEarned = request.XpEarned;
             
             existing.UpdatedAt = DateTime.UtcNow;
 
             resultEntity = await _repository.UpdateAsync(existing, cancellationToken);
+            if (resultEntity.XpEarned > oldXp)
+            {
+                await AddXpToUserProfileAsync(request.UserId, resultEntity.XpEarned - oldXp, cancellationToken);
+            }
         }
         else
         {
@@ -151,6 +162,7 @@ public sealed class UserLessonProgressService(
             };
 
             resultEntity = await _repository.AddAsync(entity, cancellationToken);
+            await AddXpToUserProfileAsync(request.UserId, resultEntity.XpEarned, cancellationToken);
         }
 
         await SyncEnrollmentProgressAsync(request.UserId, request.LessonId, request.Status, cancellationToken);
@@ -278,5 +290,35 @@ public sealed class UserLessonProgressService(
             XpEarned = entity.XpEarned,
             UpdatedAt = entity.UpdatedAt
         };
+    }
+
+    private async Task AddXpToUserProfileAsync(long userId, int xpToAdd, CancellationToken cancellationToken)
+    {
+        if (xpToAdd <= 0) return;
+        var profile = await _dbContext.UserProfiles.FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        if (profile == null)
+        {
+            var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);
+            if (userExists)
+            {
+                var now = DateTime.UtcNow;
+                profile = new UserProfile
+                {
+                    UserId = userId,
+                    Timezone = "Asia/Ho_Chi_Minh",
+                    TotalXp = xpToAdd,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                _dbContext.UserProfiles.Add(profile);
+            }
+        }
+        else
+        {
+            profile.TotalXp += xpToAdd;
+            profile.UpdatedAt = DateTime.UtcNow;
+            _dbContext.UserProfiles.Update(profile);
+        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 }

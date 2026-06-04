@@ -241,6 +241,109 @@ using (var scope = app.Services.CreateScope())
         });
     }
 
+    if (!dbContext.AvatarFrames.Any())
+    {
+        dbContext.AvatarFrames.AddRange(
+            new AvatarFrame
+            {
+                Code = "FRAME_GREEN",
+                Name = "Khung Mầm Non",
+                ImageUrl = "/assets/frame_green.png",
+                XpPrice = 100,
+                IsActive = true,
+                CreatedAt = now
+            },
+            new AvatarFrame
+            {
+                Code = "FRAME_SILVER",
+                Name = "Khung Bạc Tri Thức",
+                ImageUrl = "/assets/frame_silver.png",
+                XpPrice = 500,
+                IsActive = true,
+                CreatedAt = now
+            },
+            new AvatarFrame
+            {
+                Code = "FRAME_GOLD",
+                Name = "Khung Hoàng Kim",
+                ImageUrl = "/assets/frame_gold.png",
+                XpPrice = 2000,
+                IsActive = true,
+                CreatedAt = now
+            }
+        );
+    }
+
+    if (!dbContext.Badges.Any())
+    {
+        dbContext.Badges.AddRange(
+            new Badge
+            {
+                Code = "START",
+                Name = "Khởi đầu",
+                Description = "Dành cho người mới bắt đầu học",
+                BadgeType = BadgeType.Achievement,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_7D",
+                Name = "Chuyên cần",
+                Description = "Cho 7 ngày đăng nhập liên tiếp",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_3D",
+                Name = "Kỷ lục 3 ngày",
+                Description = "Đạt streak 3 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_5D",
+                Name = "Kỷ lục 5 ngày",
+                Description = "Đạt streak 5 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_30D",
+                Name = "Kỷ lục 30 ngày",
+                Description = "Đạt streak 30 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_365D",
+                Name = "Kỷ lục 365 ngày",
+                Description = "Đạt streak 365 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "DETERMINED",
+                Name = "Quyết tâm",
+                Description = "Cho người học trên 3 khóa học",
+                BadgeType = BadgeType.Milestone,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "COLLECTOR",
+                Name = "Nhà sưu tập",
+                Description = "Thu thập trên 5 huy hiệu",
+                BadgeType = BadgeType.Achievement,
+                CreatedAt = now
+            }
+        );
+    }
+
     dbContext.SaveChanges();
 }
 

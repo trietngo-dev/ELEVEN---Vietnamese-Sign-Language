@@ -4,10 +4,10 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  Languages,
   BarChart3,
   LogOut,
-  ChartNoAxesCombined
+  ChartNoAxesCombined,
+  Store
 } from 'lucide-react';
 import brand from '../../assets/brand.jpg';
 import { viText } from '../../locales/vi';
@@ -22,7 +22,7 @@ const Sidebar: React.FC = () => {
     { icon: <Users size={22} />, label: 'Người dùng', path: '/admin/users' },
     { icon: <ChartNoAxesCombined size={22} />, label: 'Doanh thu', path: '/admin/revenue' },
     { icon: <BookOpen size={22} />, label: 'Quản lý khóa học', path: '/admin/courses' },
-    { icon: <Languages size={22} />, label: 'Thư viện từ vựng', path: '/admin/vocabulary' },
+    { icon: <Store size={22} />, label: 'Cửa hàng khung', path: '/admin/frames' },
     { icon: <BarChart3 size={22} />, label: 'Phản hồi', path: '/admin/feedback' },
   ];
 

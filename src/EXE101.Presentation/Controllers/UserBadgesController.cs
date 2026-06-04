@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using EXE101.Application.Interfaces.Services;
 using EXE101.Application.Models.UserBadges;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,12 @@ public sealed class UserBadgesController(IUserBadgeService service) : Controller
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {
+        var idRaw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (long.TryParse(idRaw, out var userId))
+        {
+            await service.CheckAndAwardBadgesAsync(userId, cancellationToken);
+        }
+
         var result = await service.GetPagedAsync(page, pageSize, cancellationToken);
         return Ok(result);
     }

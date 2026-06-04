@@ -17,7 +17,9 @@ import {
   User,
   Calendar,
   Mail,
-  Bookmark
+  Bookmark,
+  Pencil,
+  Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
@@ -42,6 +44,10 @@ interface UserProfile {
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editMenuRef = useRef<HTMLDivElement>(null);
+
+  // UI edit menu state
+  const [showEditMenu, setShowEditMenu] = useState(false);
 
   // Profile data states
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -74,6 +80,9 @@ export default function ProfilePage() {
 
   // User stats states
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [activeFrameUrl, setActiveFrameUrl] = useState<string | null>(null);
+  const [allBadges, setAllBadges] = useState<any[]>([]);
+  const [userBadges, setUserBadges] = useState<any[]>([]);
   const [coursesCount, setCoursesCount] = useState<number>(0);
   const [vocabCount, setVocabCount] = useState<number>(0);
   const [badgesCount, setBadgesCount] = useState<number>(0);
@@ -84,8 +93,8 @@ export default function ProfilePage() {
   // Select deterministic random background cover based on user.id
   const coverBg = BACKGROUNDS[(user?.id || 0) % BACKGROUNDS.length];
 
-  // Load avatar dynamically from users and media_assets tables
-  useEffect(() => {
+  // Load avatar and frame dynamically
+  const loadAvatarAndFrame = () => {
     if (!user?.id) return;
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -102,10 +111,58 @@ export default function ProfilePage() {
       .then((mediaData) => {
         if (mediaData && mediaData.fileUrl) {
           setAvatarUrl(mediaData.fileUrl);
+        } else {
+          setAvatarUrl(null);
         }
       })
       .catch((e) => console.error("Error loading user avatar in ProfilePage", e));
+
+    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((profileData) => {
+        if (profileData && profileData.activeFrameId) {
+          fetch(`${API_BASE_URL}/api/avatar-frames`, { headers })
+            .then(res => res.ok ? res.json() : [])
+            .then((frames: any[]) => {
+              const activeFrame = frames.find(f => f.id === profileData.activeFrameId);
+              if (activeFrame) {
+                setActiveFrameUrl(activeFrame.imageUrl);
+              } else {
+                setActiveFrameUrl(null);
+              }
+            })
+            .catch(() => setActiveFrameUrl(null));
+        } else {
+          setActiveFrameUrl(null);
+        }
+      })
+      .catch(() => setActiveFrameUrl(null));
+  };
+
+  useEffect(() => {
+    loadAvatarAndFrame();
+
+    const handleAvatarChange = () => {
+      loadAvatarAndFrame();
+    };
+
+    window.addEventListener("avatarChanged", handleAvatarChange);
+    return () => {
+      window.removeEventListener("avatarChanged", handleAvatarChange);
+    };
   }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editMenuRef.current && !editMenuRef.current.contains(event.target as Node)) {
+        setShowEditMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Load profile from API
   useEffect(() => {
@@ -168,7 +225,7 @@ export default function ProfilePage() {
           setPlans(data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [user]);
 
   // Load real user stats & login streak
@@ -183,7 +240,7 @@ export default function ProfilePage() {
       .then((data) => {
         const items = data.items || (Array.isArray(data) ? data : data.items) || [];
         const loginLogs = items.filter((log: any) => log.userId === user.id && log.actionType === "login");
-        
+
         const uniqueDates = Array.from(new Set(
           loginLogs.map((log: any) => {
             const date = new Date(log.createdAt || log.timestamp);
@@ -228,7 +285,7 @@ export default function ProfilePage() {
         if (data) {
           const items = data.items || (Array.isArray(data) ? data : []);
           const userProgress = items.filter((p: any) => p.userId === user.id);
-          
+
           const completed = userProgress.filter((p: any) => p.status === 2 || p.completedAt).length;
           setCompletedLessonsCount(completed);
           setVocabCount(completed);
@@ -254,21 +311,34 @@ export default function ProfilePage() {
         setCoursesCount(0);
       });
 
-    // 3. Fetch user badges
-    fetch(`${API_BASE_URL}/api/user_badges`, { headers })
+    // 3. Fetch all system badges
+    fetch(`${API_BASE_URL}/api/badges?page=1&pageSize=100`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setAllBadges(data.items || (Array.isArray(data) ? data : []));
+        }
+      })
+      .catch(() => { });
+
+    // 4. Fetch user badges
+    fetch(`${API_BASE_URL}/api/user_badges?page=1&pageSize=100`, { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
           const items = data.items || (Array.isArray(data) ? data : []);
           const filtered = items.filter((b: any) => b.userId === user.id);
+          setUserBadges(filtered);
           setBadgesCount(filtered.length);
         } else {
           setBadgesCount(0);
+          setUserBadges([]);
         }
       })
       .catch((e) => {
         console.error("Error loading user badges", e);
         setBadgesCount(0);
+        setUserBadges([]);
       });
   }, [user]);
 
@@ -278,7 +348,7 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    
+
     setIsSaving(true);
     setProfileSuccess("");
     setProfileError("");
@@ -288,7 +358,7 @@ export default function ProfilePage() {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     };
-    
+
     const body = JSON.stringify({
       fullName: name,
       phone,
@@ -334,7 +404,7 @@ export default function ProfilePage() {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    
+
     setPasswordError("");
     setPasswordSuccess("");
 
@@ -434,7 +504,8 @@ export default function ProfilePage() {
       }
 
       setAvatarUrl(newAvatarUrl);
-      
+      window.dispatchEvent(new Event("avatarChanged"));
+
       const authUser = tokenStorage.getUser();
       if (authUser) {
         authUser.avatarMediaId = mediaId;
@@ -490,7 +561,7 @@ export default function ProfilePage() {
             <h3 className="text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-[#ffe885] via-white to-[#ffe885]">Gói Cao cấp</h3>
           </div>
           <div className="mt-3 relative z-10 border-t border-[#efca4c]/20 pt-2.5 flex items-center justify-between text-[11px]">
-            <span className="text-[#efe8d5]/70">Trạng thái: Trọn đời</span>
+            <span className="text-[#efe8d5]/70">Trạng thái: Đang hoạt động</span>
             {activeSub && (
               <span className="text-[#efca4c] font-bold">
                 Hạn: {new Date(activeSub.endAt).toLocaleDateString("vi-VN")}
@@ -546,9 +617,9 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] py-8 md:py-12 text-slate-700">
+    <div className="min-h-screen bg-transparent py-8 md:py-12 text-slate-700">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        
+
         {/* Banner Cover Photo */}
         <div className="relative h-44 md:h-64 w-full rounded-t-3xl overflow-hidden shadow-sm">
           <img
@@ -562,23 +633,71 @@ export default function ProfilePage() {
         {/* Profile Card Header (Normal Flow - No Overlap into Cover Photo) */}
         <div className="bg-white rounded-b-3xl border-x border-b border-slate-100 p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative z-10 mb-8">
           <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-6">
-            
+
             {/* Left Column: Avatar + Profile text info */}
             <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left w-full">
-              
+
               {/* Avatar (NO NEGATIVE MARGIN) */}
               <div
-                className="relative cursor-pointer group z-20 shrink-0"
-                onClick={() => fileInputRef.current?.click()}
+                className="relative cursor-pointer shrink-0 w-36 h-36 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full overflow-visible"
+                onClick={() => setShowEditMenu(!showEditMenu)}
               >
+                {/* Profile Avatar Circle */}
                 <img
                   src={avatarSrc}
                   alt="Avatar"
-                  className="w-32 h-32 rounded-full border-4 border-slate-50 shadow-md object-cover bg-white hover:brightness-95 transition-all duration-300"
+                  className="w-24 h-24 rounded-full border border-slate-200 shadow-sm object-cover bg-white hover:brightness-95 transition-all duration-300 animate-fade-in"
                 />
-                <div className="absolute bottom-1 right-1 w-8.5 h-8.5 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow group-hover:bg-[#1e3a2f] transition-colors duration-200">
-                  <Camera size={13} className="text-white" />
+                {/* Frame Overlay */}
+                {activeFrameUrl && (
+                  <img
+                    src={activeFrameUrl.startsWith("http") ? activeFrameUrl : `${API_BASE_URL}${activeFrameUrl}`}
+                    alt="Active Frame"
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+                  />
+                )}
+                <div className="absolute bottom-1 right-1 w-7 h-7 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow-md hover:bg-[#1e3a2f] transition-colors duration-200 z-25">
+                  <Pencil size={14} className="text-white" />
                 </div>
+
+                {/* Dropdown Menu for editing */}
+                {showEditMenu && (
+                  <div
+                    ref={editMenuRef}
+                    className="absolute top-[80%] left-[50%] -translate-x-1/2 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-30 animate-dropdownFade text-left"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <style>{`
+                      @keyframes dropdownFade {
+                        from { opacity: 0; transform: translate(-50%, 8px); }
+                        to { opacity: 1; transform: translate(-50%, 0); }
+                      }
+                      .animate-dropdownFade {
+                        animation: dropdownFade 0.2s ease-out forwards;
+                      }
+                    `}</style>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowEditMenu(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="w-full px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 hover:text-[#2d6a4f] flex items-center gap-2 transition-colors"
+                    >
+                      <Camera size={14} />
+                      Đổi ảnh đại diện
+                    </button>
+                    <Link
+                      to="/cua-hang-khung"
+                      onClick={() => setShowEditMenu(false)}
+                      className="w-full px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 hover:text-[#2d6a4f] flex items-center gap-2 transition-colors"
+                    >
+                      <Sparkles size={14} className="text-amber-500 fill-amber-500" />
+                      Đổi khung ảnh
+                    </Link>
+                  </div>
+                )}
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -592,11 +711,19 @@ export default function ProfilePage() {
               <div className="space-y-2 mt-1 md:mt-0 max-w-xl">
                 <div className="flex flex-col md:flex-row md:items-center gap-2.5">
                   <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">{displayName}</h1>
-                  <span className="bg-[#eef6f1] text-[#2d6a4f] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-block">
-                    {user?.role === "admin" ? "Quản trị viên" : "Học viên VSL"}
-                  </span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="bg-[#eef6f1] text-[#2d6a4f] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-block">
+                      {user?.role === "admin" ? "Quản trị viên" : "Học viên VSL"}
+                    </span>
+                    <Link
+                      to="/cua-hang-khung"
+                      className="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-flex items-center gap-1 transition-all"
+                    >
+                      Đổi khung ngay!
+                    </Link>
+                  </div>
                 </div>
-                
+
                 <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-1.5 text-xs font-bold text-slate-400">
                   <span className="flex items-center gap-1">
                     <Mail size={13} /> {displayEmail}
@@ -608,7 +735,7 @@ export default function ProfilePage() {
                 </div>
 
                 <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md mt-2">
-                  {profile?.bio || "Học viên tại Eleven. Cùng thực hành Ngôn ngữ Ký hiệu Việt Nam mỗi ngày nhé!"}
+                  {profile?.bio || "Học viên tại Eleven. Cùng thực hành Ngôn ngữ Ký hiệu Việt Nam mỗi ngày!"}
                 </p>
               </div>
             </div>
@@ -617,7 +744,7 @@ export default function ProfilePage() {
             <div className="w-full md:w-72 shrink-0 z-10 mt-2 md:mt-0">
               {renderSubscriptionCard()}
             </div>
-            
+
           </div>
         </div>
 
@@ -625,11 +752,10 @@ export default function ProfilePage() {
         <div className="flex border-b border-slate-200 mb-8 gap-8">
           <button
             onClick={() => setActiveTab("overview")}
-            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${
-              activeTab === "overview"
-                ? "border-[#2d6a4f] text-[#2d6a4f]"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
+            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${activeTab === "overview"
+              ? "border-[#2d6a4f] text-[#2d6a4f]"
+              : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
           >
             <span className="flex items-center gap-1.5">
               <Trophy size={15} /> Tổng quan học tập
@@ -637,11 +763,10 @@ export default function ProfilePage() {
           </button>
           <button
             onClick={() => setActiveTab("settings")}
-            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${
-              activeTab === "settings"
-                ? "border-[#2d6a4f] text-[#2d6a4f]"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
+            className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${activeTab === "settings"
+              ? "border-[#2d6a4f] text-[#2d6a4f]"
+              : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
           >
             <span className="flex items-center gap-1.5">
               <Settings size={15} /> Cài đặt
@@ -662,12 +787,12 @@ export default function ProfilePage() {
                 animation: fadeIn 0.3s ease-out forwards;
               }
             `}</style>
-            
+
             {/* Bento Grid Stats */}
             <div>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4">Các chỉ số học tập</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                
+
                 {/* Courses count */}
                 <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-slate-100 shadow-[0_4px_12px_rgba(24,35,51,0.015)] hover:shadow-md transition-shadow duration-300">
                   <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100/30">
@@ -751,50 +876,57 @@ export default function ProfilePage() {
                   <p className="text-[11px] text-slate-400 font-bold uppercase mt-1 tracking-wide">Mở khóa thông qua tiến độ học tập hàng ngày</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-6">
-                
-                {/* Badge 1: Quyết tâm */}
-                <div className="flex flex-col items-center text-center gap-2 group cursor-pointer">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-100 to-amber-300 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl">🎯</div>
-                  </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Quyết tâm</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase leading-none bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Đã nhận</span>
-                </div>
+                {allBadges.length > 0 ? (
+                  allBadges.map((badge) => {
+                    const isEarned = userBadges.some(ub => ub.badgeId === badge.id);
 
-                {/* Badge 2: Khởi đầu */}
-                <div className="flex flex-col items-center text-center gap-2 group cursor-pointer">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-sky-100 to-blue-300 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl">🚀</div>
-                  </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Khởi đầu</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase leading-none bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Đã nhận</span>
-                </div>
+                    const emojiMap: Record<string, string> = {
+                      START: "🚀",
+                      STREAK_7D: "🌟",
+                      STREAK_3D: "🔥",
+                      STREAK_5D: "⚡",
+                      STREAK_30D: "👑",
+                      STREAK_365D: "🏆",
+                      DETERMINED: "🎯",
+                      COLLECTOR: "🎒"
+                    };
+                    const emoji = emojiMap[badge.code] || "🏅";
 
-                {/* Badge 3: Kỷ lục streak (dynamic check) */}
-                <div className={`flex flex-col items-center text-center gap-2 group cursor-pointer ${loginStreak < 3 ? "opacity-45" : ""}`}>
-                  <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${loginStreak >= 3 ? "from-red-100 to-orange-300" : "from-slate-100 to-slate-200"} p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm`}>
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl filter grayscale-[40%] group-hover:grayscale-0 transition-all duration-300">🔥</div>
+                    return (
+                      <div
+                        key={badge.id}
+                        className={`flex flex-col items-center text-center gap-2 group cursor-pointer ${!isEarned ? "opacity-45" : ""}`}
+                        title={badge.description}
+                      >
+                        <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${isEarned
+                          ? badge.code === "COLLECTOR" ? "from-purple-100 to-indigo-300" :
+                            badge.code === "DETERMINED" ? "from-yellow-100 to-amber-300" :
+                              badge.code.startsWith("STREAK") ? "from-red-100 to-orange-300" :
+                                "from-sky-100 to-blue-300"
+                          : "from-slate-100 to-slate-200"
+                          } p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm`}>
+                          <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl transition-all duration-300">
+                            {emoji}
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-slate-700 mt-1">{badge.name}</span>
+                        <span className={`text-[9px] font-semibold uppercase leading-none px-2 py-0.5 rounded-full border ${isEarned ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-slate-400 bg-slate-50 border-slate-100"
+                          }`}>
+                          {isEarned ? "Đã nhận" : "Khóa"}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full py-6 text-center text-slate-400 text-xs font-semibold select-none">
+                    Đang tải danh hiệu...
                   </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Kỷ lục streak</span>
-                  <span className={`text-[9px] font-semibold uppercase leading-none px-2 py-0.5 rounded-full border ${loginStreak >= 3 ? "text-orange-600 bg-orange-50 border-orange-100" : "text-slate-400 bg-slate-50 border-slate-100"}`}>
-                    {loginStreak >= 3 ? "Đã nhận" : "Khóa (3 ngày)"}
-                  </span>
-                </div>
-
-                {/* Badge 4: Chuyên cần (Lock) */}
-                <div className="flex flex-col items-center text-center gap-2 group cursor-pointer opacity-45">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl filter grayscale">🌟</div>
-                  </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Chuyên cần</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase leading-none bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Khóa (10 ngày)</span>
-                </div>
-
+                )}
               </div>
             </div>
-            
+
             {/* Account Details Box */}
             <div className="bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-[0_4px_20px_rgba(24,35,51,0.01)]">
               <h3 className="text-base font-black text-slate-800 mb-5">Liên kết tài khoản</h3>
@@ -825,7 +957,7 @@ export default function ProfilePage() {
         ) : (
           /* SETTINGS TAB CONTENT - INLINE */
           <div className="space-y-6 animate-fadeIn">
-            
+
             {/* Success/Error displays for Profile save */}
             {profileSuccess && (
               <div className="p-4 rounded-2xl bg-emerald-55 bg-emerald-50 border border-emerald-100 text-emerald-700 font-semibold text-xs leading-none">
@@ -881,7 +1013,7 @@ export default function ProfilePage() {
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#2d6a4f] focus:ring-4 focus:ring-[#2d6a4f]/10 transition-all text-xs font-semibold text-slate-700 resize-none"
                   />
                 </div>
-                
+
                 <div className="pt-2">
                   <button
                     type="submit"
@@ -954,7 +1086,7 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="pt-2">
                   <button
                     type="submit"
