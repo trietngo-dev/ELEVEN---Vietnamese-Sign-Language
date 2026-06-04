@@ -17,7 +17,9 @@ import {
   User,
   Calendar,
   Mail,
-  Bookmark
+  Bookmark,
+  Pencil,
+  Sparkles
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
@@ -42,6 +44,10 @@ interface UserProfile {
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editMenuRef = useRef<HTMLDivElement>(null);
+
+  // UI edit menu state
+  const [showEditMenu, setShowEditMenu] = useState(false);
 
   // Profile data states
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -145,6 +151,18 @@ export default function ProfilePage() {
       window.removeEventListener("avatarChanged", handleAvatarChange);
     };
   }, [user]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editMenuRef.current && !editMenuRef.current.contains(event.target as Node)) {
+        setShowEditMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Load profile from API
   useEffect(() => {
@@ -301,7 +319,7 @@ export default function ProfilePage() {
           setAllBadges(data.items || (Array.isArray(data) ? data : []));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // 4. Fetch user badges
     fetch(`${API_BASE_URL}/api/user_badges?page=1&pageSize=100`, { headers })
@@ -621,8 +639,8 @@ export default function ProfilePage() {
 
               {/* Avatar (NO NEGATIVE MARGIN) */}
               <div
-                className="relative cursor-pointer group z-20 shrink-0 w-36 h-36 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full overflow-visible"
-                onClick={() => fileInputRef.current?.click()}
+                className="relative cursor-pointer shrink-0 w-36 h-36 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full overflow-visible"
+                onClick={() => setShowEditMenu(!showEditMenu)}
               >
                 {/* Profile Avatar Circle */}
                 <img
@@ -638,9 +656,48 @@ export default function ProfilePage() {
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
                   />
                 )}
-                <div className="absolute bottom-1 right-1 w-11 h-11 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow-md group-hover:bg-[#1e3a2f] transition-colors duration-200 z-25">
-                  <Camera size={18} className="text-white" />
+                <div className="absolute bottom-1 right-1 w-7 h-7 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow-md hover:bg-[#1e3a2f] transition-colors duration-200 z-25">
+                  <Pencil size={14} className="text-white" />
                 </div>
+
+                {/* Dropdown Menu for editing */}
+                {showEditMenu && (
+                  <div
+                    ref={editMenuRef}
+                    className="absolute top-[80%] left-[50%] -translate-x-1/2 mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-30 animate-dropdownFade text-left"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <style>{`
+                      @keyframes dropdownFade {
+                        from { opacity: 0; transform: translate(-50%, 8px); }
+                        to { opacity: 1; transform: translate(-50%, 0); }
+                      }
+                      .animate-dropdownFade {
+                        animation: dropdownFade 0.2s ease-out forwards;
+                      }
+                    `}</style>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowEditMenu(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="w-full px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 hover:text-[#2d6a4f] flex items-center gap-2 transition-colors"
+                    >
+                      <Camera size={14} />
+                      Đổi ảnh đại diện
+                    </button>
+                    <Link
+                      to="/cua-hang-khung"
+                      onClick={() => setShowEditMenu(false)}
+                      className="w-full px-4 py-2.5 text-xs font-black text-slate-700 hover:bg-slate-50 hover:text-[#2d6a4f] flex items-center gap-2 transition-colors"
+                    >
+                      <Sparkles size={14} className="text-amber-500 fill-amber-500" />
+                      Đổi khung ảnh
+                    </Link>
+                  </div>
+                )}
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -662,7 +719,7 @@ export default function ProfilePage() {
                       to="/cua-hang-khung"
                       className="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-flex items-center gap-1 transition-all"
                     >
-                      ✨ Cửa hàng khung
+                      Đổi khung ngay!
                     </Link>
                   </div>
                 </div>
@@ -678,7 +735,7 @@ export default function ProfilePage() {
                 </div>
 
                 <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-md mt-2">
-                  {profile?.bio || "Học viên tại Eleven. Cùng thực hành Ngôn ngữ Ký hiệu Việt Nam mỗi ngày nhé!"}
+                  {profile?.bio || "Học viên tại Eleven. Cùng thực hành Ngôn ngữ Ký hiệu Việt Nam mỗi ngày!"}
                 </p>
               </div>
             </div>
@@ -696,8 +753,8 @@ export default function ProfilePage() {
           <button
             onClick={() => setActiveTab("overview")}
             className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${activeTab === "overview"
-                ? "border-[#2d6a4f] text-[#2d6a4f]"
-                : "border-transparent text-slate-400 hover:text-slate-600"
+              ? "border-[#2d6a4f] text-[#2d6a4f]"
+              : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
           >
             <span className="flex items-center gap-1.5">
@@ -707,8 +764,8 @@ export default function ProfilePage() {
           <button
             onClick={() => setActiveTab("settings")}
             className={`pb-4 px-2 text-sm font-black transition-all border-b-2 relative -mb-[2px] ${activeTab === "settings"
-                ? "border-[#2d6a4f] text-[#2d6a4f]"
-                : "border-transparent text-slate-400 hover:text-slate-600"
+              ? "border-[#2d6a4f] text-[#2d6a4f]"
+              : "border-transparent text-slate-400 hover:text-slate-600"
               }`}
           >
             <span className="flex items-center gap-1.5">
@@ -824,7 +881,7 @@ export default function ProfilePage() {
                 {allBadges.length > 0 ? (
                   allBadges.map((badge) => {
                     const isEarned = userBadges.some(ub => ub.badgeId === badge.id);
-                    
+
                     const emojiMap: Record<string, string> = {
                       START: "🚀",
                       STREAK_7D: "🌟",
@@ -838,27 +895,25 @@ export default function ProfilePage() {
                     const emoji = emojiMap[badge.code] || "🏅";
 
                     return (
-                      <div 
-                        key={badge.id} 
+                      <div
+                        key={badge.id}
                         className={`flex flex-col items-center text-center gap-2 group cursor-pointer ${!isEarned ? "opacity-45" : ""}`}
                         title={badge.description}
                       >
-                        <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${
-                          isEarned 
-                            ? badge.code === "COLLECTOR" ? "from-purple-100 to-indigo-300" :
-                              badge.code === "DETERMINED" ? "from-yellow-100 to-amber-300" :
+                        <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${isEarned
+                          ? badge.code === "COLLECTOR" ? "from-purple-100 to-indigo-300" :
+                            badge.code === "DETERMINED" ? "from-yellow-100 to-amber-300" :
                               badge.code.startsWith("STREAK") ? "from-red-100 to-orange-300" :
-                              "from-sky-100 to-blue-300"
-                            : "from-slate-100 to-slate-200"
-                        } p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm`}>
+                                "from-sky-100 to-blue-300"
+                          : "from-slate-100 to-slate-200"
+                          } p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm`}>
                           <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl transition-all duration-300">
                             {emoji}
                           </div>
                         </div>
                         <span className="text-xs font-black text-slate-700 mt-1">{badge.name}</span>
-                        <span className={`text-[9px] font-semibold uppercase leading-none px-2 py-0.5 rounded-full border ${
-                          isEarned ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-slate-400 bg-slate-50 border-slate-100"
-                        }`}>
+                        <span className={`text-[9px] font-semibold uppercase leading-none px-2 py-0.5 rounded-full border ${isEarned ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-slate-400 bg-slate-50 border-slate-100"
+                          }`}>
                           {isEarned ? "Đã nhận" : "Khóa"}
                         </span>
                       </div>

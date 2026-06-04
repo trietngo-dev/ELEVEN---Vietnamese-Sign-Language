@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
-import { Sparkles, Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -156,7 +156,7 @@ const FrameStorePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f8fcf9] to-white py-10 px-4 md:px-8 text-left">
       <div className="max-w-6xl mx-auto space-y-10">
-        
+
         {/* Back Link */}
         <div className="flex items-center justify-between">
           <Link
@@ -166,7 +166,7 @@ const FrameStorePage: React.FC = () => {
             <ArrowLeft size={16} />
             Quay lại Trang chủ
           </Link>
-          
+
           {/* XP Banner */}
           <div className="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(24,35,51,0.02)] flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-xl text-[#3c6c44]">
@@ -182,10 +182,10 @@ const FrameStorePage: React.FC = () => {
         {/* Intro */}
         <div className="space-y-2">
           <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2.5">
-            Cửa hàng Khung Ảnh Đại diện <Sparkles className="text-amber-500 fill-amber-500" size={24} />
+            Cửa hàng Khung Ảnh Đại diện
           </h2>
           <p className="text-sm text-slate-500 max-w-2xl font-medium">
-            Tích lũy điểm XP thông qua các bài học hàng ngày để quy đổi những khung viền sang trọng, giúp bạn nổi bật trong bảng xếp hạng và các cuộc thi!
+            Tích lũy điểm XP thông qua các bài học hàng ngày để quy đổi những khung viền sang trọng, giúp tài khoản trở nên độc đáo hơn!
           </p>
         </div>
 
@@ -199,9 +199,8 @@ const FrameStorePage: React.FC = () => {
             return (
               <div
                 key={frame.id}
-                className={`bg-white rounded-[32px] border ${
-                  isActive ? "border-[#3c6c44] ring-2 ring-[#3c6c44]/10 shadow-lg" : "border-slate-100"
-                } p-6 shadow-sm flex flex-col justify-between items-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative group`}
+                className={`bg-white rounded-[32px] border ${isActive ? "border-[#3c6c44] ring-2 ring-[#3c6c44]/10 shadow-lg" : "border-slate-100"
+                  } p-6 shadow-sm flex flex-col justify-between items-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 relative group`}
               >
                 {/* Active Badge */}
                 {isActive && (
@@ -255,11 +254,10 @@ const FrameStorePage: React.FC = () => {
                     <button
                       onClick={() => handleRedeem(frame.id, frame.xpPrice)}
                       disabled={!canAfford}
-                      className={`w-full py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-1.5 ${
-                        canAfford
-                          ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg hover:shadow-amber-500/25"
-                          : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                      }`}
+                      className={`w-full py-3 text-xs font-bold rounded-2xl transition-all flex items-center justify-center gap-1.5 ${canAfford
+                        ? "bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg hover:shadow-amber-500/25"
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                        }`}
                     >
                       <span>⚡ Mở khóa bằng {frame.xpPrice} XP</span>
                     </button>
