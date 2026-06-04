@@ -318,4 +318,153 @@ class CourseDataSource {
     } catch (_) {}
     return null;
   }
+
+  // 16. Get bookmarked lesson IDs from backend user_vocabulary_progress
+  Future<List<int>> getBookmarkedLessonIds(int userId) async {
+    try {
+      final progressRes = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/user_vocabulary_progress?pageSize=1000');
+      if (progressRes.statusCode != 200) return [];
+      final pData = progressRes.data;
+      List<dynamic> pItems = [];
+      if (pData is List) {
+        pItems = pData;
+      } else if (pData is Map) {
+        pItems = pData['items'] ?? pData['Items'] ?? pData['data'] ?? [];
+      }
+
+      final userSaved = pItems.where((p) => 
+        (p['userId'] ?? p['UserId']) == userId && 
+        (p['isSaved'] ?? p['IsSaved'] ?? false) == true
+      ).toList();
+
+      if (userSaved.isEmpty) return [];
+
+      final lvRes = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/lesson_vocabularies?pageSize=1000');
+      if (lvRes.statusCode != 200) return [];
+      final lvData = lvRes.data;
+      List<dynamic> lvItems = [];
+      if (lvData is List) {
+        lvItems = lvData;
+      } else if (lvData is Map) {
+        lvItems = lvData['items'] ?? lvData['Items'] ?? lvData['data'] ?? [];
+      }
+
+      final List<int> savedLessonIds = [];
+      for (var p in userSaved) {
+        final int vocabId = (p['vocabularyId'] ?? p['VocabularyId'] ?? 0) as int;
+        final mapping = lvItems.firstWhere(
+          (lv) => (lv['vocabularyId'] ?? lv['VocabularyId']) == vocabId,
+          orElse: () => null,
+        );
+        if (mapping != null) {
+          final int lessonId = (mapping['lessonId'] ?? mapping['LessonId'] ?? 0) as int;
+          if (lessonId > 0) {
+            savedLessonIds.add(lessonId);
+          }
+        }
+      }
+      return savedLessonIds;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // 17. Toggle bookmark on backend
+  Future<bool> toggleBookmark(int userId, int lessonId, String lessonTitle, String? lessonDescription) async {
+    try {
+      final lvRes = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/lesson_vocabularies?pageSize=1000');
+      if (lvRes.statusCode != 200) return false;
+      final lvData = lvRes.data;
+      List<dynamic> lvItems = [];
+      if (lvData is List) {
+        lvItems = lvData;
+      } else if (lvData is Map) {
+        lvItems = lvData['items'] ?? lvData['Items'] ?? lvData['data'] ?? [];
+      }
+
+      final mapping = lvItems.firstWhere(
+        (lv) => (lv['lessonId'] ?? lv['LessonId']) == lessonId,
+        orElse: () => null,
+      );
+
+      int vocabId = 0;
+      if (mapping == null) {
+        final vocabRes = await _dioClient.dio.post(
+          '${ApiConstants.baseUrl}/api/vocabularies',
+          data: {
+            'categoryId': 1,
+            'code': 'lesson_$lessonId',
+            'termVi': lessonTitle,
+            'description': lessonDescription ?? 'Từ vựng chung',
+            'difficultyLevel': 'Cơ bản',
+            'isFeatured': false,
+            'createdBy': userId,
+          },
+        );
+        if (vocabRes.statusCode != 200 && vocabRes.statusCode != 201) return false;
+        vocabId = (vocabRes.data['id'] ?? vocabRes.data['Id'] ?? 0) as int;
+
+        final mapRes = await _dioClient.dio.post(
+          '${ApiConstants.baseUrl}/api/lesson_vocabularies',
+          data: {
+            'lessonId': lessonId,
+            'vocabularyId': vocabId,
+            'sortOrder': 1,
+            'isRequired': true,
+            'expectedAccuracy': 80,
+          },
+        );
+        if (mapRes.statusCode != 200 && mapRes.statusCode != 201) return false;
+      } else {
+        vocabId = (mapping['vocabularyId'] ?? mapping['VocabularyId']) as int;
+      }
+
+      final progressRes = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/user_vocabulary_progress?pageSize=1000');
+      if (progressRes.statusCode != 200) return false;
+      final pData = progressRes.data;
+      List<dynamic> pItems = [];
+      if (pData is List) {
+        pItems = pData;
+      } else if (pData is Map) {
+        pItems = pData['items'] ?? pData['Items'] ?? pData['data'] ?? [];
+      }
+
+      final existingProgress = pItems.firstWhere(
+        (p) => (p['userId'] ?? p['UserId']) == userId && (p['vocabularyId'] ?? p['VocabularyId']) == vocabId,
+        orElse: () => null,
+      );
+
+      if (existingProgress == null) {
+        final createRes = await _dioClient.dio.post(
+          '${ApiConstants.baseUrl}/api/user_vocabulary_progress',
+          data: {
+            'userId': userId,
+            'vocabularyId': vocabId,
+            'status': 0,
+            'isSaved': true,
+          },
+        );
+        return createRes.statusCode == 200 || createRes.statusCode == 201;
+      } else {
+        final int progressId = (existingProgress['id'] ?? existingProgress['Id']) as int;
+        final bool currentSaved = (existingProgress['isSaved'] ?? existingProgress['IsSaved'] ?? false) as bool;
+        final updateRes = await _dioClient.dio.put(
+          '${ApiConstants.baseUrl}/api/user_vocabulary_progress/$progressId',
+          data: {
+            'status': existingProgress['status'] ?? existingProgress['Status'] ?? 0,
+            'firstLearnedAt': existingProgress['firstLearnedAt'] ?? existingProgress['FirstLearnedAt'],
+            'lastPracticedAt': existingProgress['lastPracticedAt'] ?? existingProgress['LastPracticedAt'],
+            'masteryLevel': existingProgress['masteryLevel'] ?? existingProgress['MasteryLevel'] ?? 0,
+            'totalPracticeCount': existingProgress['totalPracticeCount'] ?? existingProgress['TotalPracticeCount'] ?? 0,
+            'correctCount': existingProgress['correctCount'] ?? existingProgress['CorrectCount'] ?? 0,
+            'bestConfidence': existingProgress['bestConfidence'] ?? existingProgress['BestConfidence'] ?? 0,
+            'isSaved': !currentSaved,
+          },
+        );
+        return updateRes.statusCode == 200 || updateRes.statusCode == 204;
+      }
+    } catch (_) {
+      return false;
+    }
+  }
 }

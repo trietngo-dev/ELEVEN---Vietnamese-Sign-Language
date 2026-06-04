@@ -39,33 +39,72 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
   }
 
   Future<void> _loadLocalProgress() async {
+    final ds = context.read<CourseDataSource>();
     final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('auth_user_id') ?? 1;
+
+    bool bookmarkedOnBackend = false;
+    try {
+      final savedIds = await ds.getBookmarkedLessonIds(userId);
+      bookmarkedOnBackend = savedIds.contains(widget.lesson.id);
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _isVideoWatched = prefs.getBool('video_watched_${widget.lesson.id}') ?? false;
         _isAiCompleted = prefs.getBool('ai_completed_${widget.lesson.id}') ?? false;
         _dailyChallengeCount = prefs.getInt('daily_challenge_count') ?? 2;
-        _isBookmarked = prefs.getBool('bookmarked_${widget.lesson.id}') ?? false;
+        _isBookmarked = bookmarkedOnBackend;
       });
     }
   }
 
   Future<void> _toggleBookmark() async {
+    final ds = context.read<CourseDataSource>();
     final prefs = await SharedPreferences.getInstance();
-    final nextState = !_isBookmarked;
-    await prefs.setBool('bookmarked_${widget.lesson.id}', nextState);
+    final userId = prefs.getInt('auth_user_id') ?? 1;
+
     setState(() {
-      _isBookmarked = nextState;
+      _isBookmarked = !_isBookmarked;
     });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(nextState ? 'Đã thêm bài học vào danh mục Lưu từ!' : 'Đã xóa bài học khỏi danh mục Lưu từ!'),
-          backgroundColor: const Color(0xFF10B981),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 1),
-        ),
+
+    try {
+      final success = await ds.toggleBookmark(
+        userId,
+        widget.lesson.id,
+        widget.lesson.title,
+        widget.lesson.content,
       );
+
+      if (!success) {
+        if (mounted) {
+          setState(() {
+            _isBookmarked = !_isBookmarked;
+          });
+        }
+        throw Exception('Không thể cập nhật trên máy chủ.');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isBookmarked ? 'Đã thêm bài học vào danh mục Lưu từ!' : 'Đã xóa bài học khỏi danh mục Lưu từ!'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 

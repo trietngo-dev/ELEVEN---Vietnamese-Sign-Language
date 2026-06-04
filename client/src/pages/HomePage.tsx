@@ -111,10 +111,23 @@ export default function HomePage() {
       }
     };
 
+    // Fetch profile data to load synchronized streak and XP
+    const fetchProfileData = () => {
+      fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, { headers })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((profileData) => {
+          if (profileData) {
+            setLoginDays(profileData.currentStreakDays ?? profileData.CurrentStreakDays ?? 0);
+            setAccumulatedXp(profileData.totalXp ?? profileData.TotalXp ?? 0);
+          }
+        })
+        .catch(() => {});
+    };
+
     // A. Fetch Login Days & Calculate Streak
     fetch(`${API_BASE_URL}/api/user_activity_logs`, { headers })
       .then(res => res.ok ? res.json() : { items: [] })
-      .then(data => {
+      .then(async (data) => {
         const items = data.items || (Array.isArray(data) ? data : data.items) || [];
         const loginLogs = items.filter((log: any) => log.userId === user.id && log.actionType === "login");
         
@@ -129,39 +142,15 @@ export default function HomePage() {
         )).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime()) as string[];
 
         const todayStr = new Date(Date.now() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
-        const yesterdayStr = new Date(Date.now() - 86400000 - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
-
         const hasLoginToday = uniqueDates.includes(todayStr);
 
         if (!hasLoginToday) {
-          postTodayLoginLog();
-          if (!uniqueDates.includes(todayStr)) {
-            uniqueDates.unshift(todayStr);
-          }
+          await postTodayLoginLog();
         }
-
-        let streak = 0;
-        if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
-          streak = 1;
-          const startCheckStr = uniqueDates.includes(todayStr) ? todayStr : yesterdayStr;
-          const startIndex = uniqueDates.indexOf(startCheckStr);
-          let checkTime = new Date(startCheckStr).getTime();
-
-          for (let i = startIndex + 1; i < uniqueDates.length; i++) {
-            const prevTime = new Date(uniqueDates[i]).getTime();
-            const diffDays = Math.round((checkTime - prevTime) / 86400000);
-            if (diffDays === 1) {
-              streak++;
-              checkTime = prevTime;
-            } else if (diffDays > 1) {
-              break;
-            }
-          }
-        }
-        setLoginDays(streak);
+        fetchProfileData();
       })
       .catch(() => {
-        setLoginDays(0);
+        fetchProfileData();
       });
 
     // B & C. Fetch Completed Lessons & Time & XP
@@ -181,9 +170,9 @@ export default function HomePage() {
           const calculatedHours = parseFloat((totalSeconds / 3600).toFixed(1));
           setLearningHours(calculatedHours);
 
-          // Sum XP
-          const totalXp = userProgress.reduce((sum: number, p: any) => sum + (p.xpEarned || 0), 0);
-          setAccumulatedXp(totalXp);
+          // Sum XP (disabled in favor of database-synced totalXp profile value)
+          // const totalXp = userProgress.reduce((sum: number, p: any) => sum + (p.xpEarned || 0), 0);
+          // setAccumulatedXp(totalXp);
 
           // Fetch Recent Lessons Info
           const completedProgress = userProgress

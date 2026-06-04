@@ -95,23 +95,26 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Premium Brand Logo Header
                         Hero(
                           tag: 'brand_logo',
-                          child: Container(
-                            height: 72,
-                            width: 72,
-                            decoration: BoxDecoration(
-                              color: theme.primaryColor.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.menu_book_rounded,
-                              size: 36,
-                              color: theme.primaryColor,
+                          child: Center(
+                            child: Container(
+                              height: 80,
+                              width: 80,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: theme.primaryColor.withValues(alpha: 0.2), width: 2),
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/logo.jpg',
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          "Eleven",
+                          "ELEVEN",
                           textAlign: TextAlign.center,
                           style: GoogleFonts.quicksand(
                             fontSize: 32,
@@ -120,6 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             letterSpacing: 0.5,
                           ),
                         ),
+
                         Text(
                           _isRegister ? "Đăng ký tài khoản học tập" : "Chào mừng trở lại học viên!",
                           textAlign: TextAlign.center,
@@ -132,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Form Fields Card
                         Card(
                           elevation: 8,
-                          shadowColor: theme.primaryColor.withOpacity(0.04),
+                          shadowColor: theme.primaryColor.withValues(alpha: 0.04),
                           child: Padding(
                             padding: const EdgeInsets.all(24.0),
                             child: Column(

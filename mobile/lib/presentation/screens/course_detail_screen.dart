@@ -135,15 +135,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   // Submit course review
   Future<void> _submitReview(int rating, String comment) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     if (_userId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         const SnackBar(content: Text('Vui lòng đăng nhập để gửi đánh giá!'), behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
     if (_courseCategoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         const SnackBar(content: Text('Lỗi danh mục đánh giá khóa học!'), behavior: SnackBarBehavior.floating),
       );
       return;
@@ -164,7 +165,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       );
 
       if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('Đánh giá khóa học của bạn thành công!'),
             backgroundColor: Color(0xFF10B981),
@@ -173,7 +174,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         );
         await _loadReviewsAndCategories();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        scaffoldMessenger.showSnackBar(
           const SnackBar(
             content: Text('Đăng đánh giá thất bại. Vui lòng thử lại.'),
             backgroundColor: Colors.redAccent,
@@ -185,7 +186,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text('Lỗi: $e'),
           backgroundColor: Colors.redAccent,
@@ -441,7 +442,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                                         ),
                                         const SizedBox(width: 4),
                                         Text(
-                                          "(${_countAll} đánh giá)",
+                                          "($_countAll đánh giá)",
                                           style: const TextStyle(color: textMutedColor, fontSize: 11),
                                         ),
                                       ],

@@ -57,7 +57,62 @@ public sealed class UserActivityLogService(
         };
 
         var created = await _repository.AddAsync(entity, cancellationToken);
+
+        if (entity.ActionType.Equals("login", StringComparison.OrdinalIgnoreCase))
+        {
+            await UpdateUserStreakAsync(entity.UserId, cancellationToken);
+        }
+
         return Map(created);
+    }
+
+    private async Task UpdateUserStreakAsync(long userId, CancellationToken cancellationToken)
+    {
+        var profile = await _dbContext.UserProfiles.FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        if (profile == null) return;
+
+        var loginLogs = await _dbContext.UserActivityLogs
+            .Where(l => l.UserId == userId && l.ActionType.ToLower() == "login")
+            .Select(l => l.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        // Convert UTC to Vietnam local time (UTC+7)
+        var localDates = loginLogs
+            .Select(utc => utc.AddHours(7).Date)
+            .Distinct()
+            .OrderByDescending(date => date)
+            .ToList();
+
+        var today = DateTime.UtcNow.AddHours(7).Date;
+        var yesterday = today.AddDays(-1);
+
+        int streak = 0;
+        if (localDates.Contains(today) || localDates.Contains(yesterday))
+        {
+            streak = 1;
+            var startCheckDate = localDates.Contains(today) ? today : yesterday;
+            int startIndex = localDates.IndexOf(startCheckDate);
+            var checkTime = startCheckDate;
+
+            for (int i = startIndex + 1; i < localDates.Count; i++)
+            {
+                var prevTime = localDates[i];
+                int diffDays = (checkTime - prevTime).Days;
+                if (diffDays == 1)
+                {
+                    streak++;
+                    checkTime = prevTime;
+                }
+                else if (diffDays > 1)
+                {
+                    break;
+                }
+            }
+        }
+
+        profile.CurrentStreakDays = streak;
+        _dbContext.UserProfiles.Update(profile);
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private async Task ValidateUserAsync(long userId, CancellationToken cancellationToken)
