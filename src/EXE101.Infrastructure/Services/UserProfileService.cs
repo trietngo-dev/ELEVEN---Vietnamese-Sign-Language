@@ -80,7 +80,76 @@ public sealed class UserProfileService(
     public async Task<UserProfileResponse?> GetByUserIdAsync(long userId, CancellationToken cancellationToken = default)
     {
         var entity = await _repository.GetByUserIdAsync(userId, cancellationToken);
-        return entity is null ? null : Map(entity);
+
+        // Sum of accumulated XP from lesson progress
+        var accumulatedXp = await _dbContext.UserLessonProgresses
+            .Where(ulp => ulp.UserId == userId)
+            .SumAsync(ulp => ulp.XpEarned, cancellationToken);
+
+        if (entity is null)
+        {
+            var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);
+            if (userExists)
+            {
+                var now = DateTime.UtcNow;
+                entity = new UserProfile
+                {
+                    UserId = userId,
+                    Timezone = "Asia/Ho_Chi_Minh",
+                    TotalXp = accumulatedXp,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                entity = await _repository.AddAsync(entity, cancellationToken);
+            }
+            else
+            {
+                return null;
+            }
+        }
+        else
+        {
+            // Sync XP if they have never bought any frames
+            var ownedFramesCount = await _dbContext.UserAvatarFrames
+                .CountAsync(uf => uf.UserId == userId, cancellationToken);
+            if (ownedFramesCount == 0 && entity.TotalXp < accumulatedXp)
+            {
+                entity.TotalXp = accumulatedXp;
+                entity.UpdatedAt = DateTime.UtcNow;
+                await _repository.UpdateAsync(entity, cancellationToken);
+            }
+        }
+
+        return Map(entity);
+    }
+
+    public async Task<UserProfileResponse?> AddXpAsync(long userId, int xpToAdd, CancellationToken cancellationToken = default)
+    {
+        var entity = await _repository.GetByUserIdAsync(userId, cancellationToken);
+        if (entity is null)
+        {
+            var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);
+            if (!userExists) return null;
+
+            var now = DateTime.UtcNow;
+            entity = new UserProfile
+            {
+                UserId = userId,
+                Timezone = "Asia/Ho_Chi_Minh",
+                TotalXp = xpToAdd,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            entity = await _repository.AddAsync(entity, cancellationToken);
+        }
+        else
+        {
+            entity.TotalXp += xpToAdd;
+            entity.UpdatedAt = DateTime.UtcNow;
+            entity = await _repository.UpdateAsync(entity, cancellationToken);
+        }
+
+        return Map(entity);
     }
 
     private static UserProfileResponse Map(UserProfile entity)

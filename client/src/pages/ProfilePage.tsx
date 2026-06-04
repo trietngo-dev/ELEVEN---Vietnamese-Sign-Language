@@ -599,7 +599,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8faf9] py-8 md:py-12 text-slate-700">
+    <div className="min-h-screen bg-transparent py-8 md:py-12 text-slate-700">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         {/* Banner Cover Photo */}
@@ -638,8 +638,8 @@ export default function ProfilePage() {
                     className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
                   />
                 )}
-                <div className="absolute bottom-1.5 right-1.5 w-8.5 h-8.5 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow group-hover:bg-[#1e3a2f] transition-colors duration-200 z-25">
-                  <Camera size={13} className="text-white" />
+                <div className="absolute bottom-1 right-1 w-11 h-11 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow-md group-hover:bg-[#1e3a2f] transition-colors duration-200 z-25">
+                  <Camera size={18} className="text-white" />
                 </div>
                 <input
                   ref={fileInputRef}
@@ -654,9 +654,17 @@ export default function ProfilePage() {
               <div className="space-y-2 mt-1 md:mt-0 max-w-xl">
                 <div className="flex flex-col md:flex-row md:items-center gap-2.5">
                   <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">{displayName}</h1>
-                  <span className="bg-[#eef6f1] text-[#2d6a4f] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-block">
-                    {user?.role === "admin" ? "Quản trị viên" : "Học viên VSL"}
-                  </span>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <span className="bg-[#eef6f1] text-[#2d6a4f] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-block">
+                      {user?.role === "admin" ? "Quản trị viên" : "Học viên VSL"}
+                    </span>
+                    <Link
+                      to="/cua-hang-khung"
+                      className="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider self-center inline-flex items-center gap-1 transition-all"
+                    >
+                      ✨ Cửa hàng khung
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap justify-center md:justify-start items-center gap-x-4 gap-y-1.5 text-xs font-bold text-slate-400">
