@@ -5,6 +5,7 @@ import 'core/theme/app_theme.dart';
 import 'data/datasources/auth_data_source.dart';
 import 'data/datasources/course_data_source.dart';
 import 'data/datasources/gesture_data_source.dart';
+import 'data/datasources/profile_data_source.dart';
 import 'presentation/bloc/auth_bloc.dart';
 import 'presentation/bloc/course_bloc.dart';
 import 'presentation/bloc/gesture_bloc.dart';
@@ -20,12 +21,14 @@ void main() {
   final authDataSource = AuthDataSource(dioClient);
   final courseDataSource = CourseDataSource(dioClient);
   final gestureDataSource = GestureDataSource(dioClient);
+  final profileDataSource = ProfileDataSource(dioClient);
 
   runApp(
     MyApp(
       authDataSource: authDataSource,
       courseDataSource: courseDataSource,
       gestureDataSource: gestureDataSource,
+      profileDataSource: profileDataSource,
     ),
   );
 }
@@ -34,12 +37,14 @@ class MyApp extends StatelessWidget {
   final AuthDataSource authDataSource;
   final CourseDataSource courseDataSource;
   final GestureDataSource gestureDataSource;
+  final ProfileDataSource profileDataSource;
 
   const MyApp({
     super.key,
     required this.authDataSource,
     required this.courseDataSource,
     required this.gestureDataSource,
+    required this.profileDataSource,
   });
 
   @override
@@ -49,6 +54,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<AuthDataSource>.value(value: authDataSource),
         RepositoryProvider<CourseDataSource>.value(value: courseDataSource),
         RepositoryProvider<GestureDataSource>.value(value: gestureDataSource),
+        RepositoryProvider<ProfileDataSource>.value(value: profileDataSource),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -63,8 +69,9 @@ class MyApp extends StatelessWidget {
           ),
         ],
         child: MaterialApp(
-          title: 'Eleven VSL',
+          title: 'ELEVEN',
           debugShowCheckedModeBanner: false,
+
           theme: AppTheme.lightTheme,
           home: BlocBuilder<AuthBloc, AuthState>(
             builder: (context, state) {

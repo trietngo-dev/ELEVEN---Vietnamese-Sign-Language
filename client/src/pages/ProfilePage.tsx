@@ -181,6 +181,7 @@ export default function ProfilePage() {
           setName(data.fullName || user.fullName || "");
           setPhone(data.phone || "");
           setBio(data.bio || "");
+          setLoginStreak(data.currentStreakDays ?? data.CurrentStreakDays ?? 0);
         } else {
           setName(user.fullName || "");
         }
@@ -234,49 +235,15 @@ export default function ProfilePage() {
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // 1. Fetch activity logs to calculate login streak
-    fetch(`${API_BASE_URL}/api/user_activity_logs`, { headers })
-      .then((res) => (res.ok ? res.json() : { items: [] }))
-      .then((data) => {
-        const items = data.items || (Array.isArray(data) ? data : data.items) || [];
-        const loginLogs = items.filter((log: any) => log.userId === user.id && log.actionType === "login");
-
-        const uniqueDates = Array.from(new Set(
-          loginLogs.map((log: any) => {
-            const date = new Date(log.createdAt || log.timestamp);
-            const offset = date.getTimezoneOffset();
-            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-            return localDate.toISOString().split('T')[0];
-          })
-        )).sort((a: any, b: any) => new Date(b).getTime() - new Date(a).getTime()) as string[];
-
-        const todayStr = new Date(Date.now() - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
-        const yesterdayStr = new Date(Date.now() - 86400000 - (new Date().getTimezoneOffset() * 60 * 1000)).toISOString().split('T')[0];
-
-        let streak = 0;
-        if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
-          streak = 1;
-          const startCheckStr = uniqueDates.includes(todayStr) ? todayStr : yesterdayStr;
-          const startIndex = uniqueDates.indexOf(startCheckStr);
-          let checkTime = new Date(startCheckStr).getTime();
-
-          for (let i = startIndex + 1; i < uniqueDates.length; i++) {
-            const prevTime = new Date(uniqueDates[i]).getTime();
-            const diffDays = Math.round((checkTime - prevTime) / 86400000);
-            if (diffDays === 1) {
-              streak++;
-              checkTime = prevTime;
-            } else if (diffDays > 1) {
-              break;
-            }
-          }
+    // 1. Fetch user profile to ensure streak is updated and synced
+    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((profileData) => {
+        if (profileData) {
+          setLoginStreak(profileData.currentStreakDays ?? profileData.CurrentStreakDays ?? 0);
         }
-        setLoginStreak(streak);
       })
-      .catch((e) => {
-        console.error("Error loading user login streak", e);
-        setLoginStreak(0);
-      });
+      .catch(() => {});
 
     // 2. Fetch lesson progress (completed lessons and learning hours)
     fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers })

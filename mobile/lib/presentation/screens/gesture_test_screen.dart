@@ -230,10 +230,11 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
   }
 
   Future<void> _completeLessonProgress() async {
+    final courseDs = context.read<CourseDataSource>();
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('auth_user_id') ?? 1;
 
-    final success = await context.read<CourseDataSource>().completeLesson(
+    final success = await courseDs.completeLesson(
       userId: userId,
       lessonId: widget.lesson.id,
       accuracy: 95.0, // AI Score matching LSTM accuracy fallback

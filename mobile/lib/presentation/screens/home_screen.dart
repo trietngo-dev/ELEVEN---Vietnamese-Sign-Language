@@ -2,13 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../bloc/auth_bloc.dart';
 import '../bloc/course_bloc.dart';
 import '../../data/datasources/course_data_source.dart';
+import '../../data/datasources/profile_data_source.dart';
 import '../../data/models/lesson_model.dart';
+import '../../data/models/badge_model.dart';
+import '../widgets/course_image_widget.dart';
 import 'course_detail_screen.dart';
 import 'gesture_test_screen.dart';
 import 'login_screen.dart';
+import 'saved_lessons_screen.dart';
+import 'frame_shop_screen.dart';
+import 'notifications_screen.dart';
+import 'subscription_payment_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +32,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userEmail = 'hocvien@vsl.vn';
   int _userXp = 100;
   int _userUserId = 1;
+
+  // Avatar, frame, badges & streak states
+  String _avatarUrl = 'https://api.dicebear.com/7.x/adventurer/png?seed=Triet';
+  String? _activeFrameUrl;
+  int _streakDays = 12;
+  List<BadgeModel> _earnedBadges = [];
 
   // Helpdesk Form Fields
   final _supportFormKey = GlobalKey<FormState>();
@@ -50,12 +65,119 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _userName = prefs.getString('auth_user_name') ?? 'Học viên VSL';
       _userEmail = prefs.getString('auth_user_email') ?? 'hocvien@vsl.vn';
-      _userXp = prefs.getInt('auth_user_xp') ?? 120;
+      _userXp = prefs.getInt('auth_user_xp') ?? 100;
       _userUserId = prefs.getInt('auth_user_id') ?? 1;
+      _avatarUrl = prefs.getString('auth_user_avatar_url') ?? 'https://api.dicebear.com/7.x/adventurer/png?seed=Triet';
+      _activeFrameUrl = prefs.getString('auth_user_active_frame_url');
+      _streakDays = prefs.getInt('auth_user_streak') ?? 12;
     });
+
+    try {
+      final ds = context.read<ProfileDataSource>();
+      
+      // Post login log on mobile startup/load to sync consecutive days streak
+      try {
+        await ds.postLoginActivityLog(_userUserId);
+      } catch (_) {}
+
+      final profile = await ds.getUserProfile(_userUserId);
+      final liveXp = (profile['totalXp'] ?? profile['TotalXp'] ?? _userXp) as int;
+      final liveStreak = (profile['currentStreakDays'] ?? profile['CurrentStreakDays'] ?? _streakDays) as int;
+      final activeFrameId = profile['activeFrameId'] ?? profile['ActiveFrameId'];
+
+      // Fetch user details for real email & avatar
+      final userDetails = await ds.getUserDetails(_userUserId);
+      final liveEmail = (userDetails['email'] ?? userDetails['Email'] ?? _userEmail) as String;
+      final int? avatarMediaId = userDetails['avatarMediaId'] ?? userDetails['AvatarMediaId'];
+      
+      String liveAvatarUrl = _avatarUrl;
+      if (avatarMediaId != null) {
+        final mediaAsset = await ds.getMediaAsset(avatarMediaId);
+        liveAvatarUrl = (mediaAsset['fileUrl'] ?? mediaAsset['FileUrl'] ?? _avatarUrl) as String;
+      }
+
+      String? matchedFrameUrl;
+      if (activeFrameId != null) {
+        final allFrames = await ds.getAvatarFrames();
+        final matched = allFrames.firstWhere((f) => f.id == activeFrameId, orElse: () => allFrames.first);
+        matchedFrameUrl = matched.fullImageUrl;
+      }
+
+      final badges = await ds.getUserEarnedBadges();
+
+      if (mounted) {
+        setState(() {
+          _userXp = liveXp;
+          _streakDays = liveStreak;
+          _userEmail = liveEmail;
+          _activeFrameUrl = matchedFrameUrl;
+          _avatarUrl = liveAvatarUrl;
+          _earnedBadges = badges;
+        });
+
+        await prefs.setInt('auth_user_xp', _userXp);
+        await prefs.setInt('auth_user_streak', _streakDays);
+        await prefs.setString('auth_user_avatar_url', _avatarUrl);
+        await prefs.setString('auth_user_email', _userEmail);
+        if (matchedFrameUrl != null) {
+          await prefs.setString('auth_user_active_frame_url', matchedFrameUrl);
+        } else {
+          await prefs.remove('auth_user_active_frame_url');
+        }
+      }
+    } catch (_) {
+      if (_earnedBadges.isEmpty && mounted) {
+        setState(() {
+          _earnedBadges = [
+            BadgeModel(id: 1, code: 'FIRST_LESSON', name: 'Bắt Đầu', description: 'Hoàn thành bài học đầu tiên'),
+            BadgeModel(id: 2, code: 'STREAK_3', name: 'Kiên Trì', description: 'Đạt chuỗi học tập 3 ngày'),
+          ];
+        });
+      }
+    }
+  }
+
+  Widget _buildAvatarWithFrame({required double size, String? frameUrl, required String avatarUrl}) {
+    final double avatarSize = size * 0.76;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          ClipOval(
+            child: avatarUrl.startsWith('http')
+                ? Image.network(
+                    avatarUrl,
+                    width: avatarSize,
+                    height: avatarSize,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.network(
+                        "https://ui-avatars.com/api/?name=${Uri.encodeComponent(_userName)}&background=10b981&color=fff&size=200",
+                        width: avatarSize,
+                        height: avatarSize,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
+                : const Icon(Icons.person, size: 24, color: Colors.white70),
+          ),
+          if (frameUrl != null && frameUrl.isNotEmpty)
+            Positioned.fill(
+              child: Image.network(
+                frameUrl,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => const SizedBox(),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   // Submit helpdesk support feedback
@@ -78,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
         userId: _userUserId,
         categoryId: supportCatId,
         rating: 5, // Default/Dummy rating for support request
-        subject: 'Support:${_selectedSupportTopic}',
+        subject: 'Support:$_selectedSupportTopic',
         content: _supportContentController.text.trim(),
       );
 
@@ -131,55 +253,58 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: darkBgColor,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: darkBgColor,
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: mintColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
+      appBar: _currentIndex == 0 || _currentIndex == 1 || _currentIndex == 4
+          ? AppBar(
+              automaticallyImplyLeading: false,
+              backgroundColor: darkBgColor,
+              elevation: 0,
+              title: Row(
+                children: [
+                  ClipOval(
+                    child: Image.asset(
+                      'assets/logo.jpg',
+                      width: 28,
+                      height: 28,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "ELEVEN",
+                    style: GoogleFonts.quicksand(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontSize: 16,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.school_rounded, color: mintColor, size: 20),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              "VSL LEARNER",
-              style: GoogleFonts.quicksand(
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontSize: 16,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_rounded, color: Colors.white70),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Chức năng thông báo sẽ sớm khả dụng trên Mobile!'),
-                  behavior: SnackBarBehavior.floating,
+
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_rounded, color: Colors.white70),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationsScreen(),
+                      ),
+                    ).then((_) => _loadUserData());
+                  },
                 ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white70),
-            onPressed: () {
-              context.read<AuthBloc>().add(AuthLogoutRequested());
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
-          ),
-        ],
-      ),
+                IconButton(
+                  icon: const Icon(Icons.logout_rounded, color: Colors.white70),
+                  onPressed: () {
+                    context.read<AuthBloc>().add(AuthLogoutRequested());
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    );
+                  },
+                ),
+              ],
+            )
+          : null,
       body: _buildActiveTabBody(darkBgColor, darkCardColor, mintColor, textMutedColor),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -187,6 +312,7 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _currentIndex = index;
           });
+          _loadUserData();
         },
         backgroundColor: darkCardColor,
         selectedItemColor: mintColor,
@@ -197,15 +323,23 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
-            label: 'Home',
+            label: 'Trang chủ',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.menu_book_rounded),
-            label: 'Library',
+            label: 'Thư viện',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bookmark_rounded),
+            label: 'Đã lưu',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.storefront_rounded),
+            label: 'Cửa hàng',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),
-            label: 'Profile',
+            label: 'Cá nhân',
           ),
         ],
       ),
@@ -219,6 +353,10 @@ class _HomeScreenState extends State<HomeScreen> {
       case 1:
         return _buildLibraryTab(darkBg, cardBg, mint, muted);
       case 2:
+        return const SavedLessonsScreen();
+      case 3:
+        return const FrameShopScreen();
+      case 4:
         return _buildProfileTab(darkBg, cardBg, mint, muted);
       default:
         return _buildHomeTab(darkBg, cardBg, mint, muted);
@@ -270,24 +408,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: mint.withValues(alpha: 0.15),
-                          border: Border.all(color: mint.withValues(alpha: 0.3), width: 1.5),
-                        ),
-                        child: Center(
-                          child: Icon(Icons.person_rounded, color: mint, size: 24),
-                        ),
+                      _buildAvatarWithFrame(
+                        size: 50,
+                        avatarUrl: _avatarUrl,
+                        frameUrl: _activeFrameUrl,
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      _buildFigmaStatChip(Icons.local_fire_department_rounded, Colors.orange, "12 ngày liên tiếp"),
+                      _buildFigmaStatChip(Icons.local_fire_department_rounded, Colors.orange, "$_streakDays ngày liên tiếp"),
                       const SizedBox(width: 10),
                       _buildFigmaStatChip(Icons.bolt_rounded, Colors.amber, "$_userXp XP tích lũy"),
                     ],
@@ -477,11 +608,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: list.length > 2 ? 2 : list.length, // Show top 2 on home screen
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final course = list[index];
                       return InkWell(
                         onTap: () {
+                          final courseBloc = context.read<CourseBloc>();
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => BlocProvider<CourseBloc>(
@@ -491,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ).then((_) {
                             if (mounted) {
-                              context.read<CourseBloc>().add(LoadCoursesRequested());
+                              courseBloc.add(LoadCoursesRequested());
                             }
                           });
                         },
@@ -626,11 +758,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.all(20),
                   itemCount: filteredList.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  separatorBuilder: (context, index) => const SizedBox(height: 14),
                   itemBuilder: (context, index) {
                     final course = filteredList[index];
                     return InkWell(
                       onTap: () {
+                        final courseBloc = context.read<CourseBloc>();
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => BlocProvider<CourseBloc>(
@@ -640,7 +773,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ).then((_) {
                           if (mounted) {
-                            context.read<CourseBloc>().add(LoadCoursesRequested());
+                            courseBloc.add(LoadCoursesRequested());
                           }
                         });
                       },
@@ -789,20 +922,35 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Column(
               children: [
-                Container(
-                  width: 76,
-                  height: 76,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [mint, const Color(0xFF065F46)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    _buildAvatarWithFrame(
+                      size: 80,
+                      avatarUrl: _avatarUrl,
+                      frameUrl: _activeFrameUrl,
                     ),
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.person_rounded, color: Colors.white, size: 40),
-                  ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: () => _showAvatarEditSheet(context, mint, darkBg, cardBg),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: mint,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: cardBg, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -815,16 +963,60 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
                 ),
                 const SizedBox(height: 8),
+              
+              ],
+            ),
+          ),
+          
+          // Gold VIP Subscription Banner
+          Container(
+            margin: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFBBF24), Color(0xFFD97706)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: mint.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: Colors.white24,
+                    shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    'Học Viên Xuất Sắc',
-                    style: TextStyle(color: mint, fontSize: 10, fontWeight: FontWeight.bold),
+                  child: const Icon(Icons.workspace_premium, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Nâng cấp tài khoản VIP PRO",
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Mở khóa các tính năng AI và Khung độc quyền",
+                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      ),
+                    ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 18),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SubscriptionPaymentScreen(),
+                      ),
+                    ).then((_) => _loadUserData());
+                  },
                 ),
               ],
             ),
@@ -842,14 +1034,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 24),
-                      SizedBox(height: 8),
-                      Text('Chuỗi học tập', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
-                      SizedBox(height: 2),
-                      Text('12 Ngày', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 24),
+                      const SizedBox(height: 8),
+                      const Text('Chuỗi học tập', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text('$_streakDays Ngày', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -918,6 +1110,97 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildFigmaBar('CN', 30, mint),
                   ],
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Badges Grid View
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Huy hiệu đạt được',
+                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${_earnedBadges.length} đạt được',
+                      style: TextStyle(color: mint, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _earnedBadges.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                          child: Text(
+                            'Chưa có huy hiệu nào.',
+                            style: TextStyle(color: Colors.white24, fontSize: 12),
+                          ),
+                        ),
+                      )
+                    : GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 0.85,
+                        ),
+                        itemCount: _earnedBadges.length,
+                        itemBuilder: (context, index) {
+                          final badge = _earnedBadges[index];
+                          return Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F1412),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.02)),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.military_tech_rounded, color: Colors.amber, size: 24),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  badge.name,
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  badge.description,
+                                  style: const TextStyle(color: Colors.white30, fontSize: 8),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
               ],
             ),
           ),
@@ -1165,84 +1448,250 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
     );
   }
-}
 
-class CourseImageWidget extends StatefulWidget {
-  final int? coverMediaId;
-  final String title;
-  final double size;
-
-  const CourseImageWidget({
-    super.key,
-    required this.coverMediaId,
-    required this.title,
-    required this.size,
-  });
-
-  @override
-  State<CourseImageWidget> createState() => _CourseImageWidgetState();
-}
-
-class _CourseImageWidgetState extends State<CourseImageWidget> {
-  String? _url;
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.coverMediaId != null) {
-      _loadUrl();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant CourseImageWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.coverMediaId != oldWidget.coverMediaId) {
-      _loadUrl();
-    }
-  }
-
-  Future<void> _loadUrl() async {
-    if (widget.coverMediaId == null) return;
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final ds = context.read<CourseDataSource>();
-      final fileUrl = await ds.getVideoUrl(widget.coverMediaId!);
-      if (mounted) {
-        setState(() {
-          _url = fileUrl;
-          _isLoading = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final defaultUrl = "https://ui-avatars.com/api/?name=${Uri.encodeComponent(widget.title)}&background=10b981&color=fff&size=200";
-    
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: SizedBox(
-        width: widget.size,
-        height: widget.size,
-        child: _isLoading 
-            ? const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF10B981))))
-            : Image.network(
-                _url ?? defaultUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Image.network(defaultUrl, fit: BoxFit.cover),
-              ),
+  void _showAvatarEditSheet(BuildContext context, Color mintColor, Color bg, Color cardBg) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
+      builder: (context) {
+        final List<Map<String, String>> presets = [
+          {'name': 'Phiêu lưu', 'url': 'https://api.dicebear.com/7.x/adventurer/png?seed=Triet'},
+          {'name': 'Vui nhộn', 'url': 'https://api.dicebear.com/7.x/fun-emoji/png?seed=Vsl'},
+          {'name': 'Học viên', 'url': 'https://api.dicebear.com/7.x/avataaars/png?seed=Learner'},
+          {'name': 'Pixel', 'url': 'https://api.dicebear.com/7.x/pixel-art/png?seed=Eleven'},
+        ];
+
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "Chỉnh sửa ảnh đại diện & Khung",
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Chọn ảnh đại diện mẫu",
+                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 80,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: presets.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 16),
+                  itemBuilder: (context, index) {
+                    final item = presets[index];
+                    final isSelected = _avatarUrl == item['url'];
+                    return InkWell(
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        await _updateAvatarUrl(item['url']!);
+                      },
+                      borderRadius: BorderRadius.circular(40),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected ? mintColor : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.white10,
+                          backgroundImage: NetworkImage(item['url']!),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Divider(color: Colors.white12),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _pickAndUploadAvatar();
+                },
+                icon: const Icon(Icons.photo_library_rounded),
+                label: const Text("Tải ảnh thật từ điện thoại"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: mintColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  setState(() {
+                    _currentIndex = 3; // Go to Frame Shop tab
+                  });
+                },
+                icon: const Icon(Icons.storefront_rounded),
+                label: const Text("Đi tới Cửa hàng khung"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: mintColor.withValues(alpha: 0.15),
+                  foregroundColor: mintColor,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+            ],
+          ),
+        );
+      },
     );
+  }
+
+  Future<void> _updateAvatarUrl(String url) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    // Show a loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF10B981)),
+      ),
+
+    );
+    try {
+      final ds = context.read<ProfileDataSource>();
+      // 1. Download preset and upload to media assets
+      final int mediaId = await ds.uploadPresetFromUrl(url);
+      // 2. Associate avatar to user
+      await ds.updateUserAvatar(_userUserId, mediaId);
+      
+      // Get the uploaded media asset url
+      final mediaAsset = await ds.getMediaAsset(mediaId);
+      final String liveUrl = mediaAsset['fileUrl'] ?? mediaAsset['FileUrl'] ?? url;
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Dismiss loading
+        setState(() {
+          _avatarUrl = liveUrl;
+        });
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_user_avatar_url', liveUrl);
+      
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã cập nhật ảnh đại diện thành công!'),
+          backgroundColor: Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        try {
+          Navigator.of(context).pop(); // Dismiss loading
+        } catch (_) {}
+      }
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Lỗi cập nhật ảnh đại diện: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (image == null) return;
+
+      // Show loading
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: Color(0xFF10B981)),
+        ),
+
+      );
+
+      final ds = context.read<ProfileDataSource>();
+      // 1. Upload to media assets
+      final uploadRes = await ds.uploadAvatar(image.path);
+      final int mediaId = (uploadRes['id'] ?? uploadRes['Id']) as int;
+      final String fileUrl = (uploadRes['fileUrl'] ?? uploadRes['FileUrl']) as String;
+
+      // 2. Patch user avatar
+      await ds.updateUserAvatar(_userUserId, mediaId);
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Dismiss loading
+        setState(() {
+          _avatarUrl = fileUrl;
+        });
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_user_avatar_url', fileUrl);
+
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('Đã cập nhật ảnh đại diện thành công!'),
+          backgroundColor: Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        try {
+          Navigator.of(context).pop(); // Dismiss loading
+        } catch (_) {}
+      }
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Lỗi tải ảnh đại diện: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }

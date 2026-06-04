@@ -37,6 +37,7 @@ class AuthDataSource {
           await prefs.setInt('auth_user_id', user.id);
           await prefs.setString('auth_user_role', user.role);
           await prefs.setString('auth_user_name', user.fullName);
+          await prefs.setString('auth_user_email', user.email);
         }
         
         return user;
@@ -80,6 +81,7 @@ class AuthDataSource {
           await prefs.setInt('auth_user_id', user.id);
           await prefs.setString('auth_user_role', user.role);
           await prefs.setString('auth_user_name', user.fullName);
+          await prefs.setString('auth_user_email', user.email);
         }
         
         return user;

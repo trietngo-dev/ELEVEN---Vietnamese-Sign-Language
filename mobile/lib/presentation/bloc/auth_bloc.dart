@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/datasources/auth_data_source.dart';
 import '../../data/models/user_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 
 // --- Events ---
 abstract class AuthEvent {}
@@ -55,8 +57,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       try {
         final authenticated = await _authDataSource.isAuthenticated();
         if (authenticated) {
-          // Can read user details cache here if needed
-          emit(AuthAuthenticated(UserModel(id: 1, fullName: 'Học viên VSL', email: '', role: 'learner')));
+          final prefs = await SharedPreferences.getInstance();
+          final id = prefs.getInt('auth_user_id') ?? 1;
+          final name = prefs.getString('auth_user_name') ?? 'Học viên VSL';
+          final email = prefs.getString('auth_user_email') ?? '';
+          final role = prefs.getString('auth_user_role') ?? 'learner';
+          emit(AuthAuthenticated(UserModel(id: id, fullName: name, email: email, role: role)));
         } else {
           emit(AuthUnauthenticated());
         }
@@ -64,6 +70,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthUnauthenticated());
       }
     });
+
 
     on<AuthLoginRequested>((event, emit) async {
       emit(AuthLoading());
