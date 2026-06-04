@@ -19,6 +19,7 @@ function Navbar() {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [activeFrameUrl, setActiveFrameUrl] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -45,11 +46,35 @@ function Navbar() {
   const fetchAvatar = () => {
     if (!isAuthenticated || !user?.id) {
       setAvatarUrl(null);
+      setActiveFrameUrl(null);
       return;
     }
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
+    // 1. Fetch user profile for ActiveFrameId and load frame details
+    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((profileData) => {
+        if (profileData && profileData.activeFrameId) {
+          fetch(`${API_BASE_URL}/api/avatar-frames`, { headers })
+            .then(res => res.ok ? res.json() : [])
+            .then((frames: any[]) => {
+              const activeFrame = frames.find(f => f.id === profileData.activeFrameId);
+              if (activeFrame) {
+                setActiveFrameUrl(activeFrame.imageUrl);
+              } else {
+                setActiveFrameUrl(null);
+              }
+            })
+            .catch(() => setActiveFrameUrl(null));
+        } else {
+          setActiveFrameUrl(null);
+        }
+      })
+      .catch(() => setActiveFrameUrl(null));
+
+    // 2. Fetch User avatar image url
     fetch(`${API_BASE_URL}/api/users/${user.id}`, { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((userData) => {
@@ -452,12 +477,21 @@ function Navbar() {
 
               {/* User Avatar */}
               <NavLink to="/ho-so" className="shrink-0 transition-transform hover:scale-105">
-                <div
-                  className="h-9 w-9 cursor-pointer rounded-full border-2 border-slate-100 bg-cover bg-center shadow-sm"
-                  style={{
-                    backgroundImage: `url('${avatarSrc}')`,
-                  }}
-                ></div>
+                <div className="relative w-10 h-10 flex items-center justify-center">
+                  <div
+                    className="h-7 w-7 rounded-full border border-slate-100 bg-cover bg-center shadow-sm"
+                    style={{
+                      backgroundImage: `url('${avatarSrc}')`,
+                    }}
+                  ></div>
+                  {activeFrameUrl && (
+                    <img
+                      src={activeFrameUrl.startsWith("http") ? activeFrameUrl : `${API_BASE_URL}${activeFrameUrl}`}
+                      alt="Avatar Frame"
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+                    />
+                  )}
+                </div>
               </NavLink>
 
               {/* Logout Button */}

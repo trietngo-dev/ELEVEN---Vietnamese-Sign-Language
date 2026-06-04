@@ -10,4 +10,5 @@ public interface IUserBadgeService
     Task<UserBadgeResponse> CreateAsync(CreateUserBadgeRequest request, CancellationToken cancellationToken = default);
     Task<UserBadgeResponse?> UpdateAsync(long id, UpdateUserBadgeRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
+    Task CheckAndAwardBadgesAsync(long userId, CancellationToken cancellationToken = default);
 }

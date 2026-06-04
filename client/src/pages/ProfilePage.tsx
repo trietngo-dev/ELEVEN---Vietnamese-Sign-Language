@@ -74,6 +74,9 @@ export default function ProfilePage() {
 
   // User stats states
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [activeFrameUrl, setActiveFrameUrl] = useState<string | null>(null);
+  const [allBadges, setAllBadges] = useState<any[]>([]);
+  const [userBadges, setUserBadges] = useState<any[]>([]);
   const [coursesCount, setCoursesCount] = useState<number>(0);
   const [vocabCount, setVocabCount] = useState<number>(0);
   const [badgesCount, setBadgesCount] = useState<number>(0);
@@ -84,8 +87,8 @@ export default function ProfilePage() {
   // Select deterministic random background cover based on user.id
   const coverBg = BACKGROUNDS[(user?.id || 0) % BACKGROUNDS.length];
 
-  // Load avatar dynamically from users and media_assets tables
-  useEffect(() => {
+  // Load avatar and frame dynamically
+  const loadAvatarAndFrame = () => {
     if (!user?.id) return;
     const token = tokenStorage.getToken();
     const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
@@ -102,9 +105,45 @@ export default function ProfilePage() {
       .then((mediaData) => {
         if (mediaData && mediaData.fileUrl) {
           setAvatarUrl(mediaData.fileUrl);
+        } else {
+          setAvatarUrl(null);
         }
       })
       .catch((e) => console.error("Error loading user avatar in ProfilePage", e));
+
+    fetch(`${API_BASE_URL}/api/user_profiles/${user.id}`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((profileData) => {
+        if (profileData && profileData.activeFrameId) {
+          fetch(`${API_BASE_URL}/api/avatar-frames`, { headers })
+            .then(res => res.ok ? res.json() : [])
+            .then((frames: any[]) => {
+              const activeFrame = frames.find(f => f.id === profileData.activeFrameId);
+              if (activeFrame) {
+                setActiveFrameUrl(activeFrame.imageUrl);
+              } else {
+                setActiveFrameUrl(null);
+              }
+            })
+            .catch(() => setActiveFrameUrl(null));
+        } else {
+          setActiveFrameUrl(null);
+        }
+      })
+      .catch(() => setActiveFrameUrl(null));
+  };
+
+  useEffect(() => {
+    loadAvatarAndFrame();
+
+    const handleAvatarChange = () => {
+      loadAvatarAndFrame();
+    };
+
+    window.addEventListener("avatarChanged", handleAvatarChange);
+    return () => {
+      window.removeEventListener("avatarChanged", handleAvatarChange);
+    };
   }, [user]);
 
   // Load profile from API
@@ -254,21 +293,34 @@ export default function ProfilePage() {
         setCoursesCount(0);
       });
 
-    // 3. Fetch user badges
-    fetch(`${API_BASE_URL}/api/user_badges`, { headers })
+    // 3. Fetch all system badges
+    fetch(`${API_BASE_URL}/api/badges?page=1&pageSize=100`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setAllBadges(data.items || (Array.isArray(data) ? data : []));
+        }
+      })
+      .catch(() => {});
+
+    // 4. Fetch user badges
+    fetch(`${API_BASE_URL}/api/user_badges?page=1&pageSize=100`, { headers })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
           const items = data.items || (Array.isArray(data) ? data : []);
           const filtered = items.filter((b: any) => b.userId === user.id);
+          setUserBadges(filtered);
           setBadgesCount(filtered.length);
         } else {
           setBadgesCount(0);
+          setUserBadges([]);
         }
       })
       .catch((e) => {
         console.error("Error loading user badges", e);
         setBadgesCount(0);
+        setUserBadges([]);
       });
   }, [user]);
 
@@ -569,15 +621,24 @@ export default function ProfilePage() {
 
               {/* Avatar (NO NEGATIVE MARGIN) */}
               <div
-                className="relative cursor-pointer group z-20 shrink-0"
+                className="relative cursor-pointer group z-20 shrink-0 w-36 h-36 flex items-center justify-center bg-slate-50 border border-slate-100 rounded-full overflow-visible"
                 onClick={() => fileInputRef.current?.click()}
               >
+                {/* Profile Avatar Circle */}
                 <img
                   src={avatarSrc}
                   alt="Avatar"
-                  className="w-32 h-32 rounded-full border-4 border-slate-50 shadow-md object-cover bg-white hover:brightness-95 transition-all duration-300"
+                  className="w-24 h-24 rounded-full border border-slate-200 shadow-sm object-cover bg-white hover:brightness-95 transition-all duration-300 animate-fade-in"
                 />
-                <div className="absolute bottom-1 right-1 w-8.5 h-8.5 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow group-hover:bg-[#1e3a2f] transition-colors duration-200">
+                {/* Frame Overlay */}
+                {activeFrameUrl && (
+                  <img
+                    src={activeFrameUrl.startsWith("http") ? activeFrameUrl : `${API_BASE_URL}${activeFrameUrl}`}
+                    alt="Active Frame"
+                    className="absolute inset-0 w-full h-full object-contain pointer-events-none z-10"
+                  />
+                )}
+                <div className="absolute bottom-1.5 right-1.5 w-8.5 h-8.5 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow group-hover:bg-[#1e3a2f] transition-colors duration-200 z-25">
                   <Camera size={13} className="text-white" />
                 </div>
                 <input
@@ -752,45 +813,54 @@ export default function ProfilePage() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 gap-6">
+                {allBadges.length > 0 ? (
+                  allBadges.map((badge) => {
+                    const isEarned = userBadges.some(ub => ub.badgeId === badge.id);
+                    
+                    const emojiMap: Record<string, string> = {
+                      START: "🚀",
+                      STREAK_7D: "🌟",
+                      STREAK_3D: "🔥",
+                      STREAK_5D: "⚡",
+                      STREAK_30D: "👑",
+                      STREAK_365D: "🏆",
+                      DETERMINED: "🎯",
+                      COLLECTOR: "🎒"
+                    };
+                    const emoji = emojiMap[badge.code] || "🏅";
 
-                {/* Badge 1: Quyết tâm */}
-                <div className="flex flex-col items-center text-center gap-2 group cursor-pointer">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-yellow-100 to-amber-300 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl">🎯</div>
+                    return (
+                      <div 
+                        key={badge.id} 
+                        className={`flex flex-col items-center text-center gap-2 group cursor-pointer ${!isEarned ? "opacity-45" : ""}`}
+                        title={badge.description}
+                      >
+                        <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${
+                          isEarned 
+                            ? badge.code === "COLLECTOR" ? "from-purple-100 to-indigo-300" :
+                              badge.code === "DETERMINED" ? "from-yellow-100 to-amber-300" :
+                              badge.code.startsWith("STREAK") ? "from-red-100 to-orange-300" :
+                              "from-sky-100 to-blue-300"
+                            : "from-slate-100 to-slate-200"
+                        } p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm`}>
+                          <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl transition-all duration-300">
+                            {emoji}
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-slate-700 mt-1">{badge.name}</span>
+                        <span className={`text-[9px] font-semibold uppercase leading-none px-2 py-0.5 rounded-full border ${
+                          isEarned ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-slate-400 bg-slate-50 border-slate-100"
+                        }`}>
+                          {isEarned ? "Đã nhận" : "Khóa"}
+                        </span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full py-6 text-center text-slate-400 text-xs font-semibold select-none">
+                    Đang tải danh hiệu...
                   </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Quyết tâm</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase leading-none bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Đã nhận</span>
-                </div>
-
-                {/* Badge 2: Khởi đầu */}
-                <div className="flex flex-col items-center text-center gap-2 group cursor-pointer">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-sky-100 to-blue-300 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl">🚀</div>
-                  </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Khởi đầu</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase leading-none bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Đã nhận</span>
-                </div>
-
-                {/* Badge 3: Kỷ lục streak (dynamic check) */}
-                <div className={`flex flex-col items-center text-center gap-2 group cursor-pointer ${loginStreak < 3 ? "opacity-45" : ""}`}>
-                  <div className={`w-20 h-20 rounded-full bg-gradient-to-tr ${loginStreak >= 3 ? "from-red-100 to-orange-300" : "from-slate-100 to-slate-200"} p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm`}>
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl filter grayscale-[40%] group-hover:grayscale-0 transition-all duration-300">🔥</div>
-                  </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Kỷ lục streak</span>
-                  <span className={`text-[9px] font-semibold uppercase leading-none px-2 py-0.5 rounded-full border ${loginStreak >= 3 ? "text-orange-600 bg-orange-50 border-orange-100" : "text-slate-400 bg-slate-50 border-slate-100"}`}>
-                    {loginStreak >= 3 ? "Đã nhận" : "Khóa (3 ngày)"}
-                  </span>
-                </div>
-
-                {/* Badge 4: Chuyên cần (Lock) */}
-                <div className="flex flex-col items-center text-center gap-2 group cursor-pointer opacity-45">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 p-0.5 group-hover:scale-105 transition-transform duration-300 shadow-sm">
-                    <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-3xl filter grayscale">🌟</div>
-                  </div>
-                  <span className="text-xs font-black text-slate-700 mt-1">Chuyên cần</span>
-                  <span className="text-[9px] font-semibold text-slate-400 uppercase leading-none bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">Khóa (10 ngày)</span>
-                </div>
-
+                )}
               </div>
             </div>
 

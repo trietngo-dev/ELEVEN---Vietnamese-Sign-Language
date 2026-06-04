@@ -45,6 +45,7 @@ public sealed class UserProfileService(
             PreferredSignVariant = request.PreferredSignVariant,
             CurrentStreakDays = request.CurrentStreakDays,
             TotalXp = request.TotalXp,
+            ActiveFrameId = request.ActiveFrameId,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -69,6 +70,7 @@ public sealed class UserProfileService(
         entity.PreferredSignVariant = request.PreferredSignVariant;
         entity.CurrentStreakDays = request.CurrentStreakDays;
         entity.TotalXp = request.TotalXp;
+        entity.ActiveFrameId = request.ActiveFrameId;
         entity.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
@@ -94,6 +96,7 @@ public sealed class UserProfileService(
             PreferredSignVariant = entity.PreferredSignVariant,
             CurrentStreakDays = entity.CurrentStreakDays,
             TotalXp = entity.TotalXp,
+            ActiveFrameId = entity.ActiveFrameId,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };
