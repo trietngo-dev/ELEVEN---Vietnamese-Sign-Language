@@ -22,6 +22,11 @@ import {
 import { Link } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
 
+import userBg1 from "../assets/user_background_1.png";
+import userBg2 from "../assets/user_background_2.png";
+import userBg3 from "../assets/user_background_3.png";
+
+const BACKGROUNDS = [userBg1, userBg2, userBg3];
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
 interface UserProfile {
@@ -75,6 +80,9 @@ export default function ProfilePage() {
   const [learningHours, setLearningHours] = useState<number>(0);
   const [completedLessonsCount, setCompletedLessonsCount] = useState<number>(0);
   const [loginStreak, setLoginStreak] = useState<number>(0);
+
+  // Select deterministic random background cover based on user.id
+  const coverBg = BACKGROUNDS[(user?.id || 0) % BACKGROUNDS.length];
 
   // Load avatar dynamically from users and media_assets tables
   useEffect(() => {
@@ -542,29 +550,31 @@ export default function ProfilePage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         
         {/* Banner Cover Photo */}
-        <div className="relative h-44 md:h-64 w-full rounded-t-3xl bg-gradient-to-r from-[#162f25] via-[#2d6a4f] to-[#40916c] overflow-hidden shadow-sm">
-          {/* Decorative graphic nodes */}
-          <div className="absolute inset-0 opacity-15 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-          <div className="absolute top-1/2 left-1/4 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl -translate-y-1/2" />
-          <div className="absolute top-0 right-10 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl -translate-y-1/3" />
+        <div className="relative h-44 md:h-64 w-full rounded-t-3xl overflow-hidden shadow-sm">
+          <img
+            src={coverBg}
+            alt="Profile Cover Background"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/10 z-0" />
         </div>
 
-        {/* Profile Card Header (Overlapped) */}
-        <div className="bg-white rounded-b-3xl border-x border-b border-slate-100 p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.02)] -mt-2 relative z-10 mb-8">
-          <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+        {/* Profile Card Header (Normal Flow - No Overlap into Cover Photo) */}
+        <div className="bg-white rounded-b-3xl border-x border-b border-slate-100 p-6 md:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.02)] relative z-10 mb-8">
+          <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-6">
             
             {/* Left Column: Avatar + Profile text info */}
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left w-full">
+            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left w-full">
               
-              {/* Overlapping Avatar */}
+              {/* Avatar (NO NEGATIVE MARGIN) */}
               <div
-                className="relative cursor-pointer group -mt-20 md:-mt-24 z-20 shrink-0"
+                className="relative cursor-pointer group z-20 shrink-0"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <img
                   src={avatarSrc}
                   alt="Avatar"
-                  className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover bg-white hover:brightness-95 transition-all duration-300"
+                  className="w-32 h-32 rounded-full border-4 border-slate-50 shadow-md object-cover bg-white hover:brightness-95 transition-all duration-300"
                 />
                 <div className="absolute bottom-1 right-1 w-8.5 h-8.5 bg-[#2d6a4f] rounded-full flex items-center justify-center border-2 border-white shadow group-hover:bg-[#1e3a2f] transition-colors duration-200">
                   <Camera size={13} className="text-white" />
@@ -603,7 +613,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Right Column: Subscription Card */}
+            {/* Right Column: Subscription Card (Horizontal Aligned with Avatar) */}
             <div className="w-full md:w-72 shrink-0 z-10 mt-2 md:mt-0">
               {renderSubscriptionCard()}
             </div>
@@ -802,11 +812,11 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Log out section */}
-            <div className="pt-2">
+            {/* Log out section (Centered horizontally) */}
+            <div className="pt-2 flex justify-center w-full">
               <button
                 onClick={logout}
-                className="w-full md:w-auto px-8 py-3 rounded-2xl bg-red-50 text-red-500 font-bold border border-red-100 hover:bg-red-100 hover:text-red-600 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95"
+                className="px-8 py-3 rounded-2xl bg-red-50 text-red-500 font-bold border border-red-100 hover:bg-red-100 hover:text-red-600 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95"
               >
                 <LogOut size={16} /> Đăng xuất tài khoản
               </button>
@@ -840,7 +850,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <form onSubmit={handleSave} className="space-y-4 max-w-2xl">
+              <form onSubmit={handleSave} className="space-y-4 w-full">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Họ và tên</label>
@@ -908,7 +918,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <form onSubmit={handlePasswordChange} className="space-y-4 max-w-2xl">
+              <form onSubmit={handlePasswordChange} className="space-y-4 w-full">
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider">Mật khẩu hiện tại</label>
                   <input
@@ -977,7 +987,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              <div className="space-y-4 max-w-2xl">
+              <div className="space-y-4 w-full">
                 <label className="flex items-start gap-3 p-3.5 rounded-2xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors duration-200">
                   <input
                     type="checkbox"
