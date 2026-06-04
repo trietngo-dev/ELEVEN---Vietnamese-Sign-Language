@@ -31,7 +31,9 @@ const AdminFrames: React.FC = () => {
 
   const fetchFrames = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/avatar-frames`);
+      const token = tokenStorage.getToken();
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch(`${API_BASE_URL}/api/avatar-frames`, { headers });
       if (response.ok) {
         const data = await response.json();
         setFrames(data);

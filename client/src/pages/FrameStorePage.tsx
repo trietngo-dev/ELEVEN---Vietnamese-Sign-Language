@@ -33,7 +33,7 @@ const FrameStorePage: React.FC = () => {
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
       // 1. Fetch all active frames
-      const framesRes = await fetch(`${API_BASE_URL}/api/avatar-frames`);
+      const framesRes = await fetch(`${API_BASE_URL}/api/avatar-frames`, { headers });
       let framesList: AvatarFrame[] = [];
       if (framesRes.ok) {
         framesList = await framesRes.json();
