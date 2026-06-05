@@ -590,7 +590,7 @@ class LandmarksPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (features.length < 306) return;
+    if (features.isEmpty) return;
 
     final paintJoint = Paint()
       ..color = const Color(0xFF00FFCC) // Neon teal
@@ -603,7 +603,7 @@ class LandmarksPainter extends CustomPainter {
       ..style = PaintingStyle.fill;
 
     final paintFace = Paint()
-      ..color = Colors.amberAccent.withValues(alpha: 0.85) // Premium warm amber dots
+      ..color = Colors.amberAccent.withValues(alpha: 0.6) // Premium warm amber dots
       ..style = PaintingStyle.fill;
 
     final paintHandJoint = Paint()
@@ -619,102 +619,172 @@ class LandmarksPainter extends CustomPainter {
     // Helper to get Offset for keypoint index
     Offset? getPoint(int index) {
       final int start = index * 3;
+      if (start + 2 >= features.length) return null;
       final double x = features[start];
       final double y = features[start + 1];
       
-      // If point is empty/un-detected
       if (x == 0.0 && y == 0.0) return null;
 
-      // Because front camera preview is mirrored on screen, we mirror the X coordinate
-      // to match what the user sees on the camera viewport.
-      final double drawX = (1.0 - x) * size.width;
+      // The native camera frame is already rotated and flipped (mirrored) in Kotlin,
+      // so we map coordinates directly without subtracting from 1.0!
+      final double drawX = x * size.width;
       final double drawY = y * size.height;
       return Offset(drawX, drawY);
     }
 
-    // 1. Draw Pose Joints
-    // Selected indices: 0 (nose), 11 (L shoulder), 12 (R shoulder), 13 (L elbow), 14 (R elbow), 15 (L wrist), 16 (R wrist), 23 (L hip), 24 (R hip)
-    // Map to indices 0 to 8:
-    final nose = getPoint(0);
-    final lShoulder = getPoint(1);
-    final rShoulder = getPoint(2);
-    final lElbow = getPoint(3);
-    final rElbow = getPoint(4);
-    final lWrist = getPoint(5);
-    final rWrist = getPoint(6);
-    final lHip = getPoint(7);
-    final rHip = getPoint(8);
-
-    // Draw connection lines
-    void drawLine(Offset? p1, Offset? p2) {
-      if (p1 != null && p2 != null) {
-        canvas.drawLine(p1, p2, paintJoint);
-      }
-    }
-
-    drawLine(lShoulder, rShoulder);
-    drawLine(lShoulder, lElbow);
-    drawLine(lElbow, lWrist);
-    drawLine(rShoulder, rElbow);
-    drawLine(rElbow, rWrist);
-    drawLine(lShoulder, lHip);
-    drawLine(rShoulder, rHip);
-    drawLine(lHip, rHip);
-
-    // Draw Pose dots
-    final posePoints = [nose, lShoulder, rShoulder, lElbow, rElbow, lWrist, rWrist, lHip, rHip];
-    for (final pt in posePoints) {
-      if (pt != null) {
-        canvas.drawCircle(pt, 5.0, paintDot);
-      }
-    }
-
-    // 2. Draw Face Contours
-    // Selected face indices mapping starts at keypoint index 9 up to 59 (51 points)
-    for (int i = 9; i < 60; i++) {
-      final pt = getPoint(i);
-      if (pt != null) {
-        canvas.drawCircle(pt, 2.0, paintFace);
-      }
-    }
-
-    // 3. Draw Hands Skeleton (Left Hand at index 60, Right Hand at index 81)
-    void drawHand(int baseIndex) {
-      final wrist = getPoint(baseIndex + 0);
+    if (features.length >= 1629) {
+      // === DRAW FULL HOLISTIC 1629-FLOAT SKELETON ===
       
-      final thumb = List.generate(4, (i) => getPoint(baseIndex + 1 + i));
-      final indexFinger = List.generate(4, (i) => getPoint(baseIndex + 5 + i));
-      final middleFinger = List.generate(4, (i) => getPoint(baseIndex + 9 + i));
-      final ringFinger = List.generate(4, (i) => getPoint(baseIndex + 13 + i));
-      final pinkyFinger = List.generate(4, (i) => getPoint(baseIndex + 17 + i));
+      // 1. Draw Pose (33 points)
+      final poseConnections = [
+        [11, 12], // shoulders
+        [11, 23], [12, 24], // torso sides
+        [23, 24], // hips
+        [11, 13], [13, 15], // left arm
+        [12, 14], [14, 16], // right arm
+        [23, 25], [25, 27], // left leg
+        [24, 26], [26, 28], // right leg
+        [27, 29], [29, 31], [27, 31], // left foot
+        [28, 30], [30, 32], [28, 32], // right foot
+      ];
 
-      void drawFinger(Offset? start, List<Offset?> finger) {
-        Offset? prev = start;
-        for (final pt in finger) {
-          if (prev != null && pt != null) {
-            canvas.drawLine(prev, pt, paintHandJoint);
-          }
-          prev = pt;
+      for (final conn in poseConnections) {
+        final p1 = getPoint(conn[0]);
+        final p2 = getPoint(conn[1]);
+        if (p1 != null && p2 != null) {
+          canvas.drawLine(p1, p2, paintJoint);
         }
       }
 
-      drawFinger(wrist, thumb);
-      drawFinger(wrist, indexFinger);
-      drawFinger(wrist, middleFinger);
-      drawFinger(wrist, ringFinger);
-      drawFinger(wrist, pinkyFinger);
-
-      // Draw hand joints dots
-      for (int i = 0; i < 21; i++) {
-        final pt = getPoint(baseIndex + i);
+      for (int i = 0; i < 33; i++) {
+        final pt = getPoint(i);
         if (pt != null) {
-          canvas.drawCircle(pt, 3.0, paintHandDot);
+          canvas.drawCircle(pt, 4.0, paintDot);
         }
       }
-    }
 
-    drawHand(60); // Left Hand
-    drawHand(81); // Right Hand
+      // 2. Draw Face (468 points, indices 33 to 500)
+      for (int i = 33; i <= 500; i++) {
+        final pt = getPoint(i);
+        if (pt != null) {
+          canvas.drawCircle(pt, 1.0, paintFace);
+        }
+      }
+
+      // 3. Draw Hands (Left Hand starts at index 501, Right Hand starts at index 522)
+      void drawHand(int baseIndex) {
+        final wrist = getPoint(baseIndex + 0);
+        
+        final thumb = List.generate(4, (i) => getPoint(baseIndex + 1 + i));
+        final indexFinger = List.generate(4, (i) => getPoint(baseIndex + 5 + i));
+        final middleFinger = List.generate(4, (i) => getPoint(baseIndex + 9 + i));
+        final ringFinger = List.generate(4, (i) => getPoint(baseIndex + 13 + i));
+        final pinkyFinger = List.generate(4, (i) => getPoint(baseIndex + 17 + i));
+
+        void drawFinger(Offset? start, List<Offset?> finger) {
+          Offset? prev = start;
+          for (final pt in finger) {
+            if (prev != null && pt != null) {
+              canvas.drawLine(prev, pt, paintHandJoint);
+            }
+            prev = pt;
+          }
+        }
+
+        drawFinger(wrist, thumb);
+        drawFinger(wrist, indexFinger);
+        drawFinger(wrist, middleFinger);
+        drawFinger(wrist, ringFinger);
+        drawFinger(wrist, pinkyFinger);
+
+        // Draw hand joints dots
+        for (int i = 0; i < 21; i++) {
+          final pt = getPoint(baseIndex + i);
+          if (pt != null) {
+            canvas.drawCircle(pt, 2.5, paintHandDot);
+          }
+        }
+      }
+
+      drawHand(501); // Left Hand
+      drawHand(522); // Right Hand
+
+    } else if (features.length >= 306) {
+      // === FALLBACK FOR LEGACY 306-FLOAT SKELETON ===
+      final nose = getPoint(0);
+      final lShoulder = getPoint(1);
+      final rShoulder = getPoint(2);
+      final lElbow = getPoint(3);
+      final rElbow = getPoint(4);
+      final lWrist = getPoint(5);
+      final rWrist = getPoint(6);
+      final lHip = getPoint(7);
+      final rHip = getPoint(8);
+
+      void drawLine(Offset? p1, Offset? p2) {
+        if (p1 != null && p2 != null) {
+          canvas.drawLine(p1, p2, paintJoint);
+        }
+      }
+
+      drawLine(lShoulder, rShoulder);
+      drawLine(lShoulder, lElbow);
+      drawLine(lElbow, lWrist);
+      drawLine(rShoulder, rElbow);
+      drawLine(rElbow, rWrist);
+      drawLine(lShoulder, lHip);
+      drawLine(rShoulder, rHip);
+      drawLine(lHip, rHip);
+
+      final posePoints = [nose, lShoulder, rShoulder, lElbow, rElbow, lWrist, rWrist, lHip, rHip];
+      for (final pt in posePoints) {
+        if (pt != null) {
+          canvas.drawCircle(pt, 5.0, paintDot);
+        }
+      }
+
+      for (int i = 9; i < 60; i++) {
+        final pt = getPoint(i);
+        if (pt != null) {
+          canvas.drawCircle(pt, 2.0, paintFace);
+        }
+      }
+
+      void drawHand(int baseIndex) {
+        final wrist = getPoint(baseIndex + 0);
+        final thumb = List.generate(4, (i) => getPoint(baseIndex + 1 + i));
+        final indexFinger = List.generate(4, (i) => getPoint(baseIndex + 5 + i));
+        final middleFinger = List.generate(4, (i) => getPoint(baseIndex + 9 + i));
+        final ringFinger = List.generate(4, (i) => getPoint(baseIndex + 13 + i));
+        final pinkyFinger = List.generate(4, (i) => getPoint(baseIndex + 17 + i));
+
+        void drawFinger(Offset? start, List<Offset?> finger) {
+          Offset? prev = start;
+          for (final pt in finger) {
+            if (prev != null && pt != null) {
+              canvas.drawLine(prev, pt, paintHandJoint);
+            }
+            prev = pt;
+          }
+        }
+
+        drawFinger(wrist, thumb);
+        drawFinger(wrist, indexFinger);
+        drawFinger(wrist, middleFinger);
+        drawFinger(wrist, ringFinger);
+        drawFinger(wrist, pinkyFinger);
+
+        for (int i = 0; i < 21; i++) {
+          final pt = getPoint(baseIndex + i);
+          if (pt != null) {
+            canvas.drawCircle(pt, 3.0, paintHandDot);
+          }
+        }
+      }
+
+      drawHand(60); // Left Hand
+      drawHand(81); // Right Hand
+    }
   }
 
   @override
