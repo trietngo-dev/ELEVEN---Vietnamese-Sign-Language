@@ -9,7 +9,7 @@ class ApiConstants {
     }
     // For Android Emulator, 10.0.2.2 points to the host's localhost loopback
     if (Platform.isAndroid) {
-      return "http://192.168.2.62:5000";
+      return "http://10.87.33.118:5000";
     }
     return "http://localhost:5000";
   }

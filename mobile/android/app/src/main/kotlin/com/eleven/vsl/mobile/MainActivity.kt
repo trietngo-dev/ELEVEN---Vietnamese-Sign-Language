@@ -11,8 +11,8 @@ import android.graphics.YuvImage
 import android.os.Bundle
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
-import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
-import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
+import com.google.mediapipe.tasks.vision.holisticlandmarker.HolisticLandmarker
+import com.google.mediapipe.tasks.vision.holisticlandmarker.HolisticLandmarkerResult
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -22,19 +22,27 @@ import android.util.Log
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.eleven.vsl/hand_tracker"
-    private var handLandmarker: HandLandmarker? = null
+    private var holisticLandmarker: HolisticLandmarker? = null
+
+    private val SELECTED_POSE_INDICES = intArrayOf(0, 11, 12, 13, 14, 15, 16, 23, 24)
+    private val SELECTED_FACE_INDICES = intArrayOf(
+        61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317,
+        14, 87, 178, 88, 95, 78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 46, 53, 52,
+        65, 55, 70, 63, 105, 66, 107, 276, 283, 282, 295, 285, 300, 293, 334, 296,
+        336
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        initializeHandLandmarker()
+        initializeHolisticLandmarker()
     }
 
-    private fun initializeHandLandmarker() {
+    private fun initializeHolisticLandmarker() {
         try {
             // Load model file from assets
-            val modelPath = copyAssetToStorage("hand_landmarker.task")
+            val modelPath = copyAssetToStorage("holistic_landmarker.task")
             if (modelPath == null) {
-                Log.e("MainActivity", "Failed to copy hand_landmarker.task from assets")
+                Log.e("MainActivity", "Failed to copy holistic_landmarker.task from assets")
                 return
             }
 
@@ -49,19 +57,18 @@ class MainActivity : FlutterActivity() {
                 baseOptionsBuilder.setDelegate(com.google.mediapipe.tasks.core.Delegate.CPU)
             }
 
-            val options = HandLandmarker.HandLandmarkerOptions.builder()
+            val options = HolisticLandmarker.HolisticLandmarkerOptions.builder()
                 .setBaseOptions(baseOptionsBuilder.build())
-                .setMinHandDetectionConfidence(0.5f)
-                .setMinTrackingConfidence(0.5f)
-                .setMinHandPresenceConfidence(0.5f)
-                .setNumHands(2)
+                .setMinFaceDetectionConfidence(0.5f)
+                .setMinPoseDetectionConfidence(0.5f)
+                .setMinHandLandmarksConfidence(0.5f)
                 .setRunningMode(RunningMode.IMAGE)
                 .build()
 
-            handLandmarker = HandLandmarker.createFromOptions(this, options)
-            Log.i("MainActivity", "Successfully initialized MediaPipe Hand Landmarker")
+            holisticLandmarker = HolisticLandmarker.createFromOptions(this, options)
+            Log.i("MainActivity", "Successfully initialized MediaPipe Holistic Landmarker")
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error initializing MediaPipe Hand Landmarker: $e")
+            Log.e("MainActivity", "Error initializing MediaPipe Holistic Landmarker: $e")
         }
     }
 
@@ -101,8 +108,8 @@ class MainActivity : FlutterActivity() {
                     return@setMethodCallHandler
                 }
 
-                if (handLandmarker == null) {
-                    result.error("NOT_INITIALIZED", "Hand landmarker is not initialized", null)
+                if (holisticLandmarker == null) {
+                    result.error("NOT_INITIALIZED", "Holistic landmarker is not initialized", null)
                     return@setMethodCallHandler
                 }
 
@@ -111,15 +118,18 @@ class MainActivity : FlutterActivity() {
                     try {
                         val bitmap = nv21ToBitmap(bytes, width, height)
                         val mpImage = BitmapImageBuilder(bitmap).build()
-                        val detectionResult = handLandmarker?.detect(mpImage)
-                        val flatLandmarks = parseHandLandmarks(detectionResult)
+                        val detectionResult = holisticLandmarker?.detect(mpImage)
+                        val flatLandmarks = parseHolisticLandmarks(detectionResult)
+                        
+                        // Recycle bitmap
+                        bitmap.recycle()
                         
                         runOnUiThread {
                             result.success(flatLandmarks)
                         }
                     } catch (e: Exception) {
                         runOnUiThread {
-                            result.error("INFERENCE_ERROR", "Error during hand tracking inference: $e", null)
+                            result.error("INFERENCE_ERROR", "Error during holistic tracking inference: $e", null)
                         }
                     }
                 }.start()
@@ -134,38 +144,117 @@ class MainActivity : FlutterActivity() {
         val out = ByteArrayOutputStream()
         yuvImage.compressToJpeg(Rect(0, 0, width, height), 90, out)
         val imageBytes = out.toByteArray()
-        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+
+        // Post-processing: crop to center square, rotate 270 degrees, and mirror horizontally
+        val w = bitmap.width
+        val h = bitmap.height
+        val minDim = Math.min(w, h)
+        val startX = (w - minDim) / 2
+        val startY = (h - minDim) / 2
+
+        val cropped = Bitmap.createBitmap(bitmap, startX, startY, minDim, minDim)
+
+        val matrix = android.graphics.Matrix()
+        // Rotate 270 degrees for portrait orientation
+        matrix.postRotate(270f)
+        // Flip horizontally to simulate mirrored selfie camera view
+        matrix.postScale(-1f, 1f)
+
+        val transformed = Bitmap.createBitmap(cropped, 0, 0, minDim, minDim, matrix, true)
+
+        if (cropped != bitmap) {
+            cropped.recycle()
+        }
+        bitmap.recycle()
+
+        return transformed
     }
 
-    private fun parseHandLandmarks(result: HandLandmarkerResult?): List<Double> {
+    private fun parseHolisticLandmarks(result: HolisticLandmarkerResult?): List<Double> {
         val list = ArrayList<Double>()
-        // Initialize with 126 zeroes (21 landmarks * 3 coordinates * 2 hands)
-        for (i in 0 until 126) {
-            list.add(0.0)
+
+        // 1. Pose (9 landmarks -> 27 floats)
+        val poseLandmarks = result?.poseLandmarks()
+        if (poseLandmarks != null && poseLandmarks.isNotEmpty()) {
+            for (idx in SELECTED_POSE_INDICES) {
+                if (idx < poseLandmarks.size) {
+                    val lm = poseLandmarks[idx]
+                    list.add(lm.x().toDouble())
+                    list.add(lm.y().toDouble())
+                    list.add(lm.z().toDouble())
+                } else {
+                    list.add(0.0)
+                    list.add(0.0)
+                    list.add(0.0)
+                }
+            }
+        } else {
+            for (i in 0 until 9 * 3) {
+                list.add(0.0)
+            }
         }
 
-        if (result == null) return list
+        // 2. Face (51 landmarks -> 153 floats)
+        val faceLandmarks = result?.faceLandmarks()
+        if (faceLandmarks != null && faceLandmarks.isNotEmpty()) {
+            for (idx in SELECTED_FACE_INDICES) {
+                if (idx < faceLandmarks.size) {
+                    val lm = faceLandmarks[idx]
+                    list.add(lm.x().toDouble())
+                    list.add(lm.y().toDouble())
+                    list.add(lm.z().toDouble())
+                } else {
+                    list.add(0.0)
+                    list.add(0.0)
+                    list.add(0.0)
+                }
+            }
+        } else {
+            for (i in 0 until 51 * 3) {
+                list.add(0.0)
+            }
+        }
 
-        val landmarks = result.landmarks()
-        val handednesses = result.handednesses()
+        // 3. Left Hand (21 landmarks -> 63 floats)
+        val leftHandLandmarks = result?.leftHandLandmarks()
+        if (leftHandLandmarks != null && leftHandLandmarks.isNotEmpty()) {
+            for (i in 0 until 21) {
+                if (i < leftHandLandmarks.size) {
+                    val lm = leftHandLandmarks[i]
+                    list.add(lm.x().toDouble())
+                    list.add(lm.y().toDouble())
+                    list.add(lm.z().toDouble())
+                } else {
+                    list.add(0.0)
+                    list.add(0.0)
+                    list.add(0.0)
+                }
+            }
+        } else {
+            for (i in 0 until 21 * 3) {
+                list.add(0.0)
+            }
+        }
 
-        for (handIdx in 0 until landmarks.size) {
-            if (handIdx >= handednesses.size) break
-            val handLandmarks = landmarks[handIdx]
-            val handednessCategory = handednesses[handIdx]
-            if (handednessCategory.isEmpty()) continue
-            val label = handednessCategory[0].categoryName() // "Left" or "Right"
-            
-            // Hand coordinates are in normalized 0.0 - 1.0 landscape image coordinates.
-            // Left Hand maps to index 0 - 62, Right Hand maps to index 63 - 125.
-            val offset = if (label == "Left") 0 else 63
-
-            for (lmIdx in 0 until 21) {
-                if (lmIdx >= handLandmarks.size) break
-                val lm = handLandmarks[lmIdx]
-                list[offset + lmIdx * 3] = lm.x().toDouble()
-                list[offset + lmIdx * 3 + 1] = lm.y().toDouble()
-                list[offset + lmIdx * 3 + 2] = lm.z().toDouble()
+        // 4. Right Hand (21 landmarks -> 63 floats)
+        val rightHandLandmarks = result?.rightHandLandmarks()
+        if (rightHandLandmarks != null && rightHandLandmarks.isNotEmpty()) {
+            for (i in 0 until 21) {
+                if (i < rightHandLandmarks.size) {
+                    val lm = rightHandLandmarks[i]
+                    list.add(lm.x().toDouble())
+                    list.add(lm.y().toDouble())
+                    list.add(lm.z().toDouble())
+                } else {
+                    list.add(0.0)
+                    list.add(0.0)
+                    list.add(0.0)
+                }
+            }
+        } else {
+            for (i in 0 until 21 * 3) {
+                list.add(0.0)
             }
         }
 
