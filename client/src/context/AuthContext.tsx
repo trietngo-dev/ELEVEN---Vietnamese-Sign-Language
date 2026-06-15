@@ -7,7 +7,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (data: LoginRequest) => Promise<any>;
+  loginWithGoogle: (idToken: string, fullName?: string) => Promise<any>;
   register: (data: RegisterRequest) => Promise<void>;
+  deleteAccount: (userId: number) => Promise<void>;
   logout: () => void;
 }
 
@@ -50,9 +52,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (idToken: string, fullName?: string) => {
+    try {
+      const response = await authApi.loginWithGoogle(idToken, fullName);
+      const userData = {
+        id: response.userId,
+        email: response.email,
+        fullName: response.fullName,
+        role: response.roleCode
+      };
+      
+      tokenStorage.setToken(response.accessToken);
+      tokenStorage.setUser(userData);
+      
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const register = async (data: RegisterRequest) => {
     try {
       await authApi.register(data);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const deleteAccount = async (userId: number) => {
+    try {
+      await authApi.deleteAccount(userId);
+      logout();
     } catch (error) {
       throw error;
     }
@@ -66,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, loginWithGoogle, register, deleteAccount, logout }}>
       {children}
     </AuthContext.Provider>
   );

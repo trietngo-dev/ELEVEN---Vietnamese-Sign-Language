@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../bloc/auth_bloc.dart';
 import 'home_screen.dart';
 
@@ -24,6 +25,36 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+      await googleSignIn.initialize();
+      
+      final googleUser = await googleSignIn.authenticate();
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken != null) {
+        if (mounted) {
+          context.read<AuthBloc>().add(AuthGoogleLoginRequested(idToken, fullName: googleUser.displayName));
+        }
+      } else {
+        throw Exception("Không thể lấy ID Token từ Google.");
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Lỗi đăng nhập Google: ${e.toString().replaceAll('Exception: ', '')}"),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
   }
 
   void _submit() {
@@ -201,7 +232,48 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
+                        
+                        // Divider "Hoặc"
+                        Row(
+                          children: [
+                            const Expanded(child: Divider(endIndent: 10, indent: 20)),
+                            Text(
+                              "Hoặc",
+                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey, fontWeight: FontWeight.bold),
+                            ),
+                            const Expanded(child: Divider(indent: 10, endIndent: 20)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        
+                        // Google Login Button
+                        state is AuthLoading
+                            ? const SizedBox.shrink()
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Colors.black87,
+                                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: Image.network(
+                                    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
+                                    height: 18,
+                                  ),
+                                  label: const Text(
+                                    "Đăng nhập bằng Google",
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  onPressed: _signInWithGoogle,
+                                ),
+                              ),
+                        const SizedBox(height: 20),
                         
                         // Toggle View
                         TextButton(

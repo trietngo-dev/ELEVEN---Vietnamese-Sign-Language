@@ -19,9 +19,11 @@ import {
   Mail,
   Bookmark,
   Pencil,
-  Sparkles
+  Sparkles,
+  Trash2
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { tokenStorage } from "../lib/auth";
 
 import userBg1 from "../assets/user_background_1.png";
@@ -42,7 +44,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, deleteAccount, logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editMenuRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +75,23 @@ export default function ProfilePage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [studyReminders, setStudyReminders] = useState(true);
   const [notifSavedMessage, setNotifSavedMessage] = useState("");
+
+  // Delete account states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteAccount = async () => {
+    if (!user?.id) return;
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteAccount(user.id);
+    } catch (err: any) {
+      setDeleteError(err.message || "Không thể xóa tài khoản. Vui lòng thử lại sau.");
+      setIsDeleting(false);
+    }
+  };
 
   // Subscription states
   const [activeSub, setActiveSub] = useState<any | null>(null);
@@ -1115,10 +1134,104 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            {/* Card 4: Danger Zone - Delete Account */}
+            <div className="bg-white rounded-3xl p-6 md:p-8 border border-red-100 shadow-[0_4px_20px_rgba(243,65,65,0.015)] animate-fadeIn">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100/20">
+                  <Trash2 size={16} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-800">Vùng nguy hiểm</h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">Xóa vĩnh viễn dữ liệu tài khoản cá nhân của bạn</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl bg-red-50/50 border border-red-100 text-red-800 text-xs leading-relaxed">
+                  <p className="font-bold">Cảnh báo quan trọng:</p>
+                  <ul className="list-disc pl-4 mt-1 space-y-1">
+                    <li>Hành động này không thể hoàn tác.</li>
+                    <li>Tất cả tiến độ học tập, huy hiệu và dữ liệu của bạn sẽ bị hủy hoặc ẩn đi.</li>
+                    <li>Bạn sẽ lập tức đăng xuất và không thể đăng nhập lại bằng tài khoản này.</li>
+                  </ul>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(true)}
+                    className="h-10 px-6 rounded-xl bg-red-600 text-white font-extrabold text-xs shadow-md shadow-red-600/10 hover:bg-red-700 transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                  >
+                    <Trash2 size={13} />
+                    Xóa tài khoản của tôi
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isDeleting && setShowDeleteModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Content */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl p-6 md:p-8 border border-slate-100 shadow-2xl z-10 flex flex-col items-center text-center"
+            >
+              {/* Animated Warning Icon */}
+              <div className="w-16 h-16 rounded-full bg-red-50 text-red-500 flex items-center justify-center border border-red-100 mb-4 animate-pulse">
+                <Trash2 size={28} />
+              </div>
+
+              <h3 className="text-lg font-black text-slate-800">Xác nhận xóa tài khoản?</h3>
+              <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                Tài khoản của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống. Hành động này **không thể hoàn tác**. Bạn có chắc chắn muốn tiếp tục?
+              </p>
+
+              {deleteError && (
+                <div className="w-full mt-4 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 font-semibold text-xs leading-none">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="w-full grid grid-cols-2 gap-3 mt-6">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setShowDeleteModal(false)}
+                  className="h-11 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteAccount}
+                  className="h-11 rounded-xl bg-red-600 text-white font-extrabold text-xs shadow-md shadow-red-600/10 hover:bg-red-700 transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {isDeleting ? "Đang xóa..." : "Xác nhận xóa"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -5,6 +5,7 @@ using EXE101.Application.Models.Users;
 using EXE101.Domain.Entities;
 using EXE101.Domain.Enums;
 using EXE101.Infrastructure.Persistence;
+using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
 
 namespace EXE101.Infrastructure.Services;
@@ -286,6 +287,104 @@ public sealed class UserService(
             LastLoginAt = user.LastLoginAt,
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
+        };
+    }
+
+    public async Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken cancellationToken = default)
+    {
+        GoogleJsonWebSignature.Payload payload;
+        try
+        {
+            payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("Invalid Google token.", ex);
+        }
+
+        var email = NormalizeEmail(payload.Email);
+        var googleUserId = payload.Subject;
+        var name = request.FullName ?? payload.Name ?? "Google User";
+
+        var authAccount = await _dbContext.AuthAccounts
+            .FirstOrDefaultAsync(x => x.Provider == AuthProvider.Google && x.ProviderUserId == googleUserId, cancellationToken);
+
+        User? user = null;
+        if (authAccount != null)
+        {
+            user = await _userRepository.GetByIdAsync(authAccount.UserId, cancellationToken);
+        }
+
+        if (user == null)
+        {
+            user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+
+            if (user == null)
+            {
+                var defaultRoleId = await _dbContext.Roles.AsNoTracking()
+                    .Where(x => x.Code == "user")
+                    .Select(x => x.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (defaultRoleId <= 0)
+                {
+                    throw new InvalidOperationException("Default role 'user' does not exist.");
+                }
+
+                var now = DateTime.UtcNow;
+                user = new User
+                {
+                    RoleId = defaultRoleId,
+                    Email = email,
+                    PasswordHash = null,
+                    FullName = name.Trim(),
+                    Status = UserStatus.Active,
+                    EmailVerifiedAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                user = await _userRepository.AddAsync(user, cancellationToken);
+            }
+
+            var newAuthAccount = new AuthAccount
+            {
+                UserId = user.Id,
+                Provider = AuthProvider.Google,
+                ProviderUserId = googleUserId,
+                ProviderEmail = email,
+                CreatedAt = DateTime.UtcNow
+            };
+            _dbContext.AuthAccounts.Add(newAuthAccount);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (user.Status != UserStatus.Active)
+        {
+            throw new InvalidOperationException("User is not active.");
+        }
+
+        var roleCode = await _dbContext.Roles.AsNoTracking()
+            .Where(x => x.Id == user.RoleId)
+            .Select(x => x.Code)
+            .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
+
+        user.LastLoginAt = DateTime.UtcNow;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        var jwt = _jwtTokenService.GenerateToken(user.Id, user.Email, user.FullName, roleCode);
+
+        return new LoginResponse
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            FullName = user.FullName,
+            RoleCode = roleCode,
+            SessionToken = jwt.AccessToken,
+            AccessToken = jwt.AccessToken,
+            TokenType = "Bearer",
+            ExpiresAtUtc = jwt.ExpiresAtUtc
         };
     }
 }

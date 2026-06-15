@@ -1335,6 +1335,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 _buildFigmaOptionLink(Icons.settings_rounded, 'Cài đặt tài khoản', () {}),
                 Divider(color: Colors.white.withValues(alpha: 0.04), height: 1),
                 _buildFigmaOptionLink(Icons.info_outline_rounded, 'Chính sách bảo mật', () {}),
+                Divider(color: Colors.white.withValues(alpha: 0.04), height: 1),
+                _buildFigmaOptionLink(
+                  Icons.delete_forever_rounded,
+                  'Xóa tài khoản',
+                  () => _showDeleteAccountDialog(context),
+                  textColor: Colors.redAccent,
+                  iconColor: Colors.redAccent,
+                ),
               ],
             ),
           ),
@@ -1440,12 +1448,63 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFigmaOptionLink(IconData icon, String title, VoidCallback onTap) {
+  Widget _buildFigmaOptionLink(
+    IconData icon,
+    String title,
+    VoidCallback onTap, {
+    Color textColor = Colors.white,
+    Color iconColor = Colors.white70,
+  }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.white70, size: 20),
-      title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+      leading: Icon(icon, color: iconColor, size: 20),
+      title: Text(title, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold)),
       trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white30),
       onTap: onTap,
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF131A16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              SizedBox(width: 10),
+              Text(
+                "Xác Nhận Xóa",
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ],
+          ),
+          content: const Text(
+            "Bạn có chắc chắn muốn xóa tài khoản? Hành động này sẽ làm mất toàn bộ tiến trình học tập, huy hiệu và đăng ký VIP của bạn. Hành động này không thể hoàn tác!",
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Hủy", style: TextStyle(color: Colors.white30)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Đóng Dialog
+                context.read<AuthBloc>().add(AuthDeleteAccountRequested(_userUserId));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text("Xóa Vĩnh Viễn", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 
