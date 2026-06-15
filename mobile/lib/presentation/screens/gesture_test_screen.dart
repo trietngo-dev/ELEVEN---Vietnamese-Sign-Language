@@ -91,9 +91,36 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
           if (_latestFeatures == null || _latestFeatures!.length != rawFeatures.length) {
             _latestFeatures = List<double>.from(rawFeatures);
           } else {
-            const double alpha = 0.35; // EMA smoothing factor (0.35 is perfect for fluidity vs latency)
-            for (int i = 0; i < rawFeatures.length; i++) {
-              _latestFeatures![i] = alpha * rawFeatures[i] + (1.0 - alpha) * _latestFeatures![i];
+            const double alpha = 0.35; // EMA smoothing factor
+            for (int i = 0; i < rawFeatures.length; i += 3) {
+              if (i + 2 < rawFeatures.length) {
+                final double curX = rawFeatures[i];
+                final double curY = rawFeatures[i + 1];
+                final double curZ = rawFeatures[i + 2];
+
+                final double prevX = _latestFeatures![i];
+                final double prevY = _latestFeatures![i + 1];
+                final double prevZ = _latestFeatures![i + 2];
+
+                // Nếu điểm hiện tại không được nhận diện, ẩn ngay lập tức (về 0)
+                if (curX == 0.0 && curY == 0.0) {
+                  _latestFeatures![i] = 0.0;
+                  _latestFeatures![i + 1] = 0.0;
+                  _latestFeatures![i + 2] = 0.0;
+                }
+                // Nếu điểm trước đó bằng 0 (vừa xuất hiện lại), nhảy ngay tới điểm mới thay vì lướt từ góc màn hình
+                else if (prevX == 0.0 && prevY == 0.0) {
+                  _latestFeatures![i] = curX;
+                  _latestFeatures![i + 1] = curX != 0.0 ? curY : 0.0;
+                  _latestFeatures![i + 2] = curX != 0.0 ? curZ : 0.0;
+                }
+                // Nếu cả hai đều hợp lệ, làm mịn bằng EMA
+                else {
+                  _latestFeatures![i] = alpha * curX + (1.0 - alpha) * prevX;
+                  _latestFeatures![i + 1] = alpha * curY + (1.0 - alpha) * prevY;
+                  _latestFeatures![i + 2] = alpha * curZ + (1.0 - alpha) * prevZ;
+                }
+              }
             }
           }
         }
@@ -362,7 +389,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                 children: [
                   // 1. Camera Viewport
                   AspectRatio(
-                    aspectRatio: 1, // mirrored square frame matching web
+                    aspectRatio: 3 / 4, // 3:4 aspect ratio to display the full vertical portrait frame
                     child: Card(
                       clipBehavior: Clip.antiAlias,
                       margin: EdgeInsets.zero,
@@ -602,9 +629,11 @@ class LandmarksPainter extends CustomPainter {
       ..color = const Color(0xFF00FFCC)
       ..style = PaintingStyle.fill;
 
+    /*
     final paintFace = Paint()
       ..color = Colors.amberAccent.withValues(alpha: 0.85) // Premium warm amber dots
       ..style = PaintingStyle.fill;
+    */
 
     final paintHandJoint = Paint()
       ..color = const Color(0xFFFF2A85) // Hot neon pink for hands
@@ -625,16 +654,14 @@ class LandmarksPainter extends CustomPainter {
       // If point is empty/un-detected
       if (x == 0.0 && y == 0.0) return null;
 
-      // Because front camera preview is mirrored on screen, we mirror the X coordinate
-      // to match what the user sees on the camera viewport.
-      final double drawX = (1.0 - x) * size.width;
+      // The native camera frame is already rotated and flipped (mirrored) in Kotlin,
+      // so we map coordinates directly without subtracting from 1.0!
+      final double drawX = x * size.width;
       final double drawY = y * size.height;
       return Offset(drawX, drawY);
     }
 
-    // 1. Draw Pose Joints
-    // Selected indices: 0 (nose), 11 (L shoulder), 12 (R shoulder), 13 (L elbow), 14 (R elbow), 15 (L wrist), 16 (R wrist), 23 (L hip), 24 (R hip)
-    // Map to indices 0 to 8:
+    // 1. Draw Pose Joints (9 selected points, upper body only)
     final nose = getPoint(0);
     final lShoulder = getPoint(1);
     final rShoulder = getPoint(2);
@@ -669,14 +696,15 @@ class LandmarksPainter extends CustomPainter {
       }
     }
 
-    // 2. Draw Face Contours
-    // Selected face indices mapping starts at keypoint index 9 up to 59 (51 points)
+    // 2. Draw Face Contours (51 selected points, indices 9 to 59) - Disabled in UI for cleaner preview
+    /*
     for (int i = 9; i < 60; i++) {
       final pt = getPoint(i);
       if (pt != null) {
         canvas.drawCircle(pt, 2.0, paintFace);
       }
     }
+    */
 
     // 3. Draw Hands Skeleton (Left Hand at index 60, Right Hand at index 81)
     void drawHand(int baseIndex) {
