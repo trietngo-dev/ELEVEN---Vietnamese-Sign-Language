@@ -69,6 +69,38 @@ export const authApi = {
 
     return response.json();
   },
+
+  loginWithGoogle: async (idToken: string, fullName?: string): Promise<LoginResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/google-login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ idToken, fullName }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Đăng nhập Google thất bại");
+    }
+
+    return response.json();
+  },
+
+  deleteAccount: async (userId: number): Promise<void> => {
+    const token = tokenStorage.getToken();
+    const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Xóa tài khoản thất bại");
+    }
+  },
 };
 
 export const tokenStorage = {

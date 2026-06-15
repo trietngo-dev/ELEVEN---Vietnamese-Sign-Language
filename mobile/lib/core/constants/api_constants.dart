@@ -16,6 +16,8 @@ class ApiConstants {
 
   static String get login => "$baseUrl/api/users/login";
   static String get register => "$baseUrl/api/users/register";
+  static String get googleLogin => "$baseUrl/api/users/google-login";
+  static String deleteAccount(int userId) => "$baseUrl/api/users/$userId";
   static String get courses => "$baseUrl/api/courses";
   static String get lessons => "$baseUrl/api/lessons";
   static String get predictGesture => "$baseUrl/api/gesture/predict";

@@ -61,10 +61,14 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> SoftDelete([FromRoute] long id, CancellationToken cancellationToken = default)
     {
+        if (!IsAdmin() && GetCurrentUserId() != id)
+        {
+            return Forbid();
+        }
+
         var deleted = await userService.SoftDeleteAsync(id, cancellationToken);
         if (!deleted)
         {
@@ -100,6 +104,14 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken = default)
     {
         var result = await userService.LoginAsync(request, cancellationToken);
+        return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("google-login")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await userService.GoogleLoginAsync(request, cancellationToken);
         return Ok(result);
     }
 

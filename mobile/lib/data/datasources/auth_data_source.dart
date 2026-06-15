@@ -100,10 +100,67 @@ class AuthDataSource {
     await prefs.remove('auth_user_id');
     await prefs.remove('auth_user_role');
     await prefs.remove('auth_user_name');
+    await prefs.remove('auth_user_email');
   }
 
   Future<bool> isAuthenticated() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey('auth_token');
+  }
+
+  Future<UserModel> loginWithGoogle(String idToken, {String? fullName}) async {
+    try {
+      final response = await _dioClient.dio.post(
+        ApiConstants.googleLogin,
+        data: {
+          'idToken': idToken,
+          'fullName': fullName,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data as Map<String, dynamic>;
+        final token = (data['token'] ?? 
+            data['accessToken'] ?? 
+            data['sessionToken'] ?? 
+            data['AccessToken'] ?? 
+            data['SessionToken']) as String?;
+        final userJson = data['user'] as Map<String, dynamic>? ?? data;
+
+        final user = UserModel.fromJson(userJson, token: token);
+        
+        // Save auth data locally
+        if (token != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+          await prefs.setInt('auth_user_id', user.id);
+          await prefs.setString('auth_user_role', user.role);
+          await prefs.setString('auth_user_name', user.fullName);
+          await prefs.setString('auth_user_email', user.email);
+        }
+        
+        return user;
+      } else {
+        throw Exception(response.data['message'] ?? 'Đăng nhập Google thất bại.');
+      }
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      throw Exception(message);
+    }
+  }
+
+  Future<void> deleteAccount(int userId) async {
+    try {
+      final response = await _dioClient.dio.delete(
+        ApiConstants.deleteAccount(userId),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception(response.data['message'] ?? 'Xóa tài khoản thất bại.');
+      }
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ khi xóa tài khoản.';
+      throw Exception(message);
+    }
   }
 }

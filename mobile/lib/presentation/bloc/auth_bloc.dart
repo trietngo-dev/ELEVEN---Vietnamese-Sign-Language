@@ -28,6 +28,17 @@ class AuthRegisterRequested extends AuthEvent {
 
 class AuthLogoutRequested extends AuthEvent {}
 
+class AuthGoogleLoginRequested extends AuthEvent {
+  final String idToken;
+  final String? fullName;
+  AuthGoogleLoginRequested(this.idToken, {this.fullName});
+}
+
+class AuthDeleteAccountRequested extends AuthEvent {
+  final int userId;
+  AuthDeleteAccountRequested(this.userId);
+}
+
 // --- States ---
 abstract class AuthState {}
 
@@ -100,6 +111,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthLoading());
       await _authDataSource.logout();
       emit(AuthUnauthenticated());
+    });
+
+    on<AuthGoogleLoginRequested>((event, emit) async {
+      emit(AuthLoading());
+      try {
+        final user = await _authDataSource.loginWithGoogle(event.idToken, fullName: event.fullName);
+        emit(AuthAuthenticated(user));
+      } catch (e) {
+        emit(AuthFailure(e.toString().replaceAll('Exception: ', '')));
+      }
+    });
+
+    on<AuthDeleteAccountRequested>((event, emit) async {
+      emit(AuthLoading());
+      try {
+        await _authDataSource.deleteAccount(event.userId);
+        await _authDataSource.logout();
+        emit(AuthUnauthenticated());
+      } catch (e) {
+        emit(AuthFailure(e.toString().replaceAll('Exception: ', '')));
+      }
     });
   }
 }

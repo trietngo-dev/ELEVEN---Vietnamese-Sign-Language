@@ -16,4 +16,5 @@ public interface IUserService
     Task<UserResponse?> ChangePasswordAsync(long userId, ChangePasswordRequest request, CancellationToken cancellationToken = default);
     Task<UserResponse?> VerifyEmailAsync(VerifyEmailRequest request, CancellationToken cancellationToken = default);
     Task<UserResponse?> UpdateAvatarAsync(long userId, UpdateAvatarRequest request, CancellationToken cancellationToken = default);
+    Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken cancellationToken = default);
 }
