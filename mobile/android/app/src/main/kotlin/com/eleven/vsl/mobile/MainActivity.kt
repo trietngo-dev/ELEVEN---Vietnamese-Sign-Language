@@ -23,6 +23,15 @@ import android.util.Log
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.eleven.vsl/hand_tracker"
     private var holisticLandmarker: HolisticLandmarker? = null
+    private var lastTimestampMs = 0L
+
+    private val SELECTED_POSE_INDICES = intArrayOf(0, 11, 12, 13, 14, 15, 16, 23, 24)
+    private val SELECTED_FACE_INDICES = intArrayOf(
+        61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317,
+        14, 87, 178, 88, 95, 78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 46, 53, 52,
+        65, 55, 70, 63, 105, 66, 107, 276, 283, 282, 295, 285, 300, 293, 334, 296,
+        336
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +63,7 @@ class MainActivity : FlutterActivity() {
                 .setMinFaceDetectionConfidence(0.5f)
                 .setMinPoseDetectionConfidence(0.5f)
                 .setMinHandLandmarksConfidence(0.5f)
-                .setRunningMode(RunningMode.IMAGE)
+                .setRunningMode(RunningMode.VIDEO)
                 .build()
 
             holisticLandmarker = HolisticLandmarker.createFromOptions(this, options)
@@ -110,7 +119,14 @@ class MainActivity : FlutterActivity() {
                     try {
                         val bitmap = nv21ToBitmap(bytes, width, height)
                         val mpImage = BitmapImageBuilder(bitmap).build()
-                        val detectionResult = holisticLandmarker?.detect(mpImage)
+                        
+                        var timestampMs = System.currentTimeMillis()
+                        if (timestampMs <= lastTimestampMs) {
+                            timestampMs = lastTimestampMs + 1
+                        }
+                        lastTimestampMs = timestampMs
+                        
+                        val detectionResult = holisticLandmarker?.detectForVideo(mpImage, timestampMs)
                         val flatLandmarks = parseHolisticLandmarks(detectionResult)
                         
                         // Recycle bitmap
@@ -138,40 +154,27 @@ class MainActivity : FlutterActivity() {
         val imageBytes = out.toByteArray()
         val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 
-        // Post-processing: crop to center square, rotate 270 degrees, and mirror horizontally
-        val w = bitmap.width
-        val h = bitmap.height
-        val minDim = Math.min(w, h)
-        val startX = (w - minDim) / 2
-        val startY = (h - minDim) / 2
-
-        val cropped = Bitmap.createBitmap(bitmap, startX, startY, minDim, minDim)
-
         val matrix = android.graphics.Matrix()
         // Rotate 270 degrees for portrait orientation
         matrix.postRotate(270f)
         // Flip horizontally to simulate mirrored selfie camera view
         matrix.postScale(-1f, 1f)
 
-        val transformed = Bitmap.createBitmap(cropped, 0, 0, minDim, minDim, matrix, true)
+        val transformed = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
-        if (cropped != bitmap) {
-            cropped.recycle()
-        }
         bitmap.recycle()
-
         return transformed
     }
 
     private fun parseHolisticLandmarks(result: HolisticLandmarkerResult?): List<Double> {
         val list = ArrayList<Double>()
 
-        // 1. Pose (33 landmarks -> 99 floats)
+        // 1. Pose (9 landmarks -> 27 floats)
         val poseLandmarks = result?.poseLandmarks()
         if (poseLandmarks != null && poseLandmarks.isNotEmpty()) {
-            for (i in 0 until 33) {
-                if (i < poseLandmarks.size) {
-                    val lm = poseLandmarks[i]
+            for (idx in SELECTED_POSE_INDICES) {
+                if (idx < poseLandmarks.size) {
+                    val lm = poseLandmarks[idx]
                     list.add(lm.x().toDouble())
                     list.add(lm.y().toDouble())
                     list.add(lm.z().toDouble())
@@ -182,17 +185,17 @@ class MainActivity : FlutterActivity() {
                 }
             }
         } else {
-            for (i in 0 until 33 * 3) {
+            for (i in 0 until 9 * 3) {
                 list.add(0.0)
             }
         }
 
-        // 2. Face (468 landmarks -> 1404 floats)
+        // 2. Face (51 landmarks -> 153 floats)
         val faceLandmarks = result?.faceLandmarks()
         if (faceLandmarks != null && faceLandmarks.isNotEmpty()) {
-            for (i in 0 until 468) {
-                if (i < faceLandmarks.size) {
-                    val lm = faceLandmarks[i]
+            for (idx in SELECTED_FACE_INDICES) {
+                if (idx < faceLandmarks.size) {
+                    val lm = faceLandmarks[idx]
                     list.add(lm.x().toDouble())
                     list.add(lm.y().toDouble())
                     list.add(lm.z().toDouble())
@@ -203,7 +206,7 @@ class MainActivity : FlutterActivity() {
                 }
             }
         } else {
-            for (i in 0 until 468 * 3) {
+            for (i in 0 until 51 * 3) {
                 list.add(0.0)
             }
         }

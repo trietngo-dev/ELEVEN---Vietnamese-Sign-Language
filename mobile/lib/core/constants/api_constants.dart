@@ -9,7 +9,7 @@ class ApiConstants {
     }
     // For Android Emulator, 10.0.2.2 points to the host's localhost loopback
     if (Platform.isAndroid) {
-      return "http://10.87.33.118:5000";
+      return "http://192.168.7.236:5000";
     }
     return "http://localhost:5000";
   }
@@ -19,7 +19,8 @@ class ApiConstants {
   static String get courses => "$baseUrl/api/courses";
   static String get lessons => "$baseUrl/api/lessons";
   static String get predictGesture => "$baseUrl/api/gesture/predict";
-  static String get translateSentence => "$baseUrl/api/gesture/translate-sentence";
+  static String get translateSentence =>
+      "$baseUrl/api/gesture/translate-sentence";
   static String get feedbacks => "$baseUrl/api/feedbacks";
   static String get feedbackCategories => "$baseUrl/api/feedback_categories";
   static String get userNotifications => "$baseUrl/api/notifications/user";
