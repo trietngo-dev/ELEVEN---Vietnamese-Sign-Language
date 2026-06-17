@@ -152,6 +152,7 @@ export default function SavedWordsPage() {
 
       if (res.ok) {
         setSavedWords(prev => prev.filter(w => w.vocabularyId !== vocabId));
+        window.dispatchEvent(new Event("savedWordsChanged"));
       } else {
         alert("Bỏ lưu từ thất bại, vui lòng thử lại.");
       }

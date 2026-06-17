@@ -235,7 +235,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
       <div className="w-full max-w-[1000px] h-[650px] md:h-[680px] bg-white rounded-[32px] border border-slate-100/90 shadow-[0_20px_50px_rgba(22,37,48,0.06)] overflow-hidden flex relative z-10">
         
         {/* Left Column: Login Form */}
-        <div className="w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 z-10 bg-white overflow-y-auto scrollbar-none">
+        <div className={cn("w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 z-10 bg-white overflow-y-auto scrollbar-none", !isLogin && "hidden md:flex")}>
           <AnimatePresence>
             {isLogin && (
               <motion.div
@@ -361,7 +361,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
         </div>
 
         {/* Right Column: Register Form */}
-        <div className="w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 z-10 bg-white overflow-y-auto scrollbar-none">
+        <div className={cn("w-full md:w-1/2 h-full flex flex-col items-center justify-center p-6 md:p-10 z-10 bg-white overflow-y-auto scrollbar-none", isLogin && "hidden md:flex")}>
           <AnimatePresence>
             {!isLogin && (
               <motion.div

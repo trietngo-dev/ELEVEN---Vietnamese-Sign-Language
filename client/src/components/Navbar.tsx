@@ -21,6 +21,7 @@ function Navbar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [activeFrameUrl, setActiveFrameUrl] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [savedCount, setSavedCount] = useState<number>(0);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [selectedNotif, setSelectedNotif] = useState<NotificationItem | null>(null);
@@ -104,6 +105,44 @@ function Navbar() {
     window.addEventListener("avatarChanged", handleAvatarChange);
     return () => {
       window.removeEventListener("avatarChanged", handleAvatarChange);
+    };
+  }, [isAuthenticated, user]);
+
+  const fetchSavedCount = () => {
+    if (!isAuthenticated || !user?.id) {
+      setSavedCount(0);
+      return;
+    }
+    const token = tokenStorage.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch(`${API_BASE_URL}/api/user_vocabulary_progress?pageSize=1000`, { headers })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          const progressItems = data.items || (Array.isArray(data) ? data : data.items) || [];
+          const userSavedProgress = progressItems.filter(
+            (p: any) => p.userId === user.id && p.isSaved === true
+          );
+          setSavedCount(userSavedProgress.length);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchSavedCount();
+
+    const handleSavedWordsChange = () => {
+      fetchSavedCount();
+    };
+
+    window.addEventListener("savedWordsChanged", handleSavedWordsChange);
+    const interval = setInterval(fetchSavedCount, 15000);
+
+    return () => {
+      window.removeEventListener("savedWordsChanged", handleSavedWordsChange);
+      clearInterval(interval);
     };
   }, [isAuthenticated, user]);
 
@@ -330,7 +369,7 @@ function Navbar() {
 
                   {/* Notifications Glassmorphic Popover */}
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2.5 w-[320px] sm:w-[360px] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100 shadow-[0_15px_35px_rgba(24,35,51,0.08)] overflow-hidden z-50 animate-in fade-in slide-in-from-top-3 duration-200 text-left">
+                    <div className="fixed inset-x-4 top-16 sm:absolute sm:right-0 sm:left-auto sm:top-auto sm:mt-2.5 w-auto sm:w-[360px] bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100 shadow-[0_15px_35px_rgba(24,35,51,0.08)] overflow-hidden z-50 animate-in fade-in slide-in-from-top-3 duration-200 text-left">
                       <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
                         <span className="text-sm font-extrabold text-slate-800">Thông báo</span>
                         <div className="flex gap-2.5">
@@ -442,13 +481,18 @@ function Navbar() {
                   to="/tu-da-luu"
                   className={({ isActive }) =>
                     cn(
-                      "p-2 text-slate-500 hover:text-[#3c6c44] hover:bg-slate-100/50 rounded-full transition-all duration-200 shrink-0",
+                      "p-2 text-slate-500 hover:text-[#3c6c44] hover:bg-slate-100/50 rounded-full transition-all duration-200 shrink-0 relative",
                       isActive && "bg-amber-50 text-[#efca4c]"
                     )
                   }
                   title="Từ đã lưu"
                 >
                   <Bookmark className="h-5 w-5" />
+                  {savedCount > 0 && (
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white leading-none shadow-sm select-none">
+                      {savedCount}
+                    </span>
+                  )}
                 </NavLink>
 
                 {/* Store (Cửa hàng khung) Link */}
