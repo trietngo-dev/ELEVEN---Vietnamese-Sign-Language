@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Apple, Lock, Mail, UserRound, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { Lock, Mail, UserRound, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
 import brand from "../assets/brand.jpg";
 import loginImg from "../assets/login.png";
 import registerImg from "../assets/register.png";
@@ -112,7 +112,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
             size: "large",
             text: "signin_with",
             shape: "pill",
-            width: 180,
+            width: 240,
           });
         }
 
@@ -123,7 +123,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
             size: "large",
             text: "signup_with",
             shape: "pill",
-            width: 180,
+            width: 240,
           });
         }
       }, 100);
@@ -325,27 +325,20 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     <span className="h-px flex-1 bg-[#dce5df]" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 items-center">
+                  <div className="flex justify-center items-center w-full my-1">
                     <div className="h-10 flex items-center justify-center overflow-hidden">
                       {googleInitialized ? (
                         <div id="google-signin-btn-login" className="w-full flex justify-center"></div>
                       ) : (
                         <button
                           type="button"
-                          className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.82rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8]"
+                          className="inline-flex h-10 px-6 items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.82rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8] w-[240px]"
                         >
                           <span className="text-[1.05rem] font-black bg-[linear-gradient(90deg,#ea4335_0%,#fbbc05_33%,#34a853_66%,#4285f4_100%)] bg-clip-text text-transparent">G</span>
                           {authPages.providers.google}
                         </button>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.82rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8]"
-                    >
-                      <Apple className="h-4 w-4" />
-                      {authPages.providers.apple}
-                    </button>
                   </div>
 
                   <p className="text-center text-xs text-[#8d99a2] mt-4">
@@ -513,27 +506,20 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     <span className="h-px flex-1 bg-[#dce5df]" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 items-center">
+                  <div className="flex justify-center items-center w-full my-1">
                     <div className="h-9 flex items-center justify-center overflow-hidden">
                       {googleInitialized ? (
                         <div id="google-signin-btn-register" className="w-full flex justify-center"></div>
                       ) : (
                         <button
                           type="button"
-                          className="w-full inline-flex h-9 items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.78rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8]"
+                          className="inline-flex h-9 px-6 items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.78rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8] w-[240px]"
                         >
                           <span className="text-[1rem] font-black bg-[linear-gradient(90deg,#ea4335_0%,#fbbc05_33%,#34a853_66%,#4285f4_100%)] bg-clip-text text-transparent">G</span>
                           {authPages.providers.google}
                         </button>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.78rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8]"
-                    >
-                      <Apple className="h-3.5 w-3.5" />
-                      {authPages.providers.apple}
-                    </button>
                   </div>
 
                   <p className="text-center text-xs text-[#8d99a2] mt-3">
