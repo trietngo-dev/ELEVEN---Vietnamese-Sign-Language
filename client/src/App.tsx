@@ -6,6 +6,8 @@ import DictionaryPage from "./pages/DictionaryPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import ReviewPage from "./pages/ReviewPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import SignLanguageTracker from "./components/SignLanguageTracker";
 
 import AdminLayout from "./components/admin/AdminLayout";
@@ -94,6 +96,8 @@ function App() {
           <Route path="khoa-hoc" element={<CoursesPage />} />
           <Route path="tu-dien" element={<DictionaryPage />} />
           <Route path="danh-gia" element={<ReviewPage />} />
+          <Route path="dieu-khoan" element={<TermsPage />} />
+          <Route path="chinh-sach-bao-mat" element={<PrivacyPage />} />
           <Route
             path="*"
             element={

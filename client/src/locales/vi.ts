@@ -25,8 +25,8 @@ export const viText = {
     copy: "© 2026 Eleven.",
     navAriaLabel: "Liên kết chân trang",
     links: [
-      { label: "Chính sách bảo mật", href: "#" },
-      { label: "Điều khoản dịch vụ", href: "#" },
+      { label: "Chính sách bảo mật", href: "/chinh-sach-bao-mat" },
+      { label: "Điều khoản dịch vụ", href: "/dieu-khoan" },
       { label: "Chính sách Cookie", href: "#" },
     ],
   },
