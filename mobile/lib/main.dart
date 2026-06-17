@@ -12,7 +12,9 @@ import 'presentation/bloc/gesture_bloc.dart';
 import 'presentation/screens/welcome_screen.dart';
 import 'presentation/screens/home_screen.dart';
 
-void main() {
+import 'package:shared_preferences/shared_preferences.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // 1. Initialize core dependencies
@@ -22,6 +24,11 @@ void main() {
   final courseDataSource = CourseDataSource(dioClient);
   final gestureDataSource = GestureDataSource(dioClient);
   final profileDataSource = ProfileDataSource(dioClient);
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    AppTheme.isWhiteBgNotifier.value = prefs.getBool('is_white_bg') ?? false;
+  } catch (_) {}
 
   runApp(
     MyApp(

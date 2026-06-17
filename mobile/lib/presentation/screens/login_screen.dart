@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/gestures.dart';
+import 'terms_policy_screen.dart';
 import '../bloc/auth_bloc.dart';
 import 'home_screen.dart';
 
@@ -18,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isRegister = false;
+  bool _agreedToTerms = false;
 
   @override
   void dispose() {
@@ -59,6 +62,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
+      if (_isRegister && !_agreedToTerms) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text("Bạn phải đồng ý với Điều khoản dịch vụ & Chính sách bảo mật để tiếp tục."),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+        return;
+      }
       final authBloc = context.read<AuthBloc>();
       if (_isRegister) {
         authBloc.add(AuthRegisterRequested(
@@ -212,6 +226,78 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   validator: (val) => (val == null || val.length < 6) ? "Mật khẩu phải từ 6 ký tự" : null,
                                 ),
+                                if (_isRegister) ...[
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        height: 24,
+                                        width: 24,
+                                        child: Checkbox(
+                                          value: _agreedToTerms,
+                                          activeColor: theme.primaryColor,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              _agreedToTerms = val ?? false;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: RichText(
+                                          text: TextSpan(
+                                            style: GoogleFonts.quicksand(
+                                              fontSize: 12,
+                                              color: const Color(0xFF5B6068),
+                                              height: 1.4,
+                                            ),
+                                            children: [
+                                              const TextSpan(text: "Tôi đồng ý với "),
+                                              TextSpan(
+                                                text: "Điều khoản dịch vụ",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: theme.primaryColor,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                                recognizer: TapGestureRecognizer()
+                                                  ..onTap = () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) => const TermsPolicyScreen(isTerms: true),
+                                                      ),
+                                                    );
+                                                  },
+                                              ),
+                                              const TextSpan(text: " & "),
+                                              TextSpan(
+                                                text: "Chính sách bảo mật",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: theme.primaryColor,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                                recognizer: TapGestureRecognizer()
+                                                  ..onTap = () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (_) => const TermsPolicyScreen(isTerms: false),
+                                                      ),
+                                                    );
+                                                  },
+                                              ),
+                                              const TextSpan(text: " của Eleven."),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                                 const SizedBox(height: 24),
                                 
                                 // Submit Button
@@ -246,51 +332,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
-                        // Google Login Button
-                        state is AuthLoading
-                            ? const SizedBox.shrink()
-                            : Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                child: OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: Colors.black87,
-                                    side: const BorderSide(color: Color(0xFFE2E8F0)),
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  icon: Image.network(
-                                    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1024px-Google_%22G%22_logo.svg.png',
-                                    height: 18,
-                                  ),
-                                  label: const Text(
-                                    "Đăng nhập bằng Google",
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                  onPressed: _signInWithGoogle,
-                                ),
-                              ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                            side: const BorderSide(color: Color(0xFFE2E8F0)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: Image.network(
+                            'https://developers.google.com/static/identity/images/g-logo.png',
+                            headers: const {'User-Agent': 'Mozilla/5.0'},
+                            height: 18,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.login_rounded, color: Colors.grey, size: 18),
+                          ),
+                          label: const Text("Đăng nhập bằng Google", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          onPressed: _signInWithGoogle,
+                        ),
                         const SizedBox(height: 20),
-                        
-                        // Toggle View
                         TextButton(
                           onPressed: () {
                             setState(() {
                               _isRegister = !_isRegister;
+                              _agreedToTerms = false;
                               _formKey.currentState?.reset();
                             });
                           },
                           child: Text(
-                            _isRegister
-                                ? "Đã có tài khoản? Đăng nhập ngay"
-                                : "Chưa có tài khoản? Đăng ký tại đây",
-                            style: TextStyle(
-                              color: theme.primaryColor,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            _isRegister ? "Đã có tài khoản? Đăng nhập ngay" : "Chưa có tài khoản? Đăng ký tại đây",
+                            style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],

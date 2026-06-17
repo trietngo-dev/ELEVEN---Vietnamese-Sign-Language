@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/datasources/profile_data_source.dart';
 import '../../data/models/avatar_frame_model.dart';
 
@@ -175,227 +176,234 @@ class _FrameShopScreenState extends State<FrameShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981);
-    const Color textMutedColor = Color(0xFF94A3B8);
 
-    return Scaffold(
-      backgroundColor: darkBgColor,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        backgroundColor: darkBgColor,
-        elevation: 0,
-        title: Text(
-          "CỬA HÀNG KHUNG",
-          style: GoogleFonts.quicksand(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 18,
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppTheme.isWhiteBgNotifier,
+      builder: (context, isWhiteBg, child) {
+        final Color currentBgColor = isWhiteBg ? const Color(0xFFF8FDF8) : const Color(0xFF0A0F0D);
+        final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+        final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+        final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+
+        return Scaffold(
+          backgroundColor: currentBgColor,
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            backgroundColor: currentBgColor,
+            elevation: 0,
+            title: Text(
+              "CỬA HÀNG KHUNG",
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: currentTextColor,
+                fontSize: 18,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: mintColor))
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              color: mintColor,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // XP Balance Banner
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        color: darkCardColor,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: mintColor.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 24),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: mintColor))
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  color: mintColor,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // XP Balance Banner
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: currentCardColor,
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                           ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Số dư XP của bạn",
-                                  style: TextStyle(color: textMutedColor, fontSize: 12),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  "$_userXp XP",
-                                  style: GoogleFonts.quicksand(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: _isActionRunning
-                                ? null
-                                : () async {
-                                    try {
-                                      final ds = context.read<ProfileDataSource>();
-                                      await ds.addXp(_userId, 500);
-                                      await _loadData();
-                                    } catch (_) {}
-                                  },
-                            icon: const Icon(Icons.add_circle_outline_rounded, size: 14),
-                            label: const Text("Tặng 500 XP", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: mintColor,
-                              side: const BorderSide(color: mintColor),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Title intro
-                    const Text(
-                      "Khung viền Avatar độc quyền",
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Tích lũy XP từ bài học để quy đổi các mẫu khung chuyển động và tĩnh cực ngầu dưới đây!",
-                      style: TextStyle(color: textMutedColor, fontSize: 11, height: 1.3),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Frames Grid
-                    _frames.isEmpty
-                        ? const Center(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40),
-                              child: Text("Không có khung ảnh nào khả dụng.", style: TextStyle(color: Colors.white30)),
-                            ),
-                          )
-                        : GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.78,
-                            ),
-                            itemCount: _frames.length,
-                            itemBuilder: (context, index) {
-                              final frame = _frames[index];
-                              final isOwned = _ownedFrameIds.contains(frame.id);
-                              final isActive = _activeFrameId == frame.id;
-                              final canAfford = _userXp >= frame.xpPrice;
-
-                              return Container(
+                          child: Row(
+                            children: [
+                              Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: darkCardColor,
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: isActive
-                                        ? mintColor.withValues(alpha: 0.4)
-                                        : Colors.white.withValues(alpha: 0.04),
-                                    width: isActive ? 2 : 1,
-                                  ),
+                                  color: Colors.amber.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
                                 ),
+                                child: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 24),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
                                 child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Image with frame preview
-                                    Expanded(
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          // Dummy/Default User Avatar in center
-                                          ClipOval(
-                                            child: Image.network(
-                                              "https://ui-avatars.com/api/?name=VSL&background=131A16&color=94a3b8&size=100",
-                                              width: 58,
-                                              height: 58,
-                                              fit: BoxFit.cover,
-                                            ),
-                                          ),
-                                          // Dynamic Frame Overlay on top
-                                          Positioned.fill(
-                                            child: Image.network(
-                                              frame.fullImageUrl,
-                                              fit: BoxFit.contain,
-                                              errorBuilder: (ctx, err, stack) => const Icon(Icons.broken_image, color: Colors.white24),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-
-                                    // Frame name & price info
                                     Text(
-                                      frame.name,
-                                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      "Số dư XP của bạn",
+                                      style: TextStyle(color: currentTextMutedColor, fontSize: 11),
                                     ),
-                                    const SizedBox(height: 4),
-
-                                    if (!isOwned)
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          const Icon(Icons.bolt_rounded, color: Colors.amber, size: 12),
-                                          Text(
-                                            "${frame.xpPrice} XP",
-                                            style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
-                                          ),
-                                        ],
-                                      )
-                                    else
-                                      Text(
-                                        isActive ? "Đang dùng" : "Đã sở hữu",
-                                        style: TextStyle(color: isActive ? mintColor : textMutedColor, fontSize: 11, fontWeight: FontWeight.bold),
-                                      ),
-                                    const SizedBox(height: 10),
-
-                                    // Buy or Equip action button
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: _buildActionButton(
-                                        isOwned: isOwned,
-                                        isActive: isActive,
-                                        canAfford: canAfford,
-                                        frame: frame,
-                                        mintColor: mintColor,
-                                        cardColor: darkCardColor,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "$_userXp XP",
+                                      style: GoogleFonts.quicksand(
+                                        color: currentTextColor,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
                                 ),
-                              );
-                            },
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: _isActionRunning
+                                    ? null
+                                    : () async {
+                                        try {
+                                          final ds = context.read<ProfileDataSource>();
+                                          await ds.addXp(_userId, 500);
+                                          await _loadData();
+                                        } catch (_) {}
+                                      },
+                                icon: const Icon(Icons.add_circle_outline_rounded, size: 14),
+                                label: const Text("Tặng 500 XP", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: mintColor,
+                                  side: const BorderSide(color: mintColor),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ],
                           ),
-                  ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Title intro
+                        Text(
+                          "Khung viền Avatar độc quyền",
+                          style: TextStyle(color: currentTextColor, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          "Tích lũy XP từ bài học để quy đổi các mẫu khung chuyển động và tĩnh cực ngầu dưới đây!",
+                          style: TextStyle(color: currentTextMutedColor, fontSize: 11, height: 1.3),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Frames Grid
+                        _frames.isEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 40),
+                                  child: Text("Không có khung ảnh nào khả dụng.", style: TextStyle(color: currentTextColor.withValues(alpha: 0.3))),
+                                ),
+                              )
+                            : GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  childAspectRatio: 0.78,
+                                ),
+                                itemCount: _frames.length,
+                                itemBuilder: (context, index) {
+                                  final frame = _frames[index];
+                                  final isOwned = _ownedFrameIds.contains(frame.id);
+                                  final isActive = _activeFrameId == frame.id;
+                                  final canAfford = _userXp >= frame.xpPrice;
+
+                                  return Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: currentCardColor,
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: isActive
+                                            ? mintColor.withValues(alpha: 0.4)
+                                            : Colors.white.withValues(alpha: 0.04),
+                                        width: isActive ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        // Image with frame preview
+                                        Expanded(
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              // Dummy/Default User Avatar in center
+                                              ClipOval(
+                                                child: Image.network(
+                                                  "https://ui-avatars.com/api/?name=VSL&background=131A16&color=94a3b8&size=100",
+                                                  width: 58,
+                                                  height: 58,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                              // Dynamic Frame Overlay on top
+                                              Positioned.fill(
+                                                child: Image.network(
+                                                  frame.fullImageUrl,
+                                                  fit: BoxFit.contain,
+                                                  errorBuilder: (ctx, err, stack) => Icon(Icons.broken_image, color: currentTextColor.withValues(alpha: 0.3)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+
+                                        // Frame name & price info
+                                        Text(
+                                          frame.name,
+                                          style: TextStyle(color: currentTextColor, fontSize: 13, fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+
+                                        if (!isOwned)
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(Icons.bolt_rounded, color: Colors.amber, size: 12),
+                                              Text(
+                                                "${frame.xpPrice} XP",
+                                                style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
+                                          )
+                                        else
+                                          Text(
+                                            isActive ? "Đang dùng" : "Đã sở hữu",
+                                            style: TextStyle(color: isActive ? mintColor : currentTextMutedColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        const SizedBox(height: 10),
+
+                                        // Buy or Equip action button
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: _buildActionButton(
+                                            isOwned: isOwned,
+                                            isActive: isActive,
+                                            canAfford: canAfford,
+                                            frame: frame,
+                                            mintColor: mintColor,
+                                            cardColor: currentCardColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
+        );
+      },
     );
   }
 

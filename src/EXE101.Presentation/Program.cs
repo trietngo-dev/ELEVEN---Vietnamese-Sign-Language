@@ -168,11 +168,56 @@ using (var scope = app.Services.CreateScope())
         dbContext.SaveChanges();
     }
 
-    if (!dbContext.SubscriptionPlans.Any(x => x.Code == "pro"))
+    // Clean up duplicate lowercase plans if uppercase ones exist
+    var lowercasePro = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "pro");
+    var uppercasePro = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "PRO");
+    if (lowercasePro != null)
+    {
+        if (uppercasePro == null)
+        {
+            lowercasePro.Code = "PRO";
+            dbContext.SaveChanges();
+            uppercasePro = lowercasePro;
+        }
+        else
+        {
+            var subs = dbContext.UserSubscriptions.Where(s => s.PlanId == lowercasePro.Id).ToList();
+            foreach (var sub in subs)
+            {
+                sub.PlanId = uppercasePro.Id;
+            }
+            dbContext.SubscriptionPlans.Remove(lowercasePro);
+            dbContext.SaveChanges();
+        }
+    }
+
+    var lowercasePremium = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "premium");
+    var uppercasePremium = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "PREMIUM");
+    if (lowercasePremium != null)
+    {
+        if (uppercasePremium == null)
+        {
+            lowercasePremium.Code = "PREMIUM";
+            dbContext.SaveChanges();
+            uppercasePremium = lowercasePremium;
+        }
+        else
+        {
+            var subs = dbContext.UserSubscriptions.Where(s => s.PlanId == lowercasePremium.Id).ToList();
+            foreach (var sub in subs)
+            {
+                sub.PlanId = uppercasePremium.Id;
+            }
+            dbContext.SubscriptionPlans.Remove(lowercasePremium);
+            dbContext.SaveChanges();
+        }
+    }
+
+    if (!dbContext.SubscriptionPlans.Any(x => x.Code.ToUpper() == "PRO"))
     {
         dbContext.SubscriptionPlans.Add(new SubscriptionPlan
         {
-            Code = "pro",
+            Code = "PRO",
             Name = "Gói Chuyên nghiệp (Tháng)",
             BillingCycle = "monthly",
             PriceVnd = 30000,
@@ -188,11 +233,11 @@ using (var scope = app.Services.CreateScope())
         });
     }
 
-    if (!dbContext.SubscriptionPlans.Any(x => x.Code == "premium"))
+    if (!dbContext.SubscriptionPlans.Any(x => x.Code.ToUpper() == "PREMIUM"))
     {
         dbContext.SubscriptionPlans.Add(new SubscriptionPlan
         {
-            Code = "premium",
+            Code = "PREMIUM",
             Name = "Gói Cao cấp (Năm)",
             BillingCycle = "yearly",
             PriceVnd = 50000,

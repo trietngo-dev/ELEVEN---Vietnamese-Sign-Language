@@ -337,5 +337,36 @@ class ProfileDataSource {
       // Fail silently to prevent login blocking on connectivity blips
     }
   }
+
+  // 20. Update User Details (Full Name, Role, Email, Avatar, Status)
+  Future<Map<String, dynamic>> updateUserDetails(int userId, Map<String, dynamic> data) async {
+    try {
+      final response = await _dioClient.dio.put('${ApiConstants.baseUrl}/api/users/$userId', data: data);
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Không thể cập nhật thông tin tài khoản.');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Lỗi cập nhật thông tin.');
+    }
+  }
+
+  // 21. Change Password
+  Future<void> changePassword(int userId, String currentPassword, String newPassword) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${ApiConstants.baseUrl}/api/users/$userId/change-password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Không thể đổi mật khẩu.');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Lỗi đổi mật khẩu.');
+    }
+  }
 }
 
