@@ -481,11 +481,11 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     />
                     <span className="leading-tight text-left">
                       {authPages.register.agreementText}{" "}
-                      <Link to="/dang-nhap" className="font-bold text-[#3c7c4a] hover:underline">
+                      <Link to="/dieu-khoan" target="_blank" rel="noopener noreferrer" className="font-bold text-[#3c7c4a] hover:underline">
                         {authPages.register.termLink}
                       </Link>
                       {" và "}
-                      <Link to="/dang-nhap" className="font-bold text-[#3c7c4a] hover:underline">
+                      <Link to="/chinh-sach-bao-mat" target="_blank" rel="noopener noreferrer" className="font-bold text-[#3c7c4a] hover:underline">
                         {authPages.register.privacyLink}
                       </Link>
                       .

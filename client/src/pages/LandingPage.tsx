@@ -3,7 +3,7 @@ import class1Img from "../assets/Class1.png";
 import class2Img from "../assets/Class2.png";
 import class3Img from "../assets/Class3.png";
 import heroVideo from "../assets/landing_page.mp4";
-import { motion, type Variants } from "framer-motion";
+import { motion, type Variants, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, BookOpen, Brain, Sparkles, Star, Plus, CheckCircle2, Languages } from "lucide-react";
 import { viText } from "../locales/vi";
 import { useNavigate } from "react-router-dom";
@@ -470,6 +470,18 @@ function LandingPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [windowHeight, setWindowHeight] = useState(800);
+
+  useEffect(() => {
+    setWindowHeight(window.innerHeight);
+    const handleResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const { scrollY } = useScroll();
+  const overlayOpacity = useTransform(scrollY, [0, windowHeight * 0.8], [0, 0.75]);
+  const blurValue = useTransform(scrollY, [0, windowHeight * 0.8], ["blur(0px)", "blur(1.5px)"]);
 
   useEffect(() => {
     let isScrolling = false;
@@ -621,7 +633,14 @@ function LandingPage() {
             className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
           />
           {/* Light Overlay to ensure text readability */}
-          <div className="absolute inset-0 bg-white/75 backdrop-blur-[1.5px] z-0" />
+          <motion.div 
+            style={{ 
+              opacity: overlayOpacity, 
+              backdropFilter: blurValue,
+              WebkitBackdropFilter: blurValue 
+            }}
+            className="absolute inset-0 bg-white z-0 pointer-events-none"
+          />
 
           {/* Soft animated ambient auroras */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
