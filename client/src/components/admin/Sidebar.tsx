@@ -14,7 +14,7 @@ import { viText } from '../../locales/vi';
 import { useAuth } from '@/context/AuthContext';
 
 const Sidebar: React.FC = () => {
-  const { logout } = useAuth();
+  const { requestLogout } = useAuth();
 
   const { common } = viText;
   const menuItems = [
@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
             <span className="text-[10px] text-slate-500">admin@eleven.vn</span>
           </div>
         </div>
-        <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium">
+        <button onClick={requestLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium">
           <LogOut size={18} />
           <span>Đăng xuất</span>
         </button>

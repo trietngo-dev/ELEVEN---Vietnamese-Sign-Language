@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   CheckCircle2, 
@@ -20,6 +21,7 @@ interface DashboardStats {
 }
 
 const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentUsers, setRecentUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +34,7 @@ const AdminDashboard: React.FC = () => {
         const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
 
         const [usersRes, coursesRes, lessonsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/users?page=1&pageSize=5`, { headers }),
+          fetch(`${API_BASE_URL}/api/users?page=1&pageSize=10`, { headers }),
           fetch(`${API_BASE_URL}/api/courses`, { headers }),
           fetch(`${API_BASE_URL}/api/lessons?page=1&pageSize=1`, { headers }),
         ]);
@@ -41,8 +43,11 @@ const AdminDashboard: React.FC = () => {
         let users: any[] = [];
         if (usersRes.ok) {
           const data = await usersRes.json();
-          totalUsers = data.total || 0;
-          users = data.items || [];
+          const allFetched = data.items || [];
+          const nonAdmins = allFetched.filter((u: any) => u.roleId !== 1);
+          users = nonAdmins.slice(0, 5);
+          const adminCount = allFetched.length - nonAdmins.length;
+          totalUsers = Math.max(0, (data.total || 0) - adminCount);
         }
 
         let totalCourses = 0;
@@ -80,9 +85,10 @@ const AdminDashboard: React.FC = () => {
 
   const getStatusLabel = (status: number) => {
     switch (status) {
-      case 0: return { label: 'Chưa kích hoạt', color: 'bg-slate-100 text-slate-600' };
-      case 1: return { label: 'Hoạt động', color: 'bg-[#3c6c44]/10 text-[#3c6c44]' };
+      case 0: return { label: 'Hoạt động', color: 'bg-[#3c6c44]/10 text-[#3c6c44]' };
+      case 1: return { label: 'Chưa kích hoạt', color: 'bg-slate-100 text-slate-600' };
       case 2: return { label: 'Bị khóa', color: 'bg-red-100 text-red-600' };
+      case 3: return { label: 'Chờ kích hoạt', color: 'bg-amber-100 text-amber-600' };
       default: return { label: 'Không xác định', color: 'bg-slate-100 text-slate-600' };
     }
   };
@@ -114,11 +120,10 @@ const AdminDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#fed963] text-slate-900 font-semibold rounded-lg hover:opacity-90 transition-opacity">
-            <BookOpen size={20} />
-            <span className="text-sm">Cập nhật từ điển</span>
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-[#3c6c44] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity">
+          <button 
+            onClick={() => navigate('/admin/courses')}
+            className="flex items-center gap-2 px-4 py-2 bg-[#3c6c44] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity"
+          >
             <PlusCircle size={20} />
             <span className="text-sm">Thêm bài học mới</span>
           </button>

@@ -122,15 +122,7 @@ function DictionaryPage() {
 
         if (res.ok) {
           const data = await res.json();
-          // Only show published lessons (status 1)
-          const published = (data.items || []).filter(
-            (l: any) =>
-              l.status === 1 ||
-              l.status === "Published" ||
-              l.status === "published" ||
-              l.status === "1",
-          );
-          setLessons(published);
+          setLessons(data.items || []);
         }
       } catch (err) {
         console.error("Lỗi khi tải dữ liệu từ điển", err);

@@ -44,7 +44,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
-  const { user, deleteAccount, logout } = useAuth();
+  const { user, deleteAccount, requestLogout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editMenuRef = useRef<HTMLDivElement>(null);
 
@@ -933,7 +933,7 @@ export default function ProfilePage() {
             {/* Log out section (Centered horizontally) */}
             <div className="pt-2 flex justify-center w-full">
               <button
-                onClick={logout}
+                onClick={requestLogout}
                 className="px-8 py-3 rounded-2xl bg-red-50 text-red-500 font-bold border border-red-100 hover:bg-red-100 hover:text-red-600 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm active:scale-95"
               >
                 <LogOut size={16} /> Đăng xuất tài khoản

@@ -27,9 +27,10 @@ interface UserItem {
 }
 
 const STATUS_MAP: Record<number, { label: string; dot: string; text: string }> = {
-  0: { label: 'Chưa kích hoạt', dot: 'bg-slate-300', text: 'text-slate-400' },
-  1: { label: 'Đang hoạt động', dot: 'bg-emerald-500', text: 'text-emerald-600' },
+  0: { label: 'Đang hoạt động', dot: 'bg-emerald-500', text: 'text-emerald-600' },
+  1: { label: 'Chưa kích hoạt', dot: 'bg-slate-300', text: 'text-slate-400' },
   2: { label: 'Bị khóa', dot: 'bg-red-500', text: 'text-red-500' },
+  3: { label: 'Chờ kích hoạt', dot: 'bg-amber-500', text: 'text-amber-500' },
 };
 
 const ROLE_MAP: Record<number, string> = {
@@ -55,8 +56,12 @@ const AdminUsers: React.FC = () => {
         const res = await fetch(`${API_BASE_URL}/api/users?page=${page}&pageSize=${pageSize}`, { headers });
         if (res.ok) {
           const data = await res.json();
-          setUsers(data.items || []);
-          setTotalUsers(data.total || 0);
+          const items = data.items || [];
+          const nonAdmins = items.filter((u: any) => u.roleId !== 1);
+          setUsers(nonAdmins);
+          
+          const adminCount = items.length - nonAdmins.length;
+          setTotalUsers(Math.max(0, (data.total || 0) - adminCount));
         }
       } catch (err) {
         console.error("Failed to load users", err);
@@ -77,8 +82,8 @@ const AdminUsers: React.FC = () => {
     : users;
 
   // Compute stats from current data
-  const activeCount = users.filter(u => u.status === 1).length;
-  const disabledCount = users.filter(u => u.status === 2 || u.status === 0).length;
+  const activeCount = users.filter(u => u.status === 0).length;
+  const disabledCount = users.filter(u => u.status === 1 || u.status === 2 || u.status === 3).length;
 
   const stats = [
     { label: 'Tổng người dùng', value: totalUsers.toLocaleString(), icon: <Users size={20} />, bg: 'bg-[#3c6c44]/10', text: 'text-[#3c6c44]' },

@@ -11,7 +11,8 @@ import {
     Check,
     Award,
     TrendingUp,
-    Settings
+    Settings,
+    Trash2
 } from 'lucide-react';
 import { tokenStorage } from "../../lib/auth";
 
@@ -69,6 +70,51 @@ const AdminRevenue: React.FC = () => {
         title: string;
         message: string;
     } | null>(null);
+
+    const [planToDelete, setPlanToDelete] = useState<any | null>(null);
+
+    const handleConfirmDelete = async () => {
+        if (!planToDelete) return;
+        try {
+            const token = tokenStorage.getToken();
+            const headers: Record<string, string> = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const res = await fetch(`${API_BASE_URL}/api/subscription_plans/${planToDelete.id}`, {
+                method: 'DELETE',
+                headers
+            });
+
+            if (res.ok) {
+                setNotification({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'Xóa thành công!',
+                    message: `Gói đăng ký ${planToDelete.name} đã được xóa thành công.`
+                });
+                loadAllData();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                setNotification({
+                    isOpen: true,
+                    type: 'error',
+                    title: 'Xóa thất bại!',
+                    message: errData.message || 'Lỗi khi xóa gói đăng ký.'
+                });
+            }
+        } catch (err) {
+            setNotification({
+                isOpen: true,
+                type: 'error',
+                title: 'Lỗi kết nối!',
+                message: 'Không thể kết nối đến máy chủ.'
+            });
+        } finally {
+            setPlanToDelete(null);
+        }
+    };
 
     // Initial Data loading
     const loadAllData = () => {
@@ -729,13 +775,22 @@ const AdminRevenue: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={() => handleOpenEdit(plan)}
-                                    className="w-full py-3.5 rounded-2xl font-bold transition-all bg-slate-50 hover:bg-[#3c6c44] text-slate-700 hover:text-white border border-slate-100 hover:border-transparent flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-[#3c6c44]/20"
-                                >
-                                    <Edit2 size={15} />
-                                    Chỉnh sửa cấu hình
-                                </button>
+                                <div className="flex gap-2 w-full">
+                                    <button
+                                        onClick={() => handleOpenEdit(plan)}
+                                        className="flex-1 py-3 rounded-2xl font-bold transition-all bg-slate-50 hover:bg-[#3c6c44] text-slate-700 hover:text-white border border-slate-100 hover:border-transparent flex items-center justify-center gap-2 hover:shadow-md hover:shadow-[#3c6c44]/15 text-sm"
+                                    >
+                                        <Edit2 size={14} />
+                                        Sửa cấu hình
+                                    </button>
+                                    <button
+                                        onClick={() => setPlanToDelete(plan)}
+                                        className="px-4 py-3 rounded-2xl font-bold transition-all bg-red-50 hover:bg-red-600 text-red-600 hover:text-white border border-red-100 hover:border-transparent flex items-center justify-center gap-1.5 hover:shadow-md hover:shadow-red-600/15 text-sm"
+                                        title="Xóa gói"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
                             </motion.div>
                         ))}
                         {isLoadingPlans && (
@@ -846,6 +901,49 @@ const AdminRevenue: React.FC = () => {
                                     </button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Delete Confirmation Modal */}
+                {planToDelete && (
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl max-w-sm w-full text-center relative"
+                        >
+                            <button
+                                onClick={() => setPlanToDelete(null)}
+                                className="absolute top-6 right-6 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            <div className="mx-auto w-12 h-12 rounded-full bg-red-50 text-red-500 border border-red-100 flex items-center justify-center mb-4">
+                                <Trash2 size={22} />
+                            </div>
+
+                            <h3 className="text-lg font-bold text-slate-900 mb-2">Xác nhận xóa gói</h3>
+                            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                                Bạn có chắc chắn muốn xóa gói <strong>{planToDelete.name}</strong>? Hành động này không thể hoàn tác và sẽ xóa gói này khỏi hệ thống cơ sở dữ liệu.
+                            </p>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setPlanToDelete(null)}
+                                    className="flex-1 py-3 text-sm text-slate-500 font-bold border border-slate-200 rounded-2xl hover:bg-slate-50 transition-colors"
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleConfirmDelete}
+                                    className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-red-600/20 transition-all text-sm"
+                                >
+                                    Xóa gói
+                                </button>
+                            </div>
                         </motion.div>
                     </div>
                 )}

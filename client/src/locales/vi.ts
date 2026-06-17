@@ -32,11 +32,11 @@ export const viText = {
   },
   landing: {
     hero: {
-      badge: "NỀN TẢNG HỌC KÝ HIỆU ỨNG DỤNG AI ĐẦU TIÊN TẠI VIỆT NAM",
+      badge: "NỀN TẢNG HỌC NGÔN NGỮ KÝ HIỆU ỨNG DỤNG AI",
       title: "Học Ngôn ngữ\nKý hiệu dễ dàng",
       titleHighlight: "cùng AI",
       description:
-        "Eleven giúp bạn học, luyện tập và dịch Ngôn ngữ Ký hiệu Việt theo thời gian thực với công nghệ AI tiên tiến.",
+        "Eleven giúp bạn học, luyện tập và dịch Ngôn ngữ Ký hiệu Việt Nam với công nghệ AI tiên tiến.",
       imageAlt: "Minh họa ngôn ngữ ký hiệu Việt Nam",
       realtimeCaption:
         'DỊCH THUẬT THỜI GIAN THỰC: "Xin chào, tôi có thể giúp gì cho bạn hôm nay?"',
@@ -81,7 +81,7 @@ export const viText = {
     cta: {
       title: "Sẵn sàng phá vỡ rào cản giao tiếp?",
       description:
-        "Tham gia cùng hơn 50.000 người dùng đang sử dụng ElevenAI để kết nối với cộng đồng, gia đình và đồng nghiệp quốc tế.",
+        "Tham gia cùng cộng đồng người dùng đang sử dụng Eleven để kết nối cùng với gia đình, bạn bè và đồng nghiệp.",
     },
   },
 
