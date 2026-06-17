@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:video_player/video_player.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/models/lesson_model.dart';
 import '../../data/datasources/course_data_source.dart';
 import 'gesture_test_screen.dart';
@@ -194,10 +195,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981);
-    const Color textMutedColor = Color(0xFF94A3B8);
 
     // Compute progress percentage
     double totalProgress = 0.0;
@@ -205,355 +203,367 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     if (_isAiCompleted) totalProgress += 0.5;
     final int progressPercent = (totalProgress * 100).toInt();
 
-    return Scaffold(
-      backgroundColor: darkBgColor,
-      appBar: AppBar(
-        backgroundColor: darkBgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          widget.lesson.title,
-          style: GoogleFonts.quicksand(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 18,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // 1. Video Player Container
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: darkCardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-                ),
-                child: _buildVideoView(mintColor, textMutedColor),
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppTheme.isWhiteBgNotifier,
+      builder: (context, isWhiteBg, child) {
+        final Color currentBgColor = isWhiteBg ? const Color(0xFFF8FDF8) : const Color(0xFF0A0F0D);
+        final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+        final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+        final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+        final Color inputFillColor = isWhiteBg ? Colors.white : const Color(0xFF0F1412);
+        final Color borderColor = isWhiteBg ? const Color(0xFFC2DFCA) : Colors.white.withValues(alpha: 0.04);
+
+        return Scaffold(
+          backgroundColor: currentBgColor,
+          appBar: AppBar(
+            backgroundColor: currentBgColor,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: currentTextColor, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              widget.lesson.title,
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: currentTextColor,
+                fontSize: 18,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // 2. Lesson Title Header and Metadata
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            centerTitle: true,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
+                // 1. Video Player Container
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Container(
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: currentCardColor,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: _buildVideoView(mintColor, currentTextMutedColor, isWhiteBg),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 2. Lesson Title Header and Metadata
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.lesson.title,
+                            style: GoogleFonts.quicksand(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: currentTextColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                "Cấp độ: Beginner",
+                                style: GoogleFonts.quicksand(
+                                  fontSize: 12,
+                                  color: currentTextMutedColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              _buildRewardChip(widget.lesson.xpEarned, isWhiteBg),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        // Action: Tương tác AI
+                        IconButton(
+                          icon: const Icon(Icons.psychology_rounded, color: mintColor, size: 24),
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => GestureTestScreen(lesson: widget.lesson),
+                              ),
+                            ).then((_) => _loadLocalProgress());
+                          },
+                          tooltip: 'Tương tác AI',
+                        ),
+                        // Action: Lưu từ
+                        IconButton(
+                          icon: Icon(
+                            _isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            color: _isBookmarked ? Colors.amber : currentTextMutedColor,
+                            size: 24,
+                          ),
+                          onPressed: _toggleBookmark,
+                          tooltip: 'Lưu từ',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // 3. Tiến Trình Học Tập (Circular tracker & Checklist steps - matching Web design)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: currentCardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      // Circular Progress Chart
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 76,
+                            height: 76,
+                            child: CircularProgressIndicator(
+                              value: totalProgress,
+                              strokeWidth: 7,
+                              backgroundColor: currentTextColor.withValues(alpha: 0.04),
+                              valueColor: const AlwaysStoppedAnimation<Color>(mintColor),
+                            ),
+                          ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "$progressPercent%",
+                                style: GoogleFonts.quicksand(
+                                  color: currentTextColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "TIẾN TRÌNH",
+                                style: TextStyle(
+                                  color: currentTextMutedColor.withValues(alpha: 0.7),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 24),
+                      
+                      // Steps Checklist
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFigmaStepRow("1. Xem video giảng dạy", _isVideoWatched ? "Đã xem" : "Chưa xem", _isVideoWatched, mintColor, currentTextColor, currentTextMutedColor),
+                            const SizedBox(height: 10),
+                            _buildFigmaStepRow("2. Kiểm tra với AI", _isAiCompleted ? "Đạt 95%" : "Chưa đạt", _isAiCompleted, mintColor, currentTextColor, currentTextMutedColor),
+                            const SizedBox(height: 10),
+                            _buildFigmaStepRow("3. Hoàn thành bài học", (_isVideoWatched && _isAiCompleted) ? "Hoàn thành" : "Chưa xong", _isVideoWatched && _isAiCompleted, mintColor, currentTextColor, currentTextMutedColor),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 4. Thử thách hàng ngày (Daily Challenge Progress Bar - matching Web)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: currentCardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: borderColor),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.lesson.title,
-                        style: GoogleFonts.quicksand(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        "Thử thách hàng ngày",
+                        style: TextStyle(color: currentTextColor, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
+                      Text(
+                        "Hoàn thành 5 từ vựng giao tiếp để nhận huy hiệu mới!",
+                        style: TextStyle(color: currentTextMutedColor, fontSize: 11),
+                      ),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
-                          Text(
-                            "Cấp độ: Beginner",
-                            style: GoogleFonts.quicksand(
-                              fontSize: 12,
-                              color: textMutedColor,
-                              fontWeight: FontWeight.w600,
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: _dailyChallengeCount / 5.0,
+                                minHeight: 8,
+                                backgroundColor: currentTextColor.withValues(alpha: 0.04),
+                                valueColor: const AlwaysStoppedAnimation<Color>(mintColor),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          _buildRewardChip(widget.lesson.xpEarned),
+                          const SizedBox(width: 14),
+                          Text(
+                            "$_dailyChallengeCount/5 bài (${(_dailyChallengeCount * 20)}%)",
+                            style: const TextStyle(color: mintColor, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                Row(
-                  children: [
-                    // Action: Tương tác AI
-                    IconButton(
-                      icon: const Icon(Icons.psychology_rounded, color: mintColor, size: 24),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => GestureTestScreen(lesson: widget.lesson),
+                const SizedBox(height: 16),
+
+                // 5. Ý nghĩa & Sử dụng Card (Meaning & Usage)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: currentCardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.info_outline_rounded, color: mintColor, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Ý nghĩa & Sử dụng",
+                            style: GoogleFonts.quicksand(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: currentTextColor,
+                            ),
                           ),
-                        ).then((_) => _loadLocalProgress());
-                      },
-                      tooltip: 'Tương tác AI',
-                    ),
-                    // Action: Lưu từ
-                    IconButton(
-                      icon: Icon(
-                        _isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        color: _isBookmarked ? Colors.amber : textMutedColor,
-                        size: 24,
+                        ],
                       ),
-                      onPressed: _toggleBookmark,
-                      tooltip: 'Lưu từ',
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Text(
+                        "Học từ khóa: \"${widget.lesson.title}\". Từ ngữ được sử dụng rộng rãi trong giao tiếp hàng ngày để diễn tả trạng thái thân thiện, làm quen và khởi đầu cuộc trò chuyện lịch sự.",
+                        style: TextStyle(color: currentTextMutedColor, fontSize: 13, height: 1.45),
+                      ),
+                      const SizedBox(height: 12),
+                      // Styled Blockquote matching Figma web
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: inputFillColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: const Border(
+                            left: BorderSide(color: mintColor, width: 4),
+                          ),
+                        ),
+                        child: Text(
+                          "\"Nắm vững cử chỉ tay, vị trí đặt tay kết hợp với biểu cảm khuôn mặt tự nhiên để diễn tả trọn vẹn ý nghĩa của từ khóa.\"",
+                          style: GoogleFonts.quicksand(
+                            color: currentTextColor,
+                            fontSize: 12.5,
+                            fontStyle: FontStyle.italic,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 16),
+
+                // 6. Thông tin bổ sung Card (Additional Info)
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: currentCardColor,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.assignment_rounded, color: mintColor, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Thông tin bổ sung",
+                            style: GoogleFonts.quicksand(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: currentTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFigmaInfoRow("1", "Thời gian học ước tính: 1 phút", inputFillColor, currentTextMutedColor),
+                      const SizedBox(height: 10),
+                      _buildFigmaInfoRow("2", "Thứ tự bài học trong học phần: ${widget.lesson.orderIndex + 1}", inputFillColor, currentTextMutedColor),
+                      const SizedBox(height: 10),
+                      _buildFigmaInfoRow("3", "Hãy thực hành đều đặn bằng camera AI để nhận điểm thưởng XP.", inputFillColor, currentTextMutedColor),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // 7. Bắt Đầu Kiểm Tra AI Action Button
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => GestureTestScreen(lesson: widget.lesson),
+                      ),
+                    ).then((_) => _loadLocalProgress());
+                  },
+                  icon: const Icon(Icons.camera_front_rounded, size: 20),
+                  label: Text(
+                    "Bắt Đầu Kiểm Tra AI",
+                    style: GoogleFonts.quicksand(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: mintColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                    shadowColor: mintColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
             ),
-            const SizedBox(height: 20),
-
-            // 3. Tiến Trình Học Tập (Circular tracker & Checklist steps - matching Web design)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: darkCardColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-              ),
-              child: Row(
-                children: [
-                  // Circular Progress Chart
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 76,
-                        height: 76,
-                        child: CircularProgressIndicator(
-                          value: totalProgress,
-                          strokeWidth: 7,
-                          backgroundColor: Colors.white.withValues(alpha: 0.04),
-                          valueColor: const AlwaysStoppedAnimation<Color>(mintColor),
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "$progressPercent%",
-                            style: GoogleFonts.quicksand(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            "TIẾN TRÌNH",
-                            style: TextStyle(
-                              color: Color(0xFF64748B),
-                              fontSize: 8,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 24),
-                  
-                  // Steps Checklist
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildFigmaStepRow("1. Xem video giảng dạy", _isVideoWatched ? "Đã xem" : "Chưa xem", _isVideoWatched, mintColor, textMutedColor),
-                        const SizedBox(height: 10),
-                        _buildFigmaStepRow("2. Kiểm tra với AI", _isAiCompleted ? "Đạt 95%" : "Chưa đạt", _isAiCompleted, mintColor, textMutedColor),
-                        const SizedBox(height: 10),
-                        _buildFigmaStepRow("3. Hoàn thành bài học", (_isVideoWatched && _isAiCompleted) ? "Hoàn thành" : "Chưa xong", _isVideoWatched && _isAiCompleted, mintColor, textMutedColor),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 4. Thử thách hàng ngày (Daily Challenge Progress Bar - matching Web)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: darkCardColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Thử thách hàng ngày",
-                    style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    "Hoàn thành 5 từ vựng giao tiếp để nhận huy hiệu mới!",
-                    style: TextStyle(color: textMutedColor, fontSize: 11),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: LinearProgressIndicator(
-                            value: _dailyChallengeCount / 5.0,
-                            minHeight: 8,
-                            backgroundColor: Colors.white.withValues(alpha: 0.04),
-                            valueColor: const AlwaysStoppedAnimation<Color>(mintColor),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Text(
-                        "$_dailyChallengeCount/5 bài (${(_dailyChallengeCount * 20)}%)",
-                        style: const TextStyle(color: mintColor, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 5. Ý nghĩa & Sử dụng Card (Meaning & Usage)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: darkCardColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: mintColor, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Ý nghĩa & Sử dụng",
-                        style: GoogleFonts.quicksand(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    "Học từ khóa: \"${widget.lesson.title}\". Từ ngữ được sử dụng rộng rãi trong giao tiếp hàng ngày để diễn tả trạng thái thân thiện, làm quen và khởi đầu cuộc trò chuyện lịch sự.",
-                    style: const TextStyle(color: textMutedColor, fontSize: 13, height: 1.45),
-                  ),
-                  const SizedBox(height: 12),
-                  // Styled Blockquote matching Figma web
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F1512),
-                      borderRadius: BorderRadius.circular(12),
-                      border: const Border(
-                        left: BorderSide(color: mintColor, width: 4),
-                      ),
-                    ),
-                    child: Text(
-                      "\"Nắm vững cử chỉ tay, vị trí đặt tay kết hợp với biểu cảm khuôn mặt tự nhiên để diễn tả trọn vẹn ý nghĩa của từ khóa.\"",
-                      style: GoogleFonts.quicksand(
-                        color: Colors.white,
-                        fontSize: 12.5,
-                        fontStyle: FontStyle.italic,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // 6. Thông tin bổ sung Card (Additional Info)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: darkCardColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.assignment_rounded, color: mintColor, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Thông tin bổ sung",
-                        style: GoogleFonts.quicksand(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  _buildFigmaInfoRow("1", "Thời gian học ước tính: 1 phút"),
-                  const SizedBox(height: 10),
-                  _buildFigmaInfoRow("2", "Thứ tự bài học trong học phần: ${widget.lesson.orderIndex + 1}"),
-                  const SizedBox(height: 10),
-                  _buildFigmaInfoRow("3", "Hãy thực hành đều đặn bằng camera AI để nhận điểm thưởng XP."),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            // 7. Bắt Đầu Kiểm Tra AI Action Button
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => GestureTestScreen(lesson: widget.lesson),
-                  ),
-                ).then((_) => _loadLocalProgress());
-              },
-              icon: const Icon(Icons.camera_front_rounded, size: 20),
-              label: Text(
-                "Bắt Đầu Kiểm Tra AI",
-                style: GoogleFonts.quicksand(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: mintColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-                shadowColor: mintColor.withValues(alpha: 0.3),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildVideoView(Color mint, Color muted) {
+  Widget _buildVideoView(Color mint, Color muted, bool isWhiteBg) {
     if (widget.lesson.videoMediaId == null) {
-      return _buildPlaceholderView(Icons.cloud_off_rounded, "Bài học này chưa đính kèm video giảng dạy.", mint);
+      return _buildPlaceholderView(Icons.cloud_off_rounded, "Bài học này chưa đính kèm video giảng dạy.", mint, isWhiteBg);
     }
 
     if (_isVideoLoading) {
@@ -577,6 +587,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         Icons.error_outline_rounded,
         "Không thể tải video từ máy chủ.\nVui lòng kiểm tra lại kết nối.",
         mint,
+        isWhiteBg,
       );
     }
 
@@ -669,15 +680,17 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Widget _buildPlaceholderView(IconData icon, String text, Color mint) {
+  Widget _buildPlaceholderView(IconData icon, String text, Color mint, bool isWhiteBg) {
     return Stack(
       fit: StackFit.expand,
       alignment: Alignment.center,
       children: [
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: RadialGradient(
-              colors: [Color(0xFF1E2E25), Color(0xFF0F1512)],
+              colors: isWhiteBg 
+                  ? [const Color(0xFFE8F5E9), const Color(0xFFC2DFCA)]
+                  : [const Color(0xFF1E2E25), const Color(0xFF0F1512)],
               center: Alignment.center,
               radius: 1.0,
             ),
@@ -700,8 +713,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
               child: Text(
                 text,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Color(0xFF64748B),
+                style: TextStyle(
+                  color: isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
                   fontSize: 12,
                   height: 1.4,
                   fontWeight: FontWeight.bold,
@@ -714,13 +727,13 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Widget _buildRewardChip(int xp) {
+  Widget _buildRewardChip(int xp, bool isWhiteBg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1F1C),
+        color: isWhiteBg ? const Color(0xFFFEF3C7) : const Color(0xFF1A1F1C),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.amber.withValues(alpha: 0.25), width: 1.0),
+        border: Border.all(color: Colors.amber.withValues(alpha: isWhiteBg ? 0.5 : 0.25), width: 1.0),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -740,7 +753,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Widget _buildFigmaStepRow(String title, String status, bool isChecked, Color mint, Color muted) {
+  Widget _buildFigmaStepRow(String title, String status, bool isChecked, Color mint, Color textColor, Color muted) {
     return Row(
       children: [
         Icon(
@@ -753,7 +766,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
           child: Text(
             title,
             style: TextStyle(
-              color: isChecked ? Colors.white : const Color(0xFF64748B),
+              color: isChecked ? textColor : muted,
               fontSize: 12,
               fontWeight: isChecked ? FontWeight.bold : FontWeight.normal,
             ),
@@ -763,7 +776,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: isChecked ? mint.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+            color: isChecked ? mint.withValues(alpha: 0.15) : textColor.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: isChecked ? mint.withValues(alpha: 0.2) : Colors.transparent),
           ),
@@ -780,7 +793,7 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     );
   }
 
-  Widget _buildFigmaInfoRow(String index, String content) {
+  Widget _buildFigmaInfoRow(String index, String content, Color fill, Color muted) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -788,8 +801,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
           width: 18,
           height: 18,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-            color: Color(0xFF0F1512),
+          decoration: BoxDecoration(
+            color: fill,
             shape: BoxShape.circle,
           ),
           child: Text(
@@ -805,8 +818,8 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         Expanded(
           child: Text(
             content,
-            style: const TextStyle(
-              color: Color(0xFF94A3B8),
+            style: TextStyle(
+              color: muted,
               fontSize: 12,
               height: 1.4,
             ),

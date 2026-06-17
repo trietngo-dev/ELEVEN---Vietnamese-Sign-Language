@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/app_theme.dart';
 import '../bloc/course_bloc.dart';
 import '../../data/datasources/course_data_source.dart';
 import 'lesson_detail_screen.dart';
@@ -205,10 +206,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     final commentController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
+    final isWhiteBg = AppTheme.isWhiteBgNotifier.value;
+    final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+    final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+    final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+    final Color inputFillColor = isWhiteBg ? Colors.white : const Color(0xFF0F1412);
+    final Color borderSideColor = isWhiteBg ? const Color(0xFFC2DFCA) : Colors.transparent;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF131A16),
+      backgroundColor: currentCardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -231,22 +239,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Viết đánh giá của bạn',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: currentTextColor, fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close_rounded, color: Colors.white60),
+                          icon: Icon(Icons.close_rounded, color: currentTextMutedColor),
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     // Stars Selector
-                    const Center(
+                    Center(
                       child: Text(
                         'Điểm số sao',
-                        style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: currentTextMutedColor, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -273,16 +281,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     TextFormField(
                       controller: commentController,
                       maxLines: 4,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: TextStyle(color: currentTextColor, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'Chia sẻ ý kiến đánh giá về khóa học...',
-                        hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                        fillColor: const Color(0xFF0F1412),
+                        hintStyle: TextStyle(color: currentTextMutedColor.withValues(alpha: 0.7), fontSize: 12),
+                        fillColor: inputFillColor,
                         filled: true,
                         contentPadding: const EdgeInsets.all(16),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                          borderSide: borderSideColor != Colors.transparent 
+                              ? BorderSide(color: borderSideColor) 
+                              : BorderSide.none,
                         ),
                       ),
                       validator: (val) {
@@ -322,446 +332,448 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dark theme aesthetics matching premium Figma screens
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981);
-    const Color textMutedColor = Color(0xFF94A3B8);
 
-    return Scaffold(
-      backgroundColor: darkBgColor,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [darkBgColor, Color(0xFF0E1411)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: BlocBuilder<CourseBloc, CourseState>(
-          builder: (context, state) {
-            if (state is CourseLoading) {
-              return const Center(child: CircularProgressIndicator(color: mintColor));
-            } else if (state is CourseFailure) {
-              return SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("Không thể tải chi tiết khóa học: ${state.error}", style: const TextStyle(color: Colors.redAccent)),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          context.read<CourseBloc>().add(LoadCourseDetailRequested(widget.courseId));
-                        },
-                        child: const Text("Thử lại"),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            } else if (state is CourseDetailLoadSuccess) {
-              final course = state.course;
-              final lessons = state.lessons;
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppTheme.isWhiteBgNotifier,
+      builder: (context, isWhiteBg, child) {
+        final Color currentBgColor = isWhiteBg ? const Color(0xFFF8FDF8) : const Color(0xFF0A0F0D);
+        final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+        final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+        final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+        final Color inputFillColor = isWhiteBg ? Colors.white : const Color(0xFF0F1412);
+        final Color borderColor = isWhiteBg ? const Color(0xFFC2DFCA) : Colors.white.withValues(alpha: 0.04);
+        final Color filterBorderColor = isWhiteBg ? const Color(0xFFC2DFCA) : Colors.white.withValues(alpha: 0.08);
 
-              // Load the cover image dynamically once details succeed
-              if (_coverImageUrl == null && !_isLoadingCoverImage) {
-                _isLoadingCoverImage = true;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _loadCoverImage(course.thumbnailMediaId, course.title);
-                });
-              }
-
-              return CustomScrollView(
-                slivers: [
-                  // App Bar with Dynamic Title
-                  SliverAppBar(
-                    expandedHeight: 180,
-                    pinned: true,
-                    backgroundColor: darkCardColor,
-                    flexibleSpace: FlexibleSpaceBar(
-                      title: Text(
-                        course.title,
-                        style: GoogleFonts.quicksand(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontSize: 16,
-                          shadows: [
-                            const Shadow(color: Color(0xD8000000), blurRadius: 4),
-                          ],
-                        ),
-                      ),
-                      background: _coverImageUrl != null
-                          ? Image.network(
-                              _coverImageUrl!,
-                              fit: BoxFit.cover,
-                            )
-                          : Container(
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Color(0xFF0E1E16), Color(0xFF0C100E)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                              ),
-                              child: const Center(
-                                child: Icon(Icons.school_rounded, size: 64, color: Colors.white24),
-                              ),
-                            ),
-                    ),
-                  ),
-
-                  // Course Overview Card
-                  SliverToBoxAdapter(
+        return Scaffold(
+          backgroundColor: currentBgColor,
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isWhiteBg 
+                    ? [const Color(0xFFF8FDF8), const Color(0xFFF0FDF4)]
+                    : [const Color(0xFF0A0F0D), const Color(0xFF0E1411)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: BlocBuilder<CourseBloc, CourseState>(
+              builder: (context, state) {
+                if (state is CourseLoading) {
+                  return const Center(child: CircularProgressIndicator(color: mintColor));
+                } else if (state is CourseFailure) {
+                  return SafeArea(
                     child: Padding(
-                      padding: const EdgeInsets.all(20.0),
+                      padding: const EdgeInsets.all(24.0),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: darkCardColor,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          course.averageRating.toStringAsFixed(1),
-                                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "($_countAll đánh giá)",
-                                          style: const TextStyle(color: textMutedColor, fontSize: 11),
-                                        ),
-                                      ],
-                                    ),
-                                    _buildLevelBadge(course.level ?? 'Cơ bản', mintColor),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
-                                const Text(
-                                  "Mô tả khóa học",
-                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  course.description,
-                                  style: const TextStyle(color: textMutedColor, fontSize: 13, height: 1.45),
-                                ),
-                              ],
-                            ),
+                          Text("Không thể tải chi tiết khóa học: ${state.error}", style: const TextStyle(color: Colors.redAccent)),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<CourseBloc>().add(LoadCourseDetailRequested(widget.courseId));
+                            },
+                            child: const Text("Thử lại"),
                           ),
-                          const SizedBox(height: 24),
-                          
-                          // Lessons List Header
-                          Text(
-                            "Danh sách bài học (${lessons.length})",
-                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 12),
                         ],
                       ),
                     ),
-                  ),
+                  );
+                } else if (state is CourseDetailLoadSuccess) {
+                  final course = state.course;
+                  final lessons = state.lessons;
 
-                  // Lessons Scrollable List
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    sliver: lessons.isEmpty
-                        ? const SliverToBoxAdapter(
-                            child: Center(
-                              child: Text(
-                                "Khóa học này hiện chưa cập nhật bài học.",
-                                style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF64748B)),
-                              ),
+                  if (_coverImageUrl == null && !_isLoadingCoverImage) {
+                    _isLoadingCoverImage = true;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _loadCoverImage(course.thumbnailMediaId, course.title);
+                    });
+                  }
+
+                  return CustomScrollView(
+                    slivers: [
+                      SliverAppBar(
+                        expandedHeight: 180,
+                        pinned: true,
+                        backgroundColor: currentCardColor,
+                        flexibleSpace: FlexibleSpaceBar(
+                          title: Text(
+                            course.title,
+                            style: GoogleFonts.quicksand(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              fontSize: 16,
+                              shadows: [
+                                const Shadow(color: Color(0xD8000000), blurRadius: 4),
+                              ],
                             ),
-                          )
-                        : SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final lesson = lessons[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12.0),
-                                  child: InkWell(
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => LessonDetailScreen(lesson: lesson),
-                                        ),
-                                      );
-                                    },
-                                    borderRadius: BorderRadius.circular(16.0),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16.0),
-                                      decoration: BoxDecoration(
-                                        color: darkCardColor,
-                                        borderRadius: BorderRadius.circular(16.0),
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              color: mintColor.withValues(alpha: 0.1),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                "${index + 1}",
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  color: mintColor,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  lesson.title,
-                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  "Phần thưởng: +${lesson.xpEarned} XP",
-                                                  style: const TextStyle(
-                                                    color: mintColor,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 11,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const Icon(Icons.play_circle_fill_rounded, color: mintColor, size: 28),
-                                        ],
-                                      ),
+                          ),
+                          background: _coverImageUrl != null
+                              ? Image.network(
+                                  _coverImageUrl!,
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [Color(0xFF0E1E16), Color(0xFF0C100E)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
                                   ),
-                                );
-                              },
-                              childCount: lessons.length,
-                            ),
-                          ),
-                  ),
-
-                  // Shopee-style Course Review Section (Title & Counter tags)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Divider(color: Colors.white.withValues(alpha: 0.05)),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "Đánh giá & Nhận xét",
-                                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                              ),
-                              ElevatedButton.icon(
-                                onPressed: _showWriteReviewBottomSheet,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: mintColor,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  child: const Center(
+                                    child: Icon(Icons.school_rounded, size: 64, color: Colors.white24),
+                                  ),
                                 ),
-                                icon: const Icon(Icons.rate_review_rounded, size: 14),
-                                label: const Text('Viết đánh giá', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: currentCardColor,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: borderColor),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              course.averageRating.toStringAsFixed(1),
+                                              style: TextStyle(fontWeight: FontWeight.bold, color: currentTextColor, fontSize: 14),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              "($_countAll đánh giá)",
+                                              style: TextStyle(color: currentTextMutedColor, fontSize: 11),
+                                            ),
+                                          ],
+                                        ),
+                                        _buildLevelBadge(course.level ?? 'Cơ bản', mintColor),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      "Mô tả khóa học",
+                                      style: TextStyle(color: currentTextColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      course.description,
+                                      style: TextStyle(color: currentTextMutedColor, fontSize: 13, height: 1.45),
+                                    ),
+                                  ],
+                                ),
                               ),
+                              const SizedBox(height: 24),
+                              
+                              Text(
+                                "Danh sách bài học (${lessons.length})",
+                                style: TextStyle(color: currentTextColor, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 12),
                             ],
                           ),
-                          const SizedBox(height: 14),
-
-                          // Shopee rating tags scrollable horizontal view
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: [
-                                _buildReviewFilterTag('Tất cả ($_countAll)', 'all', mintColor),
-                                const SizedBox(width: 8),
-                                _buildReviewFilterTag('5 ★ ($_count5)', '5', mintColor),
-                                const SizedBox(width: 8),
-                                _buildReviewFilterTag('4 ★ ($_count4)', '4', mintColor),
-                                const SizedBox(width: 8),
-                                _buildReviewFilterTag('3 ★ ($_count3)', '3', mintColor),
-                                const SizedBox(width: 8),
-                                _buildReviewFilterTag('2 ★ ($_count2)', '2', mintColor),
-                                const SizedBox(width: 8),
-                                _buildReviewFilterTag('1 ★ ($_count1)', '1', mintColor),
-                                const SizedBox(width: 8),
-                                _buildReviewFilterTag('Có bình luận ($_countComment)', 'comment', mintColor),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
 
-                  // Reviews List
-                  SliverPadding(
-                    padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 48.0),
-                    sliver: _isLoadingReviews
-                        ? const SliverToBoxAdapter(
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(24.0),
-                                child: CircularProgressIndicator(color: mintColor),
-                              ),
-                            ),
-                          )
-                        : _filteredReviews.isEmpty
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                        sliver: lessons.isEmpty
                             ? const SliverToBoxAdapter(
                                 child: Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(24.0),
-                                    child: Text('Chưa có đánh giá nào phù hợp với bộ lọc.', style: TextStyle(color: Colors.white30, fontSize: 13)),
+                                  child: Text(
+                                    "Khóa học này hiện chưa cập nhật bài học.",
+                                    style: TextStyle(fontStyle: FontStyle.italic, color: Color(0xFF64748B)),
                                   ),
                                 ),
                               )
                             : SliverList(
                                 delegate: SliverChildBuilderDelegate(
                                   (context, index) {
-                                    final review = _filteredReviews[index];
-                                    final dynamic userAvatar = review['userAvatarUrl'];
-                                    final userFullName = review['userFullName'] ?? 'Học viên VSL';
-                                    final reviewText = review['content'] ?? '';
-                                    final rating = review['rating'] ?? 5;
-                                    final adminReply = review['adminReply'];
-
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: darkCardColor,
-                                        borderRadius: BorderRadius.circular(18),
-                                        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
+                                    final lesson = lessons[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12.0),
+                                      child: InkWell(
+                                        onTap: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => LessonDetailScreen(lesson: lesson),
+                                            ),
+                                          );
+                                        },
+                                        borderRadius: BorderRadius.circular(16.0),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(16.0),
+                                          decoration: BoxDecoration(
+                                            color: currentCardColor,
+                                            borderRadius: BorderRadius.circular(16.0),
+                                            border: Border.all(color: borderColor),
+                                          ),
+                                          child: Row(
                                             children: [
                                               Container(
-                                                width: 36,
-                                                height: 36,
+                                                width: 32,
+                                                height: 32,
                                                 decoration: BoxDecoration(
+                                                  color: mintColor.withValues(alpha: 0.1),
                                                   shape: BoxShape.circle,
-                                                  color: mintColor.withValues(alpha: 0.15),
-                                                  border: Border.all(color: mintColor.withValues(alpha: 0.2)),
                                                 ),
-                                                child: userAvatar != null 
-                                                    ? ClipRRect(
-                                                        borderRadius: BorderRadius.circular(18),
-                                                        child: Image.network(userAvatar, fit: BoxFit.cover),
-                                                      )
-                                                    : const Center(child: Icon(Icons.person_rounded, color: mintColor, size: 18)),
+                                                child: Center(
+                                                  child: Text(
+                                                    "${index + 1}",
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: mintColor,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
-                                              const SizedBox(width: 12),
+                                              const SizedBox(width: 16),
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment: CrossAxisAlignment.start,
                                                   children: [
                                                     Text(
-                                                      userFullName,
-                                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                                      lesson.title,
+                                                      style: TextStyle(color: currentTextColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
                                                     ),
-                                                    const SizedBox(height: 2),
-                                                    Row(
-                                                      children: List.generate(5, (starIdx) {
-                                                        return Icon(
-                                                          starIdx < rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                                                          color: Colors.amber,
-                                                          size: 13,
-                                                        );
-                                                      }),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      "Phần thưởng: +${lesson.xpEarned} XP",
+                                                      style: const TextStyle(
+                                                        color: mintColor,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 11,
+                                                      ),
                                                     ),
                                                   ],
                                                 ),
                                               ),
+                                              const Icon(Icons.play_circle_fill_rounded, color: mintColor, size: 28),
                                             ],
                                           ),
-                                          if (reviewText.toString().isNotEmpty) ...[
-                                            const SizedBox(height: 10),
-                                            Text(
-                                              reviewText,
-                                              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-                                            ),
-                                          ],
-                                          
-                                          // Admin Reply Card (linked directly from C# feedback replies database)
-                                          if (adminReply != null && adminReply.toString().trim().isNotEmpty) ...[
-                                            const SizedBox(height: 12),
-                                            Container(
-                                              width: double.infinity,
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF0F1412),
-                                                borderRadius: BorderRadius.circular(12),
-                                                border: Border.all(color: mintColor.withValues(alpha: 0.1)),
-                                              ),
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  const Row(
-                                                    children: [
-                                                      Icon(Icons.admin_panel_settings_rounded, color: mintColor, size: 14),
-                                                      SizedBox(width: 6),
-                                                      Text(
-                                                        'Phản hồi từ Admin',
-                                                        style: TextStyle(color: mintColor, fontSize: 11, fontWeight: FontWeight.bold),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 6),
-                                                  Text(
-                                                    adminReply,
-                                                    style: const TextStyle(color: Colors.white60, fontSize: 12, height: 1.4, fontStyle: FontStyle.italic),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ],
+                                        ),
                                       ),
                                     );
                                   },
-                                  childCount: _filteredReviews.length,
+                                  childCount: lessons.length,
                                 ),
                               ),
-                  ),
-                ],
-              );
-            }
-            return const SizedBox();
-          },
-        ),
-      ),
+                      ),
+
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Divider(color: currentTextColor.withValues(alpha: 0.05)),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Đánh giá & Nhận xét",
+                                    style: TextStyle(color: currentTextColor, fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: _showWriteReviewBottomSheet,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: mintColor,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                    ),
+                                    icon: const Icon(Icons.rate_review_rounded, size: 14),
+                                    label: const Text('Viết đánh giá', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _buildReviewFilterTag('Tất cả ($_countAll)', 'all', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                    const SizedBox(width: 8),
+                                    _buildReviewFilterTag('5 ★ ($_count5)', '5', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                    const SizedBox(width: 8),
+                                    _buildReviewFilterTag('4 ★ ($_count4)', '4', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                    const SizedBox(width: 8),
+                                    _buildReviewFilterTag('3 ★ ($_count3)', '3', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                    const SizedBox(width: 8),
+                                    _buildReviewFilterTag('2 ★ ($_count2)', '2', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                    const SizedBox(width: 8),
+                                    _buildReviewFilterTag('1 ★ ($_count1)', '1', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                    const SizedBox(width: 8),
+                                    _buildReviewFilterTag('Có bình luận ($_countComment)', 'comment', mintColor, currentCardColor, currentTextColor, currentTextMutedColor, filterBorderColor),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      SliverPadding(
+                        padding: const EdgeInsets.only(left: 20.0, right: 20.0, bottom: 48.0),
+                        sliver: _isLoadingReviews
+                            ? const SliverToBoxAdapter(
+                                child: Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(24.0),
+                                    child: CircularProgressIndicator(color: mintColor),
+                                  ),
+                                ),
+                              )
+                            : _filteredReviews.isEmpty
+                                ? SliverToBoxAdapter(
+                                    child: Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(24.0),
+                                        child: Text('Chưa có đánh giá nào phù hợp với bộ lọc.', style: TextStyle(color: currentTextMutedColor.withValues(alpha: 0.5), fontSize: 13)),
+                                      ),
+                                    ),
+                                  )
+                                : SliverList(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, index) {
+                                        final review = _filteredReviews[index];
+                                        final dynamic userAvatar = review['userAvatarUrl'];
+                                        final userFullName = review['userFullName'] ?? 'Học viên VSL';
+                                        final reviewText = review['content'] ?? '';
+                                        final rating = review['rating'] ?? 5;
+                                        final adminReply = review['adminReply'];
+
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 12),
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: currentCardColor,
+                                            borderRadius: BorderRadius.circular(18),
+                                            border: Border.all(color: borderColor),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    width: 36,
+                                                    height: 36,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: mintColor.withValues(alpha: 0.15),
+                                                      border: Border.all(color: mintColor.withValues(alpha: 0.2)),
+                                                    ),
+                                                    child: userAvatar != null 
+                                                        ? ClipRRect(
+                                                            borderRadius: BorderRadius.circular(18),
+                                                            child: Image.network(userAvatar, fit: BoxFit.cover),
+                                                          )
+                                                        : const Center(child: Icon(Icons.person_rounded, color: mintColor, size: 18)),
+                                                  ),
+                                                  const SizedBox(width: 12),
+                                                  Expanded(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          userFullName,
+                                                          style: TextStyle(color: currentTextColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                                        ),
+                                                        const SizedBox(height: 2),
+                                                        Row(
+                                                          children: List.generate(5, (starIdx) {
+                                                            return Icon(
+                                                              starIdx < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                                              color: Colors.amber,
+                                                              size: 13,
+                                                            );
+                                                          }),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              if (reviewText.toString().isNotEmpty) ...[
+                                                const SizedBox(height: 10),
+                                                Text(
+                                                  reviewText,
+                                                  style: TextStyle(color: currentTextColor.withValues(alpha: 0.8), fontSize: 13, height: 1.4),
+                                                ),
+                                              ],
+                                              
+                                              if (adminReply != null && adminReply.toString().trim().isNotEmpty) ...[
+                                                const SizedBox(height: 12),
+                                                Container(
+                                                  width: double.infinity,
+                                                  padding: const EdgeInsets.all(12),
+                                                  decoration: BoxDecoration(
+                                                    color: inputFillColor,
+                                                    borderRadius: BorderRadius.circular(12),
+                                                    border: Border.all(color: mintColor.withValues(alpha: 0.1)),
+                                                  ),
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      const Row(
+                                                        children: [
+                                                          Icon(Icons.admin_panel_settings_rounded, color: mintColor, size: 14),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            'Phản hồi từ Admin',
+                                                            style: TextStyle(color: mintColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        adminReply,
+                                                        style: TextStyle(color: currentTextColor.withValues(alpha: 0.6), fontSize: 12, height: 1.4, fontStyle: FontStyle.italic),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                      childCount: _filteredReviews.length,
+                                    ),
+                                  ),
+                      ),
+                    ],
+                  );
+                }
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -783,7 +795,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  Widget _buildReviewFilterTag(String label, String value, Color mintColor) {
+  Widget _buildReviewFilterTag(String label, String value, Color mintColor, Color cardColor, Color textColor, Color textMutedColor, Color borderColor) {
     final isSelected = _activeFilter == value;
     return InkWell(
       onTap: () {
@@ -796,14 +808,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? mintColor : const Color(0xFF131A16),
+          color: isSelected ? mintColor : cardColor,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isSelected ? mintColor : Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: isSelected ? mintColor : borderColor),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+            color: isSelected ? Colors.white : textMutedColor,
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),

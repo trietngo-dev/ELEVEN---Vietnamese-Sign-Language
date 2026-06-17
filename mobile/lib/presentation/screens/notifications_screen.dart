@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/datasources/profile_data_source.dart';
 import '../../data/models/notification_model.dart';
 
@@ -125,156 +126,152 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981);
-    const Color textMutedColor = Color(0xFF94A3B8);
 
-    return Scaffold(
-      backgroundColor: darkBgColor,
-      appBar: AppBar(
-        backgroundColor: darkBgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          "THÔNG BÁO",
-          style: GoogleFonts.quicksand(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 18,
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppTheme.isWhiteBgNotifier,
+      builder: (context, isWhiteBg, child) {
+        final Color currentBgColor = isWhiteBg ? const Color(0xFFF8FDF8) : const Color(0xFF0A0F0D);
+        final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+        final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+        final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+
+        return Scaffold(
+          backgroundColor: currentBgColor,
+          appBar: AppBar(
+            backgroundColor: currentBgColor,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: currentTextColor, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              "THÔNG BÁO",
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: currentTextColor,
+                fontSize: 18,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: mintColor))
-          : RefreshIndicator(
-              onRefresh: _loadNotifications,
-              color: mintColor,
-              child: _notifications.isEmpty
-                  ? ListView(
-                      children: [
-                        SizedBox(height: MediaQuery.of(context).size.height * 0.3),
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: mintColor))
+              : RefreshIndicator(
+                  onRefresh: _loadNotifications,
+                  color: mintColor,
+                  child: _notifications.isEmpty
+                      ? ListView(
+                          children: [
+                            SizedBox(height: MediaQuery.of(context).size.height * 0.3),
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: mintColor.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.notifications_none_rounded, size: 36, color: mintColor),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Chưa có thông báo nào.',
+                                    style: TextStyle(color: currentTextMutedColor, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(20),
+                          itemCount: _notifications.length,
+                          separatorBuilder: (context, index) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final notif = _notifications[index];
+                            final bool isUnread = !(notif.isRead);
+
+                            return InkWell(
+                              onTap: () => _markAsRead(notif),
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
-                                  color: mintColor.withValues(alpha: 0.1),
-                                  shape: BoxShape.circle,
+                                  color: currentCardColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isUnread
+                                        ? mintColor.withValues(alpha: 0.3)
+                                        : Colors.white.withValues(alpha: 0.04),
+                                    width: isUnread ? 1.5 : 1,
+                                  ),
                                 ),
-                                child: const Icon(Icons.notifications_none_rounded, size: 36, color: mintColor),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Status dot/icon
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 3),
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: isUnread ? mintColor : Colors.transparent,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+
+                                    // Content
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            notif.title,
+                                            style: TextStyle(
+                                              color: currentTextColor,
+                                              fontSize: 13,
+                                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            notif.message,
+                                            style: TextStyle(color: currentTextMutedColor, fontSize: 12),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            _formatDate(notif.createdAt),
+                                            style: TextStyle(color: currentTextColor.withValues(alpha: 0.3), fontSize: 10),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+
+                                    // Delete icon
+                                    IconButton(
+                                      icon: Icon(Icons.close_rounded, color: currentTextColor.withValues(alpha: 0.3), size: 16),
+                                      onPressed: () => _deleteNotif(notif.id),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    )
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Bạn không có thông báo nào.',
-                                style: TextStyle(color: textMutedColor, fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
+                            );
+                          },
                         ),
-                      ],
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _notifications.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 12),
-                      itemBuilder: (context, index) {
-                        final notif = _notifications[index];
-                        
-                        IconData icon = Icons.info_outline_rounded;
-                        Color typeColor = mintColor;
-                        if (notif.type == 'subscription') {
-                          icon = Icons.star_rounded;
-                          typeColor = Colors.amber;
-                        } else if (notif.type == 'learning') {
-                          icon = Icons.school_rounded;
-                          typeColor = Colors.cyan;
-                        }
-
-                        return InkWell(
-                          onTap: () => _markAsRead(notif),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: notif.isRead ? darkCardColor : const Color(0xFF1E2823),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: notif.isRead
-                                    ? Colors.white.withValues(alpha: 0.04)
-                                    : mintColor.withValues(alpha: 0.25),
-                              ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Left icon
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: typeColor.withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(icon, color: typeColor, size: 18),
-                                ),
-                                const SizedBox(width: 14),
-
-                                // Title and content
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        notif.title,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: notif.isRead ? FontWeight.w600 : FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        notif.message,
-                                        style: TextStyle(
-                                          color: notif.isRead ? textMutedColor : Colors.white70,
-                                          fontSize: 12.5,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        _formatDate(notif.createdAt),
-                                        style: const TextStyle(color: Colors.white30, fontSize: 10),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // Delete icon
-                                IconButton(
-                                  icon: const Icon(Icons.close_rounded, color: Colors.white30, size: 16),
-                                  onPressed: () => _deleteNotif(notif.id),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                )
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
+                ),
+        );
+      },
     );
   }
 
   String _formatDate(DateTime dt) {
-    // Add timezone adjustment or simple format
     final localDt = dt.toLocal();
     final hour = localDt.hour.toString().padLeft(2, '0');
     final minute = localDt.minute.toString().padLeft(2, '0');

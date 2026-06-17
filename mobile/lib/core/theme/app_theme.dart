@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
+  static final ValueNotifier<bool> isWhiteBgNotifier = ValueNotifier<bool>(false);
+
   // Emerald Primary color palette matching the brand (HSL 141, 44%, 33%)
   static const Color primaryColor = Color(0xFF29613D);
   static const Color primaryDark = Color(0xFF1D452B);

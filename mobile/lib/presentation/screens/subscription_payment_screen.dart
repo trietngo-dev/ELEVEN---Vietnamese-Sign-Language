@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../core/theme/app_theme.dart';
 import '../../data/datasources/profile_data_source.dart';
 
 
@@ -31,7 +32,7 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
       final dbPlans = await ds.getSubscriptionPlans();
       if (mounted) {
         setState(() {
-          _plans = dbPlans;
+          _plans = dbPlans.where((plan) => plan['isActive'] ?? plan['IsActive'] ?? true).toList();
           if (_plans.isNotEmpty) {
             _plans.sort((a, b) {
               final aOrd = (a['displayOrder'] ?? a['DisplayOrder'] ?? 0) as int;
@@ -89,14 +90,14 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
     return '';
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, Color labelColor, Color valueColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11)),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: labelColor, fontSize: 11)),
+          Text(value, style: TextStyle(color: valueColor, fontSize: 11, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -104,241 +105,249 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981);
-    const Color textMutedColor = Color(0xFF94A3B8);
 
-    return Scaffold(
-      backgroundColor: darkBgColor,
-      appBar: AppBar(
-        backgroundColor: darkBgColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Text(
-          "GÓI NÂNG CẤP VIP",
-          style: GoogleFonts.quicksand(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 18,
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppTheme.isWhiteBgNotifier,
+      builder: (context, isWhiteBg, child) {
+        final Color currentBgColor = isWhiteBg ? const Color(0xFFF8FDF8) : const Color(0xFF0A0F0D);
+        final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+        final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+        final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
+        final Color borderColor = isWhiteBg ? const Color(0xFFC2DFCA) : Colors.white.withValues(alpha: 0.04);
+
+        return Scaffold(
+          backgroundColor: currentBgColor,
+          appBar: AppBar(
+            backgroundColor: currentBgColor,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios_new_rounded, color: currentTextColor, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              "GÓI NÂNG CẤP VIP",
+              style: GoogleFonts.quicksand(
+                fontWeight: FontWeight.bold,
+                color: currentTextColor,
+                fontSize: 18,
+              ),
+            ),
+            centerTitle: true,
           ),
-        ),
-        centerTitle: true,
-      ),
-      body: _isLoadingPlans
-          ? const Center(child: CircularProgressIndicator(color: mintColor))
-          : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 14), textAlign: TextAlign.center),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Hero info
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.15),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.workspace_premium_rounded, color: Colors.amber, size: 36),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              "Trở thành thành viên VSL PRO",
-                              style: GoogleFonts.quicksand(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              "Mở khóa toàn bộ kho tài liệu, nhận diện cử chỉ AI không giới hạn, không quảng cáo và sở hữu khung hoàng gia độc quyền.",
-                              style: TextStyle(color: textMutedColor, fontSize: 12, height: 1.4),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+          body: _isLoadingPlans
+              ? const Center(child: CircularProgressIndicator(color: mintColor))
+              : _errorMessage != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 14), textAlign: TextAlign.center),
                       ),
-                      const SizedBox(height: 16),
-
-                      // Plan selections
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _plans.length,
-                        separatorBuilder: (context, index) => const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final plan = _plans[index];
-                          final planId = (plan['code'] ?? plan['Code'] ?? plan['id'] ?? plan['Id']).toString();
-                          final isSelected = _selectedPlanId == planId;
-                          final planName = (plan['name'] ?? plan['Name'] ?? '').toString();
-                          final num priceVal = (plan['priceVnd'] ?? plan['PriceVnd'] ?? 0) as num;
-                          final planPriceText = formatVnd(priceVal);
-                          final tag = _getPlanTag(plan);
-                          final subText = _getPlanSubText(plan);
-
-                          return InkWell(
-                            onTap: () {
-                              setState(() {
-                                _selectedPlanId = planId;
-                              });
-                            },
-                            borderRadius: BorderRadius.circular(24),
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: darkCardColor,
-                                borderRadius: BorderRadius.circular(24),
-                                border: Border.all(
-                                  color: isSelected ? mintColor : Colors.white.withValues(alpha: 0.04),
-                                  width: isSelected ? 2.0 : 1.0,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Text(
-                                                  planName,
-                                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                                ),
-                                                if (tag.isNotEmpty) ...[
-                                                  const SizedBox(width: 10),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.amber.withValues(alpha: 0.15),
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Text(
-                                                      tag,
-                                                      style: const TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              subText,
-                                              style: const TextStyle(color: textMutedColor, fontSize: 11),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        planPriceText,
-                                        style: GoogleFonts.quicksand(
-                                          color: isSelected ? mintColor : Colors.white,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Hero info
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
                                   ),
-                                  
-                                  const SizedBox(height: 12),
-                                  // Click for details
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: InkWell(
-                                      onTap: () {
-                                        setState(() {
-                                          if (_expandedPlanIndex == index) {
-                                            _expandedPlanIndex = null;
-                                          } else {
-                                            _expandedPlanIndex = index;
-                                          }
-                                        });
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              _expandedPlanIndex == index ? "Thu gọn" : "Xem chi tiết",
-                                              style: const TextStyle(color: mintColor, fontSize: 12, fontWeight: FontWeight.bold),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Icon(
-                                              _expandedPlanIndex == index 
-                                                  ? Icons.keyboard_arrow_up_rounded
-                                                  : Icons.keyboard_arrow_down_rounded,
-                                              color: mintColor,
-                                              size: 16,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
+                                  child: const Icon(Icons.workspace_premium_rounded, color: Colors.amber, size: 36),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  "Trở thành thành viên VSL PRO",
+                                  style: GoogleFonts.quicksand(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: currentTextColor,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  "Mở khóa toàn bộ kho tài liệu, nhận diện cử chỉ AI không giới hạn, không quảng cáo và sở hữu khung hoàng gia độc quyền.",
+                                  style: TextStyle(color: currentTextMutedColor, fontSize: 12, height: 1.4),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Plan selections
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _plans.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final plan = _plans[index];
+                              final planId = (plan['code'] ?? plan['Code'] ?? plan['id'] ?? plan['Id']).toString();
+                              final isSelected = _selectedPlanId == planId;
+                              final planName = (plan['name'] ?? plan['Name'] ?? '').toString();
+                              final num priceVal = (plan['priceVnd'] ?? plan['PriceVnd'] ?? 0) as num;
+                              final planPriceText = formatVnd(priceVal);
+                              final tag = _getPlanTag(plan);
+                              final subText = _getPlanSubText(plan);
+
+                              return InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedPlanId = planId;
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(24),
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: currentCardColor,
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: isSelected ? mintColor : borderColor,
+                                      width: isSelected ? 2.0 : 1.0,
                                     ),
                                   ),
-                                  
-                                  if (_expandedPlanIndex == index) ...[
-                                    const SizedBox(height: 12),
-                                    const Divider(color: Colors.white12),
-                                    const SizedBox(height: 8),
-                                    _buildDetailRow("Giới hạn dịch thuật", "${plan['dailyTranslationLimit'] ?? plan['DailyTranslationLimit'] ?? 0} từ/ngày"),
-                                    _buildDetailRow("Lượt luyện tập AI", "${plan['aiPracticeLimit'] ?? plan['AiPracticeLimit'] ?? 0} lượt/ngày"),
-                                    _buildDetailRow("Phạm vi khóa học", (plan['courseAccessScope'] ?? plan['CourseAccessScope'] ?? 'Tất cả').toString()),
-                                    _buildDetailRow("Lưu lịch sử học", (plan['canSaveHistory'] ?? plan['CanSaveHistory'] ?? false) ? "Có" : "Không"),
-                                    _buildDetailRow("Chứng chỉ đi kèm", (plan['certificateEnabled'] ?? plan['CertificateEnabled'] ?? false) ? "Có" : "Không"),
-                                    _buildDetailRow("Hỗ trợ ưu tiên", (plan['prioritySupport'] ?? plan['PrioritySupport'] ?? false) ? "Có" : "Không"),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 32),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      planName,
+                                                      style: TextStyle(color: currentTextColor, fontWeight: FontWeight.bold, fontSize: 16),
+                                                    ),
+                                                    if (tag.isNotEmpty) ...[
+                                                      const SizedBox(width: 10),
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.amber.withValues(alpha: 0.15),
+                                                          borderRadius: BorderRadius.circular(8),
+                                                        ),
+                                                        child: Text(
+                                                          tag,
+                                                          style: const TextStyle(color: Colors.amber, fontSize: 8, fontWeight: FontWeight.bold),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  subText,
+                                                  style: TextStyle(color: currentTextMutedColor, fontSize: 11),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            planPriceText,
+                                            style: GoogleFonts.quicksand(
+                                              color: isSelected ? mintColor : currentTextColor,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      
+                                      const SizedBox(height: 12),
+                                      // Click for details
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              if (_expandedPlanIndex == index) {
+                                                _expandedPlanIndex = null;
+                                              } else {
+                                                _expandedPlanIndex = index;
+                                              }
+                                            });
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  _expandedPlanIndex == index ? "Thu gọn" : "Xem chi tiết",
+                                                  style: const TextStyle(color: mintColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Icon(
+                                                  _expandedPlanIndex == index 
+                                                      ? Icons.keyboard_arrow_up_rounded
+                                                      : Icons.keyboard_arrow_down_rounded,
+                                                  color: mintColor,
+                                                  size: 16,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      
+                                      if (_expandedPlanIndex == index) ...[
+                                        const SizedBox(height: 12),
+                                        Divider(color: currentTextColor.withValues(alpha: 0.1)),
+                                        const SizedBox(height: 8),
+                                        _buildDetailRow("Giới hạn dịch thuật", "${plan['dailyTranslationLimit'] ?? plan['DailyTranslationLimit'] ?? 0} từ/ngày", currentTextMutedColor, currentTextColor),
+                                        _buildDetailRow("Lượt luyện tập AI", "${plan['aiPracticeLimit'] ?? plan['AiPracticeLimit'] ?? 0} lượt/ngày", currentTextMutedColor, currentTextColor),
+                                        _buildDetailRow("Phạm vi khóa học", (plan['courseAccessScope'] ?? plan['CourseAccessScope'] ?? 'Tất cả').toString(), currentTextMutedColor, currentTextColor),
+                                        _buildDetailRow("Lưu lịch sử học", (plan['canSaveHistory'] ?? plan['CanSaveHistory'] ?? false) ? "Có" : "Không", currentTextMutedColor, currentTextColor),
+                                        _buildDetailRow("Chứng chỉ đi kèm", (plan['certificateEnabled'] ?? plan['CertificateEnabled'] ?? false) ? "Có" : "Không", currentTextMutedColor, currentTextColor),
+                                        _buildDetailRow("Hỗ trợ ưu tiên", (plan['prioritySupport'] ?? plan['PrioritySupport'] ?? false) ? "Có" : "Không", currentTextMutedColor, currentTextColor),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 32),
 
-                      // Checkout Button
-                      ElevatedButton(
-                        onPressed: () => _openCheckoutDrawer(context, mintColor, darkBgColor, darkCardColor),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: mintColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 4,
-                        ),
-                        child: Text(
-                          "Đăng Ký Ngay",
-                          style: GoogleFonts.quicksand(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                          // Checkout Button
+                          ElevatedButton(
+                            onPressed: () => _openCheckoutDrawer(context, mintColor, currentBgColor, currentCardColor, currentTextColor, currentTextMutedColor),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: mintColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              elevation: 4,
+                            ),
+                            child: Text(
+                              "Đăng Ký Ngay",
+                              style: GoogleFonts.quicksand(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
+                    ),
+        );
+      },
     );
   }
 
-  void _openCheckoutDrawer(BuildContext context, Color mintColor, Color bg, Color cardBg) {
+  void _openCheckoutDrawer(BuildContext context, Color mintColor, Color bg, Color cardBg, Color textColor, Color textMutedColor) {
     if (_plans.isEmpty || _selectedPlanId == null) return;
     
     final selectedData = _plans.firstWhere(
@@ -363,6 +372,8 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
           mintColor: mintColor,
           bgColor: bg,
           cardColor: cardBg,
+          textColor: textColor,
+          textMutedColor: textMutedColor,
         );
       },
     );
@@ -375,6 +386,8 @@ class _CheckoutBottomSheet extends StatefulWidget {
   final Color mintColor;
   final Color bgColor;
   final Color cardColor;
+  final Color textColor;
+  final Color textMutedColor;
 
   const _CheckoutBottomSheet({
     required this.planName,
@@ -382,6 +395,8 @@ class _CheckoutBottomSheet extends StatefulWidget {
     required this.mintColor,
     required this.bgColor,
     required this.cardColor,
+    required this.textColor,
+    required this.textMutedColor,
   });
 
   @override
@@ -471,12 +486,12 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
             const SizedBox(height: 20),
             Text(
               "Thanh toán thành công!",
-              style: GoogleFonts.quicksand(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              style: GoogleFonts.quicksand(color: widget.textColor, fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               "Tài khoản của bạn đã được nâng cấp lên VIP (${widget.planName})",
-              style: const TextStyle(color: Colors.white60, fontSize: 13),
+              style: TextStyle(color: widget.textColor.withValues(alpha: 0.6), fontSize: 13),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -506,14 +521,14 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           children: [
             CircularProgressIndicator(color: widget.mintColor),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               "Đang xử lý giao dịch an toàn...",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(color: widget.textColor, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               "Vui lòng không đóng ứng dụng.",
-              style: TextStyle(color: Colors.white30, fontSize: 11),
+              style: TextStyle(color: widget.textColor.withValues(alpha: 0.3), fontSize: 11),
             )
           ],
         ),
@@ -535,7 +550,7 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: widget.textColor.withValues(alpha: 0.24),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -549,20 +564,20 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text("Gói nâng cấp", style: TextStyle(color: Colors.white60, fontSize: 11)),
+                      Text("Gói nâng cấp", style: TextStyle(color: widget.textColor.withValues(alpha: 0.6), fontSize: 11)),
                       const SizedBox(height: 2),
-                      Text("VSL PRO - ${widget.planName}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text("VSL PRO - ${widget.planName}", style: TextStyle(color: widget.textColor, fontWeight: FontWeight.bold, fontSize: 15)),
                     ],
                   ),
                   Text(widget.planPrice, style: GoogleFonts.quicksand(color: widget.mintColor, fontSize: 20, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 16),
-              const Divider(color: Colors.white12),
+              Divider(color: widget.textColor.withValues(alpha: 0.12)),
               const SizedBox(height: 12),
 
               // Payment Method Selectors
-              const Text("Phương thức thanh toán", style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text("Phương thức thanh toán", style: TextStyle(color: widget.textColor.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -683,15 +698,15 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
           color: isSelected ? widget.mintColor.withValues(alpha: 0.1) : widget.bgColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? widget.mintColor : Colors.white.withValues(alpha: 0.05),
+            color: isSelected ? widget.mintColor : widget.textColor.withValues(alpha: 0.05),
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
         child: Column(
           children: [
-            Icon(icon, color: isSelected ? widget.mintColor : Colors.white70, size: 20),
+            Icon(icon, color: isSelected ? widget.mintColor : widget.textColor.withValues(alpha: 0.7), size: 20),
             const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.white60, fontSize: 11, fontWeight: FontWeight.bold)),
+            Text(label, style: TextStyle(color: isSelected ? Colors.white : widget.textColor.withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -702,15 +717,15 @@ class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+        Text(label, style: TextStyle(color: widget.textColor.withValues(alpha: 0.6), fontSize: 11)),
         const SizedBox(height: 6),
         TextField(
           controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(color: widget.textColor, fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             fillColor: widget.bgColor,
             filled: true,
-            prefixIcon: Icon(icon, color: Colors.white30, size: 16),
+            prefixIcon: Icon(icon, color: widget.textColor.withValues(alpha: 0.3), size: 16),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

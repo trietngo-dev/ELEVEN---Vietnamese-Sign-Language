@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/course_bloc.dart';
 import '../../data/datasources/course_data_source.dart';
@@ -18,6 +19,8 @@ import 'saved_lessons_screen.dart';
 import 'frame_shop_screen.dart';
 import 'notifications_screen.dart';
 import 'subscription_payment_screen.dart';
+import 'terms_policy_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _activeFrameUrl;
   int _streakDays = 12;
   List<BadgeModel> _earnedBadges = [];
+  int _unreadNotificationCount = 0;
 
   // Helpdesk Form Fields
   final _supportFormKey = GlobalKey<FormState>();
@@ -109,6 +113,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
       final badges = await ds.getUserEarnedBadges();
 
+      int unreadCount = 0;
+      try {
+        final notifications = await ds.getUserNotifications(_userUserId);
+        unreadCount = notifications.where((n) => !n.isRead).length;
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _userXp = liveXp;
@@ -117,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _activeFrameUrl = matchedFrameUrl;
           _avatarUrl = liveAvatarUrl;
           _earnedBadges = badges;
+          _unreadNotificationCount = unreadCount;
         });
 
         await prefs.setInt('auth_user_xp', _userXp);
@@ -245,126 +256,196 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Dark theme matching Figma screenshots
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981);
-    const Color textMutedColor = Color(0xFF94A3B8);
 
-    return Scaffold(
-      backgroundColor: darkBgColor,
-      appBar: _currentIndex == 0 || _currentIndex == 1 || _currentIndex == 4
-          ? AppBar(
-              automaticallyImplyLeading: false,
-              backgroundColor: darkBgColor,
-              elevation: 0,
-              title: Row(
-                children: [
-                  ClipOval(
-                    child: Image.asset(
-                      'assets/logo.jpg',
-                      width: 28,
-                      height: 28,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "ELEVEN",
-                    style: GoogleFonts.quicksand(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontSize: 16,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: AppTheme.isWhiteBgNotifier,
+      builder: (context, isWhiteBg, child) {
+        final Color currentBgColor = isWhiteBg ? const Color(0xFFF8FDF8) : const Color(0xFF0A0F0D);
+        final Color currentCardColor = isWhiteBg ? const Color(0xFFE8F5E9) : const Color(0xFF131A16);
+        final Color currentTextColor = isWhiteBg ? const Color(0xFF1E293B) : Colors.white;
+        final Color currentTextMutedColor = isWhiteBg ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
 
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.notifications_rounded, color: Colors.white70),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationsScreen(),
+        return Scaffold(
+          backgroundColor: currentBgColor,
+          appBar: _currentIndex == 0 || _currentIndex == 1 || _currentIndex == 4
+              ? AppBar(
+                  automaticallyImplyLeading: false,
+                  backgroundColor: currentBgColor,
+                  elevation: 0,
+                  title: Row(
+                    children: [
+                      ClipOval(
+                        child: Image.asset(
+                          'assets/logo.jpg',
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                    ).then((_) => _loadUserData());
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.logout_rounded, color: Colors.white70),
-                  onPressed: () {
-                    context.read<AuthBloc>().add(AuthLogoutRequested());
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
-                ),
-              ],
-            )
-          : null,
-      body: _buildActiveTabBody(darkBgColor, darkCardColor, mintColor, textMutedColor),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          _loadUserData();
-        },
-        backgroundColor: darkCardColor,
-        selectedItemColor: mintColor,
-        unselectedItemColor: textMutedColor,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Trang chủ',
+                      const SizedBox(width: 8),
+                      Text(
+                        "ELEVEN",
+                        style: GoogleFonts.quicksand(
+                          fontWeight: FontWeight.bold,
+                          color: currentTextColor,
+                          fontSize: 16,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    Stack(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.notifications_rounded, color: currentTextColor.withValues(alpha: 0.7)),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const NotificationsScreen(),
+                              ),
+                            ).then((_) => _loadUserData());
+                          },
+                        ),
+                        if (_unreadNotificationCount > 0)
+                          Positioned(
+                            right: 8,
+                            top: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 16,
+                                minHeight: 16,
+                              ),
+                              child: Text(
+                                _unreadNotificationCount > 99 ? '99+' : '$_unreadNotificationCount',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.logout_rounded, color: currentTextColor.withValues(alpha: 0.7)),
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              backgroundColor: currentCardColor,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              title: Text(
+                                "Đăng xuất",
+                                style: GoogleFonts.quicksand(
+                                  fontWeight: FontWeight.bold,
+                                  color: currentTextColor,
+                                ),
+                              ),
+                              content: Text(
+                                "Bạn có chắc chắn muốn đăng xuất tài khoản?",
+                                style: TextStyle(color: currentTextColor.withValues(alpha: 0.8)),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: Text("Hủy", style: TextStyle(color: currentTextColor.withValues(alpha: 0.4))),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    context.read<AuthBloc>().add(AuthLogoutRequested());
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.redAccent,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  child: const Text("Đăng xuất", style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                )
+              : null,
+          body: _buildActiveTabBody(currentBgColor, currentCardColor, mintColor, currentTextMutedColor, currentTextColor),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+              _loadUserData();
+            },
+            backgroundColor: currentCardColor,
+            selectedItemColor: mintColor,
+            unselectedItemColor: currentTextMutedColor,
+            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            unselectedLabelStyle: const TextStyle(fontSize: 11),
+            type: BottomNavigationBarType.fixed,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_rounded),
+                label: 'Trang chủ',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.menu_book_rounded),
+                label: 'Thư viện',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.bookmark_rounded),
+                label: 'Đã lưu',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.storefront_rounded),
+                label: 'Cửa hàng',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person_rounded),
+                label: 'Cá nhân',
+              ),
+            ],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_rounded),
-            label: 'Thư viện',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bookmark_rounded),
-            label: 'Đã lưu',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.storefront_rounded),
-            label: 'Cửa hàng',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Cá nhân',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildActiveTabBody(Color darkBg, Color cardBg, Color mint, Color muted) {
+  Widget _buildActiveTabBody(Color darkBg, Color cardBg, Color mint, Color muted, Color textColor) {
     switch (_currentIndex) {
       case 0:
-        return _buildHomeTab(darkBg, cardBg, mint, muted);
+        return _buildHomeTab(darkBg, cardBg, mint, muted, textColor);
       case 1:
-        return _buildLibraryTab(darkBg, cardBg, mint, muted);
+        return _buildLibraryTab(darkBg, cardBg, mint, muted, textColor);
       case 2:
         return const SavedLessonsScreen();
       case 3:
         return const FrameShopScreen();
       case 4:
-        return _buildProfileTab(darkBg, cardBg, mint, muted);
+        return _buildProfileTab(darkBg, cardBg, mint, muted, textColor);
       default:
-        return _buildHomeTab(darkBg, cardBg, mint, muted);
+        return _buildHomeTab(darkBg, cardBg, mint, muted, textColor);
     }
   }
 
-  // --- TAB 1: HOME ---
-  Widget _buildHomeTab(Color darkBg, Color cardBg, Color mint, Color muted) {
+  Widget _buildHomeTab(Color darkBg, Color cardBg, Color mint, Color muted, Color textColor) {
     return RefreshIndicator(
       onRefresh: () async {
         context.read<CourseBloc>().add(LoadCoursesRequested());
@@ -400,8 +481,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 4),
                           Text(
                             _userName,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: textColor,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
                             ),
@@ -524,9 +605,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Chủ đề phổ biến",
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   "Xem tất cả",
@@ -555,9 +636,9 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Khóa học của bạn",
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   "Đang học",
@@ -649,7 +730,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     Text(
                                       course.title,
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -660,12 +741,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const SizedBox(width: 3),
                                         Text(
                                           course.averageRating.toStringAsFixed(1),
-                                          style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold),
+                                          style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 11, fontWeight: FontWeight.bold),
                                         ),
                                         const SizedBox(width: 8),
                                         Text(
                                           "•  ${course.lessonsCount} bài học",
-                                          style: const TextStyle(color: Color(0x80FFFFFF), fontSize: 11),
+                                          style: TextStyle(color: textColor.withValues(alpha: 0.5), fontSize: 11),
                                         ),
                                       ],
                                     ),
@@ -690,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- TAB 2: LIBRARY (ALL COURSES WITH FULL DATA) ---
-  Widget _buildLibraryTab(Color darkBg, Color cardBg, Color mint, Color muted) {
+  Widget _buildLibraryTab(Color darkBg, Color cardBg, Color mint, Color muted, Color textColor) {
     return Column(
       children: [
         // Search & Filter header
@@ -703,16 +784,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 _searchQuery = val.trim().toLowerCase();
               });
             },
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: textColor),
             decoration: InputDecoration(
               hintText: 'Tìm kiếm khóa học...',
-              hintStyle: const TextStyle(color: Color(0xFF64748B)),
+              hintStyle: TextStyle(color: textColor.withValues(alpha: 0.5)),
               fillColor: cardBg,
               filled: true,
-              prefixIcon: const Icon(Icons.search_rounded, color: Color(0x80FFFFFF)),
+              prefixIcon: Icon(Icons.search_rounded, color: textColor.withValues(alpha: 0.5)),
               suffixIcon: _searchQuery.isNotEmpty 
                   ? IconButton(
-                      icon: const Icon(Icons.clear_rounded, color: Color(0x80FFFFFF)),
+                      icon: Icon(Icons.clear_rounded, color: textColor.withValues(alpha: 0.5)),
                       onPressed: () {
                         setState(() {
                           _searchController.clear();
@@ -833,14 +914,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                       const SizedBox(height: 8),
                                       Text(
                                         course.title,
-                                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                                        style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         course.summary ?? course.description,
-                                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                                        style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 12),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -862,12 +943,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(width: 4),
                                     Text(
                                       course.averageRating.toStringAsFixed(1),
-                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       "(${course.averageRating > 0 ? 'Hoàn hảo' : 'Chưa có đánh giá'})",
-                                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                                      style: TextStyle(color: textColor.withValues(alpha: 0.5), fontSize: 11),
                                     ),
                                   ],
                                 ),
@@ -906,7 +987,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- TAB 3: PROFILE & HELPDESK (HỒ SƠ VỚI ĐẦY ĐỦ CỘT NHƯ WEB) ---
-  Widget _buildProfileTab(Color darkBg, Color cardBg, Color mint, Color muted) {
+  Widget _buildProfileTab(Color darkBg, Color cardBg, Color mint, Color muted, Color textColor) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
       child: Column(
@@ -955,7 +1036,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 12),
                 Text(
                   _userName,
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1041,7 +1122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 8),
                       const Text('Chuỗi học tập', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
                       const SizedBox(height: 2),
-                      Text('$_streakDays Ngày', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('$_streakDays Ngày', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -1055,14 +1136,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.donut_large_rounded, color: Colors.cyan, size: 24),
-                      SizedBox(height: 8),
-                      Text('Độ thuần thục', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
-                      SizedBox(height: 2),
-                      Text('75 %', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Icon(Icons.donut_large_rounded, color: Colors.cyan, size: 24),
+                      const SizedBox(height: 8),
+                      const Text('Độ thuần thục', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                      const SizedBox(height: 2),
+                      Text('75 %', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -1082,12 +1163,12 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       'Hoạt động tuần này',
-                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       'T2 - CN',
@@ -1129,9 +1210,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Huy hiệu đạt được',
-                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       '${_earnedBadges.length} đạt được',
@@ -1141,12 +1222,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
                 _earnedBadges.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 12.0),
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
                           child: Text(
                             'Chưa có huy hiệu nào.',
-                            style: TextStyle(color: Colors.white24, fontSize: 12),
+                            style: TextStyle(color: textColor.withValues(alpha: 0.3), fontSize: 12),
                           ),
                         ),
                       )
@@ -1162,12 +1243,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemCount: _earnedBadges.length,
                         itemBuilder: (context, index) {
                           final badge = _earnedBadges[index];
+                          final isWhite = AppTheme.isWhiteBgNotifier.value;
                           return Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0F1412),
+                              color: isWhite ? const Color(0xFFF1F5F9) : const Color(0xFF0F1412),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.02)),
+                              border: Border.all(color: textColor.withValues(alpha: 0.02)),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -1183,7 +1265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(height: 6),
                                 Text(
                                   badge.name,
-                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1191,7 +1273,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   badge.description,
-                                  style: const TextStyle(color: Colors.white30, fontSize: 8),
+                                  style: TextStyle(color: textColor.withValues(alpha: 0.4), fontSize: 8),
                                   textAlign: TextAlign.center,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1230,28 +1312,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Icon(Icons.help_center_rounded, color: mint, size: 18),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'Gửi yêu cầu hỗ trợ',
-                        style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
                   
                   // Topic Dropdown
-                  const Text('Chủ đề cần hỗ trợ', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text('Chủ đề cần hỗ trợ', style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F1412),
+                      color: AppTheme.isWhiteBgNotifier.value ? const Color(0xFFF1F5F9) : const Color(0xFF0F1412),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedSupportTopic,
                         dropdownColor: cardBg,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: textColor),
                         icon: Icon(Icons.keyboard_arrow_down_rounded, color: mint),
                         onChanged: (String? val) {
                           if (val != null) {
@@ -1264,7 +1346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             .map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
-                            child: Text(value),
+                            child: Text(value, style: TextStyle(color: textColor)),
                           );
                         }).toList(),
                       ),
@@ -1273,16 +1355,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 14),
 
                   // Detail message input
-                  const Text('Nội dung chi tiết', style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                  Text('Nội dung chi tiết', style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   TextFormField(
                     controller: _supportContentController,
                     maxLines: 4,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: textColor, fontSize: 13),
                     decoration: InputDecoration(
                       hintText: 'Mô tả chi tiết vấn đề bạn đang gặp phải...',
-                      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
-                      fillColor: const Color(0xFF0F1412),
+                      hintStyle: TextStyle(color: AppTheme.isWhiteBgNotifier.value ? const Color(0xFF94A3B8) : const Color(0xFF64748B), fontSize: 12),
+                      fillColor: AppTheme.isWhiteBgNotifier.value ? const Color(0xFFF1F5F9) : const Color(0xFF0F1412),
                       filled: true,
                       contentPadding: const EdgeInsets.all(16),
                       border: OutlineInputBorder(
@@ -1332,16 +1414,37 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Column(
               children: [
-                _buildFigmaOptionLink(Icons.settings_rounded, 'Cài đặt tài khoản', () {}),
-                Divider(color: Colors.white.withValues(alpha: 0.04), height: 1),
-                _buildFigmaOptionLink(Icons.info_outline_rounded, 'Chính sách bảo mật', () {}),
+                _buildFigmaOptionLink(
+                  Icons.settings_rounded,
+                  'Cài đặt',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SettingsScreen(userId: _userUserId),
+                    ),
+                  ).then((_) => _loadUserData()),
+                ),
                 Divider(color: Colors.white.withValues(alpha: 0.04), height: 1),
                 _buildFigmaOptionLink(
-                  Icons.delete_forever_rounded,
-                  'Xóa tài khoản',
-                  () => _showDeleteAccountDialog(context),
-                  textColor: Colors.redAccent,
-                  iconColor: Colors.redAccent,
+                  Icons.article_rounded,
+                  'Điều khoản dịch vụ',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TermsPolicyScreen(isTerms: true),
+                    ),
+                  ),
+                ),
+                Divider(color: Colors.white.withValues(alpha: 0.04), height: 1),
+                _buildFigmaOptionLink(
+                  Icons.info_outline_rounded,
+                  'Chính sách bảo mật',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TermsPolicyScreen(isTerms: false),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1452,61 +1555,20 @@ class _HomeScreenState extends State<HomeScreen> {
     IconData icon,
     String title,
     VoidCallback onTap, {
-    Color textColor = Colors.white,
-    Color iconColor = Colors.white70,
+    Color? textColor,
+    Color? iconColor,
   }) {
+    final isWhite = AppTheme.isWhiteBgNotifier.value;
+    final finalTextColor = textColor ?? (isWhite ? const Color(0xFF1E293B) : Colors.white);
+    final finalIconColor = iconColor ?? (isWhite ? const Color(0xFF64748B) : Colors.white70);
     return ListTile(
-      leading: Icon(icon, color: iconColor, size: 20),
-      title: Text(title, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold)),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white30),
+      leading: Icon(icon, color: finalIconColor, size: 20),
+      title: Text(title, style: TextStyle(color: finalTextColor, fontSize: 13, fontWeight: FontWeight.bold)),
+      trailing: Icon(Icons.chevron_right_rounded, color: isWhite ? const Color(0xFF94A3B8) : Colors.white30),
       onTap: onTap,
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF131A16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-              SizedBox(width: 10),
-              Text(
-                "Xác Nhận Xóa",
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ],
-          ),
-          content: const Text(
-            "Bạn có chắc chắn muốn xóa tài khoản? Hành động này sẽ làm mất toàn bộ tiến trình học tập, huy hiệu và đăng ký VIP của bạn. Hành động này không thể hoàn tác!",
-            style: TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("Hủy", style: TextStyle(color: Colors.white30)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Đóng Dialog
-                context.read<AuthBloc>().add(AuthDeleteAccountRequested(_userUserId));
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("Xóa Vĩnh Viễn", style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   void _showAvatarEditSheet(BuildContext context, Color mintColor, Color bg, Color cardBg) {
     showModalBottomSheet(
