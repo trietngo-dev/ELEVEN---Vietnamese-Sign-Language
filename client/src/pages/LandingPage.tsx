@@ -2,6 +2,7 @@ import modelImg from "../assets/model.png";
 import class1Img from "../assets/Class1.png";
 import class2Img from "../assets/Class2.png";
 import class3Img from "../assets/Class3.png";
+import heroVideo from "../assets/landing_page.mp4";
 import { motion, type Variants } from "framer-motion";
 import { ArrowRight, BookOpen, Brain, Sparkles, Star, Plus, CheckCircle2, Languages } from "lucide-react";
 import { viText } from "../locales/vi";
@@ -87,10 +88,10 @@ function FloatingCards() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1, y: [-6, 6, -6] }}
-        transition={{ 
+        transition={{
           opacity: { delay: 0.6 },
           scale: { delay: 0.6 },
-          y: { duration: 4, repeat: Infinity, ease: "easeInOut" } 
+          y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
         }}
         className="absolute top-[16%] left-[4%] lg:left-[8%] xl:left-[14%] z-20 hidden lg:block"
       >
@@ -106,10 +107,10 @@ function FloatingCards() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1, y: [6, -6, 6] }}
-        transition={{ 
+        transition={{
           opacity: { delay: 0.8 },
           scale: { delay: 0.8 },
-          y: { duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 } 
+          y: { duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
         }}
         className="absolute top-[28%] left-[2%] lg:left-[5%] xl:left-[10%] z-20 hidden lg:block"
       >
@@ -128,10 +129,10 @@ function FloatingCards() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1, y: [-5, 5, -5] }}
-        transition={{ 
+        transition={{
           opacity: { delay: 1.0 },
           scale: { delay: 1.0 },
-          y: { duration: 5, repeat: Infinity, ease: "easeInOut" } 
+          y: { duration: 5, repeat: Infinity, ease: "easeInOut" }
         }}
         className="absolute top-[14%] right-[2%] lg:right-[5%] xl:right-[10%] z-20 hidden lg:block"
       >
@@ -165,10 +166,10 @@ function FloatingCards() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1, y: [-4, 4, -4] }}
-        transition={{ 
+        transition={{
           opacity: { delay: 1.2 },
           scale: { delay: 1.2 },
-          y: { duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 0.8 } 
+          y: { duration: 4.8, repeat: Infinity, ease: "easeInOut", delay: 0.8 }
         }}
         className="absolute bottom-[20%] left-[4%] lg:left-[8%] xl:left-[12%] z-20 hidden lg:block"
       >
@@ -189,10 +190,10 @@ function FloatingCards() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1, y: [4, -4, 4] }}
-        transition={{ 
+        transition={{
           opacity: { delay: 1.4 },
           scale: { delay: 1.4 },
-          y: { duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 } 
+          y: { duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }
         }}
         className="absolute top-[48%] right-[4%] lg:right-[8%] xl:right-[14%] z-20 hidden lg:block"
       >
@@ -210,10 +211,10 @@ function FloatingCards() {
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1, y: [-4, 4, -4] }}
-        transition={{ 
+        transition={{
           opacity: { delay: 1.6 },
           scale: { delay: 1.6 },
-          y: { duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 1.0 } 
+          y: { duration: 5.2, repeat: Infinity, ease: "easeInOut", delay: 1.0 }
         }}
         className="absolute bottom-[18%] right-[4%] lg:right-[8%] xl:left-[70%] z-20 hidden lg:block"
       >
@@ -304,12 +305,12 @@ function CircularCarousel() {
     container.scrollLeft = singleSetWidth;
 
     const scrollSpeed = 0.5; // Very slow and premium scrolling
-    
+
     const updateScroll = () => {
       if (autoScrollActive.current && !isDragging) {
         // Auto scroll from left to right (so scrollLeft decreases)
         container.scrollLeft -= scrollSpeed;
-        
+
         // Wrap around seamlessly when scrolling to the left
         const minScroll = container.scrollWidth * 0.25;
         if (container.scrollLeft <= minScroll) {
@@ -401,7 +402,7 @@ function CircularCarousel() {
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -410,9 +411,8 @@ function CircularCarousel() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleMouseUpOrLeave}
-      className={`flex items-center gap-6 overflow-x-auto py-8 px-4 cursor-grab select-none scrollbar-none ${
-        isDragging ? "cursor-grabbing" : ""
-      }`}
+      className={`flex items-center gap-6 overflow-x-auto py-8 px-4 cursor-grab select-none scrollbar-none ${isDragging ? "cursor-grabbing" : ""
+        }`}
       style={{
         scrollbarWidth: "none",
         msOverflowStyle: "none",
@@ -422,7 +422,7 @@ function CircularCarousel() {
       {duplicatedItems.map((item, index) => {
         if (item.type === "card") {
           return (
-            <article 
+            <article
               key={index}
               className="flex-shrink-0 w-80 h-56 rounded-[24px] bg-white border border-slate-100/85 p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:border-[#3c6c44]/20 hover:shadow-md transition-all flex flex-col justify-between"
             >
@@ -447,13 +447,13 @@ function CircularCarousel() {
           );
         } else {
           return (
-            <div 
+            <div
               key={index}
               className="flex-shrink-0 w-44 h-56 rounded-[24px] overflow-hidden border border-slate-100 bg-white p-2 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-center hover:scale-[1.02] transition-transform duration-300"
             >
-              <img 
-                src={item.img} 
-                alt={item.alt} 
+              <img
+                src={item.img}
+                alt={item.alt}
                 className="w-full h-full object-cover rounded-2xl pointer-events-none"
               />
             </div>
@@ -471,6 +471,130 @@ function LandingPage() {
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
+  useEffect(() => {
+    let isScrolling = false;
+    let touchStartY = 0;
+
+    const handleWheel = (e: WheelEvent) => {
+      const scrollY = window.scrollY;
+      const viewportHeight = window.innerHeight;
+
+      if (scrollY < viewportHeight * 0.8) {
+        if (e.deltaY > 0) {
+          e.preventDefault();
+          if (!isScrolling) {
+            isScrolling = true;
+            window.scrollTo({
+              top: viewportHeight,
+              behavior: "smooth",
+            });
+            setTimeout(() => {
+              isScrolling = false;
+            }, 800);
+          }
+        }
+      } else if (scrollY >= viewportHeight * 0.8 && scrollY < viewportHeight * 1.2) {
+        if (e.deltaY < 0) {
+          e.preventDefault();
+          if (!isScrolling) {
+            isScrolling = true;
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            });
+            setTimeout(() => {
+              isScrolling = false;
+            }, 800);
+          }
+        }
+      }
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const scrollY = window.scrollY;
+      const viewportHeight = window.innerHeight;
+      const touchCurrentY = e.touches[0].clientY;
+      const deltaY = touchStartY - touchCurrentY;
+
+      if (scrollY < viewportHeight * 0.8) {
+        if (deltaY > 10) {
+          e.preventDefault();
+          if (!isScrolling) {
+            isScrolling = true;
+            window.scrollTo({
+              top: viewportHeight,
+              behavior: "smooth",
+            });
+            setTimeout(() => {
+              isScrolling = false;
+            }, 800);
+          }
+        }
+      } else if (scrollY >= viewportHeight * 0.8 && scrollY < viewportHeight * 1.2) {
+        if (deltaY < -10) {
+          e.preventDefault();
+          if (!isScrolling) {
+            isScrolling = true;
+            window.scrollTo({
+              top: 0,
+              behavior: "smooth",
+            });
+            setTimeout(() => {
+              isScrolling = false;
+            }, 800);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hasFinishedIntro = useRef(false);
+
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const duration = video.duration && isFinite(video.duration) ? video.duration : 10;
+    const endPoint = Math.min(10, duration);
+    const startPoint = Math.max(0, endPoint - 1);
+
+    if (video.currentTime >= endPoint) {
+      hasFinishedIntro.current = true;
+      video.currentTime = startPoint;
+      if (video.paused) {
+        video.play().catch((err) => console.log("Video play error on seek:", err));
+      }
+    }
+  };
+
+  const handleEnded = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const duration = video.duration && isFinite(video.duration) ? video.duration : 10;
+    const endPoint = Math.min(10, duration);
+    const startPoint = Math.max(0, endPoint - 0.3);
+
+    hasFinishedIntro.current = true;
+    video.currentTime = startPoint;
+    video.play().catch((err) => console.log("Video play error on ended:", err));
+  };
+
   const handleProtectedAction = (e: React.MouseEvent, path: string) => {
     if (!isAuthenticated) {
       e.preventDefault();
@@ -483,104 +607,147 @@ function LandingPage() {
   return (
     <>
       {/* ════════ HERO ════════ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-white via-[#f8fdf8] to-[#edf6e4] min-h-screen flex items-center pt-[96px] pb-16 md:pt-[120px] md:pb-24">
-        <FloatingDecorations />
-        <FloatingCards />
+      <section className="relative w-full bg-gradient-to-br from-white via-[#f8fdf8] to-[#edf6e4]">
+        {/* Sticky Background Video & Overlay */}
+        <div className="sticky top-0 h-screen w-full overflow-hidden z-0 pointer-events-none">
+          <video
+            ref={videoRef}
+            src={heroVideo}
+            autoPlay
+            muted
+            playsInline
+            onTimeUpdate={handleTimeUpdate}
+            onEnded={handleEnded}
+            className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+          />
+          {/* Light Overlay to ensure text readability */}
+          <div className="absolute inset-0 bg-white/75 backdrop-blur-[1.5px] z-0" />
 
-        {/* Soft animated ambient auroras */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <motion.div
-            animate={{
-              x: [0, 40, -20, 0],
-              y: [0, -30, 30, 0],
-              scale: [1, 1.15, 0.9, 1],
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute -top-40 right-[10%] size-[600px] rounded-full bg-[#e4bf3f]/[0.06] blur-[120px]"
-          />
-          <motion.div
-            animate={{
-              x: [0, -50, 30, 0],
-              y: [0, 40, -40, 0],
-              scale: [1, 0.9, 1.1, 1],
-            }}
-            transition={{
-              duration: 18,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2,
-            }}
-            className="absolute -bottom-40 left-[5%] size-[700px] rounded-full bg-[#3c6c44]/[0.05] blur-[140px]"
-          />
+          {/* Soft animated ambient auroras */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <motion.div
+              animate={{
+                x: [0, 40, -20, 0],
+                y: [0, -30, 30, 0],
+                scale: [1, 1.15, 0.9, 1],
+              }}
+              transition={{
+                duration: 15,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute -top-40 right-[10%] size-[600px] rounded-full bg-[#e4bf3f]/[0.06] blur-[120px]"
+            />
+            <motion.div
+              animate={{
+                x: [0, -50, 30, 0],
+                y: [0, 40, -40, 0],
+                scale: [1, 0.9, 1.1, 1],
+              }}
+              transition={{
+                duration: 18,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 2,
+              }}
+              className="absolute -bottom-40 left-[5%] size-[700px] rounded-full bg-[#3c6c44]/[0.05] blur-[140px]"
+            />
+          </div>
         </div>
 
-        <div className="container relative max-w-4xl mx-auto text-center z-10 flex flex-col items-center pt-8">
-          <motion.div
-            initial="hidden"
-            animate="show"
-            variants={staggerContainer}
-            className="flex flex-col items-center"
-          >
-            {/* Badge */}
-            <motion.p
-              variants={fadeInUp}
-              className="mb-6 w-fit rounded-full bg-[#ebf4ec] px-4 py-2 text-[0.68rem] font-bold tracking-[0.04em] text-[#3c6c44]"
-            >
-              {landing.hero.badge}
-            </motion.p>
+        {/* Scrollable Content Overlay */}
+        <div className="relative z-10 flex flex-col -mt-[100vh]">
+          {/* First Screen: Spacer with Scroll Indicator */}
+          <div className="h-screen w-full relative flex flex-col items-center justify-end pb-12 pointer-events-none">
+            <div className="flex flex-col items-center gap-1.5 text-slate-500/80 font-semibold text-xs tracking-wider select-none">
+              <span>Cuộn để tiếp tục</span>
+              <div className="w-5 h-8 rounded-full border-2 border-slate-400/60 flex justify-center pt-1.5 mt-1">
+                <motion.div
+                  animate={{
+                    y: [0, 6, 0],
+                    opacity: [1, 0.3, 1]
+                  }}
+                  transition={{
+                    duration: 1.8,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="w-1 h-2 rounded-full bg-[#3c6c44]"
+                />
+              </div>
+            </div>
+          </div>
 
-            {/* Heading */}
-            <motion.h1
-              variants={fadeInUp}
-              className="text-[clamp(2.2rem,4.5vw,4rem)] font-extrabold leading-[1.12] tracking-[-0.02em] text-[#1a2e35]"
-            >
-              {landing.hero.title.split('\n').map((line, i) => (
-                <span key={i}>
-                  {line}
-                  {i === 0 && " "}
-                </span>
-              ))}
-              <br />
-              <span className="relative inline-block text-[#e4bf3f]">
-                {landing.hero.titleHighlight}
-                <svg className="absolute -bottom-2 left-0 w-full" height="8" viewBox="0 0 120 8" fill="none">
-                  <path d="M2 6C20 2 40 2 60 4C80 6 100 4 118 2" stroke="#3c6c44" strokeWidth="3.5" strokeLinecap="round" />
-                </svg>
-              </span>
-            </motion.h1>
+          {/* Second Screen: Actual Hero Content */}
+          <div className="min-h-screen w-full flex items-center justify-center pt-[96px] pb-16 md:pt-[120px] md:pb-24 relative overflow-x-clip">
+            <FloatingDecorations />
+            <FloatingCards />
 
-            {/* Description */}
-            <motion.p
-              variants={fadeInUp}
-              className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-slate-500"
-            >
-              {landing.hero.description}
-            </motion.p>
-
-            {/* CTA Buttons */}
-            <motion.div
-              variants={fadeInUp}
-              className="mx-auto mt-8 flex flex-wrap items-center justify-center gap-4 w-full"
-            >
-              <button
-                onClick={(e) => handleProtectedAction(e, "/khoa-hoc")}
-                className="inline-flex items-center gap-2 rounded-full bg-[#3c6c44] px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(60,108,68,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(60,108,68,0.3)]"
+            <div className="container relative max-w-4xl mx-auto text-center z-10 flex flex-col items-center pt-8">
+              <motion.div
+                initial="hidden"
+                animate="show"
+                variants={staggerContainer}
+                className="flex flex-col items-center"
               >
-                {common.buttons.startLearning}
-              </button>
-              <button
-                onClick={(e) => handleProtectedAction(e, "*")}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-[15px] font-semibold text-slate-700 shadow-sm transition-all hover:border-[#3c6c44]/30 hover:bg-[#f8fdf9] hover:-translate-y-0.5"
-              >
-                <Languages size={18} className="text-[#3c6c44]" />
-                {common.buttons.tryTranslator}
-              </button>
-            </motion.div>
-          </motion.div>
+                {/* Badge */}
+                <motion.p
+                  variants={fadeInUp}
+                  className="mb-6 w-fit rounded-full bg-[#ebf4ec] px-4 py-2 text-[0.68rem] font-bold tracking-[0.04em] text-[#3c6c44]"
+                >
+                  {landing.hero.badge}
+                </motion.p>
+
+                {/* Heading */}
+                <motion.h1
+                  variants={fadeInUp}
+                  className="text-[clamp(2.2rem,4.5vw,4rem)] font-extrabold leading-[1.12] tracking-[-0.02em] text-[#1a2e35]"
+                >
+                  {landing.hero.title.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      {i === 0 && " "}
+                    </span>
+                  ))}
+                  <br />
+                  <span className="relative inline-block text-[#e4bf3f]">
+                    {landing.hero.titleHighlight}
+                    <svg className="absolute -bottom-2 left-0 w-full" height="8" viewBox="0 0 120 8" fill="none">
+                      <path d="M2 6C20 2 40 2 60 4C80 6 100 4 118 2" stroke="#3c6c44" strokeWidth="3.5" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                </motion.h1>
+
+                {/* Description */}
+                <motion.p
+                  variants={fadeInUp}
+                  className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-slate-500"
+                >
+                  {landing.hero.description}
+                </motion.p>
+
+                {/* CTA Buttons */}
+                <motion.div
+                  variants={fadeInUp}
+                  className="mx-auto mt-8 flex flex-wrap items-center justify-center gap-4 w-full"
+                >
+                  <button
+                    onClick={(e) => handleProtectedAction(e, "/khoa-hoc")}
+                    className="inline-flex items-center gap-2 rounded-full bg-[#3c6c44] px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_8px_24px_rgba(60,108,68,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(60,108,68,0.3)]"
+                  >
+                    {common.buttons.startLearning}
+                  </button>
+                  <button
+                    onClick={(e) => handleProtectedAction(e, "*")}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-[15px] font-semibold text-slate-700 shadow-sm transition-all hover:border-[#3c6c44]/30 hover:bg-[#f8fdf9] hover:-translate-y-0.5"
+                  >
+                    <Languages size={18} className="text-[#3c6c44]" />
+                    {common.buttons.tryTranslator}
+                  </button>
+                </motion.div>
+              </motion.div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -659,9 +826,9 @@ function LandingPage() {
                   <Sparkles size={14} className="text-[#e4bf3f] animate-pulse" />
                   <span className="text-[11px] font-bold text-slate-700">Eleven AI Model</span>
                 </div>
-                <img 
-                  src={modelImg} 
-                  alt="Bài học tương tác" 
+                <img
+                  src={modelImg}
+                  alt="Bài học tương tác"
                   className="w-full h-full object-cover object-top hover:scale-[1.03] transition-transform duration-700"
                 />
               </div>

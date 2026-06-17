@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { LoginRequest, RegisterRequest } from "../lib/auth";
 import { authApi, tokenStorage } from "../lib/auth";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
 
 interface AuthContextType {
   user: any | null;
@@ -11,6 +12,7 @@ interface AuthContextType {
   register: (data: RegisterRequest) => Promise<void>;
   deleteAccount: (userId: number) => Promise<void>;
   logout: () => void;
+  requestLogout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,6 +21,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<any | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
 
   useEffect(() => {
     const storedUser = tokenStorage.getUser();
@@ -97,9 +100,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsAuthenticated(false);
   };
 
+  const requestLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, loginWithGoogle, register, deleteAccount, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, login, loginWithGoogle, register, deleteAccount, logout, requestLogout }}>
       {children}
+      <LogoutConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={logout}
+      />
     </AuthContext.Provider>
   );
 };

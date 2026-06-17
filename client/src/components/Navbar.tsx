@@ -14,7 +14,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000
 
 function Navbar() {
   const { common, navbar } = viText;
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, requestLogout } = useAuth();
   const location = useLocation();
   const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -540,7 +540,7 @@ function Navbar() {
 
                 {/* Logout Button */}
                 <button
-                  onClick={logout}
+                  onClick={requestLogout}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                   title="Đăng xuất"
                 >
