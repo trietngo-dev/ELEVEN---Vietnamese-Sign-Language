@@ -261,6 +261,7 @@ export default function LessonDetailPage() {
         setProgressId(newProg.id);
         setIsSaved(true);
         setExistingProgress(newProg);
+        window.dispatchEvent(new Event("savedWordsChanged"));
       } else {
         // Toggle saved status
         const nextSaved = !isSaved;
@@ -285,6 +286,7 @@ export default function LessonDetailPage() {
         const updatedProg = await updateRes.json();
         setIsSaved(nextSaved);
         setExistingProgress(updatedProg);
+        window.dispatchEvent(new Event("savedWordsChanged"));
       }
     } catch (err) {
       console.error("Lỗi khi thay đổi trạng thái lưu từ:", err);
