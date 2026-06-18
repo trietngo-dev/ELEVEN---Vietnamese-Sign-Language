@@ -20,9 +20,8 @@ class GestureTestScreen extends StatefulWidget {
   State<GestureTestScreen> createState() => _GestureTestScreenState();
 }
 
-
-
-class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindingObserver {
+class _GestureTestScreenState extends State<GestureTestScreen>
+    with WidgetsBindingObserver {
   CameraController? _cameraController;
   final SignLanguageProcessor _processor = SignLanguageProcessor();
   bool _isCameraInitialized = false;
@@ -37,8 +36,20 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    unawaited(_initializeHolistic());
     _initializeCamera();
     context.read<GestureBloc>().add(GestureSessionReset());
+  }
+
+  Future<void> _initializeHolistic() async {
+    try {
+      await _processor.initialize();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _status = 'Loi khoi tao AI: $e';
+      });
+    }
   }
 
   Future<void> _initializeCamera() async {
@@ -75,7 +86,9 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
   }
 
   void _startImageStream() {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      return;
+    }
 
     _cameraController!.startImageStream((CameraImage image) async {
       if (!_isCollecting) return;
@@ -88,7 +101,8 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
       if (features.isNotEmpty && mounted) {
         final rawFeatures = _processor.latestCroppedFeatures;
         if (rawFeatures != null) {
-          if (_latestFeatures == null || _latestFeatures!.length != rawFeatures.length) {
+          if (_latestFeatures == null ||
+              _latestFeatures!.length != rawFeatures.length) {
             _latestFeatures = List<double>.from(rawFeatures);
           } else {
             const double alpha = 0.35; // EMA smoothing factor
@@ -117,8 +131,10 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                 // Nếu cả hai đều hợp lệ, làm mịn bằng EMA
                 else {
                   _latestFeatures![i] = alpha * curX + (1.0 - alpha) * prevX;
-                  _latestFeatures![i + 1] = alpha * curY + (1.0 - alpha) * prevY;
-                  _latestFeatures![i + 2] = alpha * curZ + (1.0 - alpha) * prevZ;
+                  _latestFeatures![i + 1] =
+                      alpha * curY + (1.0 - alpha) * prevY;
+                  _latestFeatures![i + 2] =
+                      alpha * curZ + (1.0 - alpha) * prevZ;
                 }
               }
             }
@@ -135,13 +151,13 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
       if (defaultTargetPlatform == TargetPlatform.android) {
         final width = image.width;
         final height = image.height;
-        
+
         final yPlane = image.planes[0];
         final yBytes = yPlane.bytes;
-        
+
         // NV21 format: YYYYYYYY VUVU...
         final nv21 = Uint8List(width * height + (width * height ~/ 2));
-        
+
         // 1. Copy Y plane removing any rowStride padding
         final yRowStride = yPlane.bytesPerRow;
         if (yRowStride == width) {
@@ -151,7 +167,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
             nv21.setRange(h * width, (h + 1) * width, yBytes, h * yRowStride);
           }
         }
-        
+
         // 2. Copy and interleave U and V planes
         final uvOffset = width * height;
         if (image.planes.length == 2) {
@@ -159,7 +175,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
           final vuBytes = vuPlane.bytes;
           final vuRowStride = vuPlane.bytesPerRow;
           final uvHeight = height ~/ 2;
-          
+
           if (vuRowStride == width) {
             nv21.setRange(uvOffset, uvOffset + width * uvHeight, vuBytes);
           } else {
@@ -175,26 +191,26 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
         } else if (image.planes.length == 3) {
           final uPlane = image.planes[1];
           final vPlane = image.planes[2];
-          
+
           final uBytes = uPlane.bytes;
           final vBytes = vPlane.bytes;
-          
+
           final uRowStride = uPlane.bytesPerRow;
           final vRowStride = vPlane.bytesPerRow;
-          
+
           final uPixelStride = uPlane.bytesPerPixel ?? 1;
           final vPixelStride = vPlane.bytesPerPixel ?? 1;
-          
+
           final uvWidth = width ~/ 2;
           final uvHeight = height ~/ 2;
-          
+
           int dstIdx = uvOffset;
-          
+
           for (int h = 0; h < uvHeight; h++) {
             for (int w = 0; w < uvWidth; w++) {
               final uIdx = h * uRowStride + w * uPixelStride;
               final vIdx = h * vRowStride + w * vPixelStride;
-              
+
               nv21[dstIdx++] = vBytes[vIdx];
               nv21[dstIdx++] = uBytes[uIdx];
             }
@@ -218,7 +234,10 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
         }
         final bytes = allBytes.done().buffer.asUint8List();
 
-        final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
+        final Size imageSize = Size(
+          image.width.toDouble(),
+          image.height.toDouble(),
+        );
         final inputImageMetadata = InputImageMetadata(
           size: imageSize,
           rotation: InputImageRotation.rotation270deg,
@@ -272,7 +291,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
       // Save local progress and XP
       final currentXp = prefs.getInt('auth_user_xp') ?? 100;
       await prefs.setInt('auth_user_xp', currentXp + widget.lesson.xpEarned);
-      
+
       // Save AI completion flag and update daily challenge progress
       await prefs.setBool('ai_completed_${widget.lesson.id}', true);
       final dailyCount = prefs.getInt('daily_challenge_count') ?? 2;
@@ -290,10 +309,15 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: const Text(
             "Chúc Mừng!",
-            style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.primaryColor,
+            ),
             textAlign: TextAlign.center,
           ),
           content: Column(
@@ -351,9 +375,7 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Kiểm Tra AI"),
-      ),
+      appBar: AppBar(title: const Text("Kiểm Tra AI")),
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
         child: BlocConsumer<GestureBloc, GestureState>(
@@ -389,7 +411,9 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                 children: [
                   // 1. Camera Viewport
                   AspectRatio(
-                    aspectRatio: 3 / 4, // 3:4 aspect ratio to display the full vertical portrait frame
+                    aspectRatio:
+                        3 /
+                        4, // 3:4 aspect ratio to display the full vertical portrait frame
                     child: Card(
                       clipBehavior: Clip.antiAlias,
                       margin: EdgeInsets.zero,
@@ -401,40 +425,51 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                               : const Center(
                                   child: CircularProgressIndicator(),
                                 ),
-                          
+
                           // Futuristic Half-Body Guide Overlay
                           Positioned.fill(
-                            child: CustomPaint(
-                              painter: HalfBodyGuidePainter(),
-                            ),
+                            child: CustomPaint(painter: HalfBodyGuidePainter()),
                           ),
-                          
+
                           // Live skeletal & facial landmarks overlay (Khung Landmark)
                           if (_isCollecting && _latestFeatures != null)
                             Positioned.fill(
                               child: CustomPaint(
-                                painter: LandmarksPainter(features: _latestFeatures!),
+                                painter: LandmarksPainter(
+                                  features: _latestFeatures!,
+                                ),
                               ),
                             ),
-                          
+
                           // Countdown timer overlay
                           if (_isCollecting)
                             Positioned(
                               top: 16,
                               right: 16,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.redAccent,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.radio_button_checked_rounded, color: Colors.white, size: 14),
+                                    const Icon(
+                                      Icons.radio_button_checked_rounded,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                     const SizedBox(width: 6),
                                     Text(
                                       "Ghi: $_capturedFrames/50",
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -450,13 +485,20 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                   ElevatedButton(
                     onPressed: _isCameraInitialized ? _toggleCollection : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isCollecting ? Colors.amber[700] : theme.primaryColor,
+                      backgroundColor: _isCollecting
+                          ? Colors.amber[700]
+                          : theme.primaryColor,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: Text(
-                      _isCollecting ? "Kết Thúc & Trau Chuốt" : "Bắt Đầu Dịch Cử Chỉ",
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      _isCollecting
+                          ? "Kết Thúc & Trau Chuốt"
+                          : "Bắt Đầu Dịch Cử Chỉ",
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -470,7 +512,11 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                         children: [
                           const Text(
                             "Từ vựng nhận diện được",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppTheme.primaryColor,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           Wrap(
@@ -479,31 +525,64 @@ class _GestureTestScreenState extends State<GestureTestScreen> with WidgetsBindi
                             children: _words.isEmpty
                                 ? [
                                     Text(
-                                      _isCollecting ? "Đang lắng nghe..." : "Chưa có từ nào",
-                                      style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 13),
-                                    )
+                                      _isCollecting
+                                          ? "Đang lắng nghe..."
+                                          : "Chưa có từ nào",
+                                      style: const TextStyle(
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.grey,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ]
-                                : _words.map((w) => Chip(
-                                      label: Text(w, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor, fontSize: 12)),
-                                      backgroundColor: AppTheme.primarySubtle,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                      side: BorderSide.none,
-                                    )).toList(),
+                                : _words
+                                      .map(
+                                        (w) => Chip(
+                                          label: Text(
+                                            w,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.primaryColor,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          backgroundColor:
+                                              AppTheme.primarySubtle,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          side: BorderSide.none,
+                                        ),
+                                      )
+                                      .toList(),
                           ),
                           const Divider(height: 32, color: Color(0xFFEDF6E4)),
                           const Text(
                             "Câu dịch hoàn chỉnh",
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryColor),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: AppTheme.primaryColor,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             _finalSentence,
-                            style: theme.textTheme.headlineLarge?.copyWith(fontSize: 22, color: const Color(0xFF202734)),
+                            style: theme.textTheme.headlineLarge?.copyWith(
+                              fontSize: 22,
+                              color: const Color(0xFF202734),
+                            ),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             "Trạng thái: $_status",
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
@@ -538,7 +617,11 @@ class HalfBodyGuidePainter extends CustomPainter {
     final headRadiusX = size.width * 0.16;
     final headRadiusY = size.height * 0.18;
     canvas.drawOval(
-      Rect.fromCenter(center: headCenter, width: headRadiusX * 2, height: headRadiusY * 2),
+      Rect.fromCenter(
+        center: headCenter,
+        width: headRadiusX * 2,
+        height: headRadiusY * 2,
+      ),
       paint,
     );
 
@@ -546,13 +629,17 @@ class HalfBodyGuidePainter extends CustomPainter {
     final shoulderPath = Path()
       ..moveTo(size.width * 0.15, size.height * 0.8)
       ..quadraticBezierTo(
-        size.width * 0.15, size.height * 0.52,
-        size.width * 0.32, size.height * 0.52,
+        size.width * 0.15,
+        size.height * 0.52,
+        size.width * 0.32,
+        size.height * 0.52,
       )
       ..lineTo(size.width * 0.68, size.height * 0.52)
       ..quadraticBezierTo(
-        size.width * 0.85, size.height * 0.52,
-        size.width * 0.85, size.height * 0.8,
+        size.width * 0.85,
+        size.height * 0.52,
+        size.width * 0.85,
+        size.height * 0.8,
       );
     canvas.drawPath(shoulderPath, paint);
 
@@ -579,29 +666,45 @@ class HalfBodyGuidePainter extends CustomPainter {
   void _drawDashedRect(Canvas canvas, Rect rect, Paint paint) {
     const double dashWidth = 8;
     const double dashSpace = 4;
-    
+
     // Top line
     double startX = rect.left;
     while (startX < rect.right) {
-      canvas.drawLine(Offset(startX, rect.top), Offset(startX + dashWidth, rect.top), paint);
+      canvas.drawLine(
+        Offset(startX, rect.top),
+        Offset(startX + dashWidth, rect.top),
+        paint,
+      );
       startX += dashWidth + dashSpace;
     }
     // Bottom line
     startX = rect.left;
     while (startX < rect.right) {
-      canvas.drawLine(Offset(startX, rect.bottom), Offset(startX + dashWidth, rect.bottom), paint);
+      canvas.drawLine(
+        Offset(startX, rect.bottom),
+        Offset(startX + dashWidth, rect.bottom),
+        paint,
+      );
       startX += dashWidth + dashSpace;
     }
     // Left line
     double startY = rect.top;
     while (startY < rect.bottom) {
-      canvas.drawLine(Offset(rect.left, startY), Offset(rect.left, startY + dashWidth), paint);
+      canvas.drawLine(
+        Offset(rect.left, startY),
+        Offset(rect.left, startY + dashWidth),
+        paint,
+      );
       startY += dashWidth + dashSpace;
     }
     // Right line
     startY = rect.top;
     while (startY < rect.bottom) {
-      canvas.drawLine(Offset(rect.right, startY), Offset(rect.right, startY + dashWidth), paint);
+      canvas.drawLine(
+        Offset(rect.right, startY),
+        Offset(rect.right, startY + dashWidth),
+        paint,
+      );
       startY += dashWidth + dashSpace;
     }
   }
@@ -620,7 +723,8 @@ class LandmarksPainter extends CustomPainter {
     if (features.length < 306) return;
 
     final paintJoint = Paint()
-      ..color = const Color(0xFF00FFCC) // Neon teal
+      ..color =
+          const Color(0xFF00FFCC) // Neon teal
       ..strokeWidth = 3.0
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -636,13 +740,15 @@ class LandmarksPainter extends CustomPainter {
     */
 
     final paintHandJoint = Paint()
-      ..color = const Color(0xFFFF2A85) // Hot neon pink for hands
+      ..color =
+          const Color(0xFFFF2A85) // Hot neon pink for hands
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
     final paintHandDot = Paint()
-      ..color = const Color(0xFFFF5EA2) // Bright pink for hand joints
+      ..color =
+          const Color(0xFFFF5EA2) // Bright pink for hand joints
       ..style = PaintingStyle.fill;
 
     // Helper to get Offset for keypoint index
@@ -650,7 +756,7 @@ class LandmarksPainter extends CustomPainter {
       final int start = index * 3;
       final double x = features[start];
       final double y = features[start + 1];
-      
+
       // If point is empty/un-detected
       if (x == 0.0 && y == 0.0) return null;
 
@@ -689,7 +795,17 @@ class LandmarksPainter extends CustomPainter {
     drawLine(lHip, rHip);
 
     // Draw Pose dots
-    final posePoints = [nose, lShoulder, rShoulder, lElbow, rElbow, lWrist, rWrist, lHip, rHip];
+    final posePoints = [
+      nose,
+      lShoulder,
+      rShoulder,
+      lElbow,
+      rElbow,
+      lWrist,
+      rWrist,
+      lHip,
+      rHip,
+    ];
     for (final pt in posePoints) {
       if (pt != null) {
         canvas.drawCircle(pt, 5.0, paintDot);
@@ -709,7 +825,7 @@ class LandmarksPainter extends CustomPainter {
     // 3. Draw Hands Skeleton (Left Hand at index 60, Right Hand at index 81)
     void drawHand(int baseIndex) {
       final wrist = getPoint(baseIndex + 0);
-      
+
       final thumb = List.generate(4, (i) => getPoint(baseIndex + 1 + i));
       final indexFinger = List.generate(4, (i) => getPoint(baseIndex + 5 + i));
       final middleFinger = List.generate(4, (i) => getPoint(baseIndex + 9 + i));
