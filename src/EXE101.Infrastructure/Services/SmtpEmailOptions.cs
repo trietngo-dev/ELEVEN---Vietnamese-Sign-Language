@@ -11,4 +11,5 @@ public sealed class SmtpEmailOptions
     public string Password { get; set; } = string.Empty;
     public string FromEmail { get; set; } = string.Empty;
     public string FromName { get; set; } = "Eleven VSL";
+    public int TimeoutSeconds { get; set; } = 20;
 }
