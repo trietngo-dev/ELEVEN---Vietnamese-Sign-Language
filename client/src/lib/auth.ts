@@ -42,6 +42,16 @@ export interface ConfirmAccountDeletionRequest {
   code: string;
 }
 
+export interface RequestPasswordResetOtpRequest {
+  email: string;
+}
+
+export interface ConfirmPasswordResetRequest {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const ACCOUNT_DELETION_TIMEOUT_MS = 25000;
 
@@ -159,6 +169,36 @@ export const authApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || "Không thể xóa tài khoản");
+    }
+  },
+
+  requestPasswordResetOtp: async (data: RequestPasswordResetOtpRequest): Promise<void> => {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/password-reset/request-otp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Không thể gửi mã đặt lại mật khẩu");
+    }
+  },
+
+  confirmPasswordReset: async (data: ConfirmPasswordResetRequest): Promise<void> => {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/password-reset/confirm`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Không thể đặt lại mật khẩu");
     }
   },
 };

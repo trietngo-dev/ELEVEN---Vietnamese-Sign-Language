@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using EXE101.Application.Emails;
 using EXE101.Application.Interfaces.Services;
 using EXE101.Domain.Entities;
 using EXE101.Domain.Enums;
@@ -14,7 +15,9 @@ namespace EXE101.Presentation.Controllers;
 [Route("api/payments")]
 public sealed class PaymentsController(
     IPayOsService payOsService,
-    AppDbContext dbContext) : ControllerBase
+    AppDbContext dbContext,
+    IEmailSender emailSender,
+    ILogger<PaymentsController> logger) : ControllerBase
 {
     [Authorize]
     [HttpPost("create-payment-link")]
@@ -119,48 +122,7 @@ public sealed class PaymentsController(
 
         if (transaction.Status == PaymentStatus.Pending)
         {
-            transaction.Status = PaymentStatus.Paid;
-            transaction.PaidAt = DateTime.UtcNow;
-            transaction.ProviderTransactionRef = reference;
-
-            // Find matching subscription plan by amount
-            var plan = await dbContext.SubscriptionPlans
-                .FirstOrDefaultAsync(p => p.PriceVnd == transaction.AmountVnd && p.IsActive, cancellationToken);
-
-            if (plan != null)
-            {
-                // Expire existing active subscriptions for this user
-                var existingSubs = await dbContext.UserSubscriptions
-                    .Where(s => s.UserId == transaction.UserId && s.Status == SubscriptionStatus.Active)
-                    .ToListAsync(cancellationToken);
-
-                foreach (var sub in existingSubs)
-                {
-                    sub.Status = SubscriptionStatus.Expired;
-                }
-
-                // Create new subscription
-                var userSub = new UserSubscription
-                {
-                    UserId = transaction.UserId,
-                    PlanId = plan.Id,
-                    Status = SubscriptionStatus.Active,
-                    StartAt = DateTime.UtcNow,
-                    EndAt = plan.BillingCycle.ToLower() == "yearly" 
-                        ? DateTime.UtcNow.AddYears(1) 
-                        : DateTime.UtcNow.AddMonths(1),
-                    AutoRenew = true,
-                    Source = "PayOS",
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                dbContext.UserSubscriptions.Add(userSub);
-                await dbContext.SaveChangesAsync(cancellationToken);
-
-                transaction.UserSubscriptionId = userSub.Id;
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await ProcessPaidTransactionAsync(transaction, reference, cancellationToken);
         }
 
         return Ok(new { success = true });
@@ -197,47 +159,7 @@ public sealed class PaymentsController(
             {
                 if (payOsStatus == "PAID")
                 {
-                    transaction.Status = PaymentStatus.Paid;
-                    transaction.PaidAt = DateTime.UtcNow;
-
-                    // Find matching subscription plan by amount
-                    var plan = await dbContext.SubscriptionPlans
-                        .FirstOrDefaultAsync(p => p.PriceVnd == transaction.AmountVnd && p.IsActive, cancellationToken);
-
-                    if (plan != null)
-                    {
-                        // Expire existing active subscriptions for this user
-                        var existingSubs = await dbContext.UserSubscriptions
-                            .Where(s => s.UserId == transaction.UserId && s.Status == SubscriptionStatus.Active)
-                            .ToListAsync(cancellationToken);
-
-                        foreach (var sub in existingSubs)
-                        {
-                            sub.Status = SubscriptionStatus.Expired;
-                        }
-
-                        // Create new subscription
-                        var userSub = new UserSubscription
-                        {
-                            UserId = transaction.UserId,
-                            PlanId = plan.Id,
-                            Status = SubscriptionStatus.Active,
-                            StartAt = DateTime.UtcNow,
-                            EndAt = plan.BillingCycle.ToLower() == "yearly" 
-                                ? DateTime.UtcNow.AddYears(1) 
-                                : DateTime.UtcNow.AddMonths(1),
-                            AutoRenew = true,
-                            Source = "PayOS",
-                            CreatedAt = DateTime.UtcNow
-                        };
-
-                        dbContext.UserSubscriptions.Add(userSub);
-                        await dbContext.SaveChangesAsync(cancellationToken);
-
-                        transaction.UserSubscriptionId = userSub.Id;
-                    }
-
-                    await dbContext.SaveChangesAsync(cancellationToken);
+                    await ProcessPaidTransactionAsync(transaction, null, cancellationToken);
                 }
                 else if (payOsStatus == "CANCELLED")
                 {
@@ -267,6 +189,90 @@ public sealed class PaymentsController(
         }
 
         return null;
+    }
+
+    private async Task ProcessPaidTransactionAsync(PaymentTransaction transaction, string? reference, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        transaction.Status = PaymentStatus.Paid;
+        transaction.PaidAt = now;
+        if (!string.IsNullOrWhiteSpace(reference))
+        {
+            transaction.ProviderTransactionRef = reference;
+        }
+
+        var plan = await dbContext.SubscriptionPlans
+            .FirstOrDefaultAsync(p => p.PriceVnd == transaction.AmountVnd && p.IsActive, cancellationToken);
+
+        UserSubscription? userSub = null;
+        if (plan != null)
+        {
+            var existingSubs = await dbContext.UserSubscriptions
+                .Where(s => s.UserId == transaction.UserId && s.Status == SubscriptionStatus.Active)
+                .ToListAsync(cancellationToken);
+
+            foreach (var sub in existingSubs)
+            {
+                sub.Status = SubscriptionStatus.Expired;
+            }
+
+            userSub = new UserSubscription
+            {
+                UserId = transaction.UserId,
+                PlanId = plan.Id,
+                Status = SubscriptionStatus.Active,
+                StartAt = now,
+                EndAt = plan.BillingCycle.ToLowerInvariant() == "yearly"
+                    ? now.AddYears(1)
+                    : now.AddMonths(1),
+                AutoRenew = true,
+                Source = "PayOS",
+                CreatedAt = now
+            };
+
+            dbContext.UserSubscriptions.Add(userSub);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            transaction.UserSubscriptionId = userSub.Id;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (plan != null && userSub != null)
+        {
+            await SendSubscriptionReceiptAsync(transaction, plan, userSub, cancellationToken);
+        }
+    }
+
+    private async Task SendSubscriptionReceiptAsync(
+        PaymentTransaction transaction,
+        SubscriptionPlan plan,
+        UserSubscription subscription,
+        CancellationToken cancellationToken)
+    {
+        var user = await dbContext.Users.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == transaction.UserId, cancellationToken);
+
+        if (user is null)
+        {
+            return;
+        }
+
+        var email = EmailTemplates.SubscriptionReceipt(
+            user.FullName,
+            plan.Name,
+            transaction.AmountVnd,
+            transaction.Id.ToString(),
+            transaction.PaidAt ?? DateTime.UtcNow,
+            subscription.EndAt);
+
+        try
+        {
+            await emailSender.SendAsync(user.Email, email.Subject, email.TextBody, email.HtmlBody, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to send payment receipt email for transaction {TransactionId}", transaction.Id);
+        }
     }
 }
 

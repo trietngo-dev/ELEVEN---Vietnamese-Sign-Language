@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, Mail, UserRound, Eye, EyeOff, Loader2, ArrowLeft } from "lucide-react";
+import { Lock, Mail, UserRound, Eye, EyeOff, Loader2, ArrowLeft, KeyRound, X } from "lucide-react";
 import brand from "../assets/brand.jpg";
 import loginImg from "../assets/login.png";
 import registerImg from "../assets/register.png";
 import { Button } from "./ui/button";
 import { viText } from "../locales/vi";
 import { useAuth } from "../context/AuthContext";
+import { authApi } from "../lib/auth";
 import { cn } from "../lib/utils";
 
 interface AuthSliderLayoutProps {
@@ -138,6 +139,17 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
 
+  // Password reset states
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [resetStep, setResetStep] = useState<"email" | "code" | "done">("email");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirmPassword, setResetConfirmPassword] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [isResetSubmitting, setIsResetSubmitting] = useState(false);
+
   // Register Form States
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
@@ -172,6 +184,65 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
       setLoginError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
     } finally {
       setIsLoginSubmitting(false);
+    }
+  };
+
+  const openPasswordReset = () => {
+    setResetEmail(loginEmail);
+    setResetStep("email");
+    setResetCode("");
+    setResetPassword("");
+    setResetConfirmPassword("");
+    setResetMessage("");
+    setResetError(null);
+    setShowPasswordReset(true);
+  };
+
+  const handleRequestPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = resetEmail.trim().toLowerCase();
+    if (!email) return;
+
+    setIsResetSubmitting(true);
+    setResetError(null);
+    setResetMessage("");
+
+    try {
+      await authApi.requestPasswordResetOtp({ email });
+      setResetEmail(email);
+      setResetStep("code");
+      setResetMessage("Nếu email tồn tại trong hệ thống, mã đặt lại mật khẩu đã được gửi đến hộp thư của bạn.");
+    } catch (err: any) {
+      setResetError(err.message || "Không thể gửi mã đặt lại mật khẩu. Vui lòng thử lại.");
+    } finally {
+      setIsResetSubmitting(false);
+    }
+  };
+
+  const handleConfirmPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError(null);
+
+    if (resetPassword !== resetConfirmPassword) {
+      setResetError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    setIsResetSubmitting(true);
+
+    try {
+      await authApi.confirmPasswordReset({
+        email: resetEmail.trim().toLowerCase(),
+        code: resetCode.trim(),
+        newPassword: resetPassword,
+      });
+      setLoginEmail(resetEmail.trim().toLowerCase());
+      setResetStep("done");
+      setResetMessage("Mật khẩu đã được đặt lại. Bạn có thể đăng nhập bằng mật khẩu mới.");
+    } catch (err: any) {
+      setResetError(err.message || "Không thể đặt lại mật khẩu. Vui lòng kiểm tra mã xác nhận.");
+    } finally {
+      setIsResetSubmitting(false);
     }
   };
 
@@ -286,7 +357,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                       <label htmlFor="login-password" className="text-xs font-bold text-[#4a5864]">
                         {authPages.login.passwordLabel}
                       </label>
-                      <button type="button" className="text-xs font-bold text-[#3c7c4a] hover:underline">
+                      <button type="button" onClick={openPasswordReset} className="text-xs font-bold text-[#3c7c4a] hover:underline">
                         {authPages.login.forgotPassword}
                       </button>
                     </div>
@@ -578,6 +649,175 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
         {/* Middle Toggle Slide Button is removed to prevent overlapping illustration details */}
 
       </div>
+
+      <AnimatePresence>
+        {showPasswordReset && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+              className="w-full max-w-md rounded-2xl border border-[#dfeade] bg-white p-6 shadow-[0_24px_70px_rgba(23,35,52,0.18)]"
+            >
+              <div className="mb-5 flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f2f7ef] text-[#3c7c4a]">
+                    <KeyRound size={22} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-black text-[#172334]">Đặt lại mật khẩu</h2>
+                    <p className="mt-1 text-xs font-medium leading-5 text-[#718096]">
+                      Nhận mã xác nhận qua email để tạo mật khẩu mới.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordReset(false)}
+                  disabled={isResetSubmitting}
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {resetError && (
+                <div className="mb-4 rounded-xl border border-red-100 bg-red-50 p-3 text-center text-xs font-semibold text-red-600">
+                  {resetError}
+                </div>
+              )}
+
+              {resetMessage && (
+                <div className="mb-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-center text-xs font-semibold leading-5 text-emerald-700">
+                  {resetMessage}
+                </div>
+              )}
+
+              {resetStep === "email" && (
+                <form onSubmit={handleRequestPasswordReset} className="space-y-4">
+                  <div>
+                    <label htmlFor="reset-email" className="text-xs font-bold text-[#4a5864]">
+                      Email tài khoản
+                    </label>
+                    <div className="mt-1.5 flex h-11 items-center gap-2.5 rounded-full border border-[#e3eae6] bg-[#f8faf9] px-4 focus-within:border-[#a8c0af]">
+                      <Mail className="h-4 w-4 shrink-0 text-[#9babb6]" />
+                      <input
+                        id="reset-email"
+                        type="email"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        required
+                        disabled={isResetSubmitting}
+                        className="w-full border-none bg-transparent text-[0.88rem] text-[#2a3a46] outline-none placeholder:text-[#a7b4bd]"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isResetSubmitting}
+                    className="h-11 w-full rounded-full bg-[#3b7948] text-sm font-bold shadow-md hover:bg-[#336b40]"
+                  >
+                    {isResetSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gửi mã xác nhận"}
+                  </Button>
+                </form>
+              )}
+
+              {resetStep === "code" && (
+                <form onSubmit={handleConfirmPasswordReset} className="space-y-4">
+                  <div className="rounded-xl border border-[#e3eae6] bg-[#f8faf9] p-3 text-xs font-semibold text-[#64748b]">
+                    Email: <span className="text-[#172334]">{resetEmail}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetStep("email");
+                        setResetMessage("");
+                        setResetError(null);
+                      }}
+                      disabled={isResetSubmitting}
+                      className="ml-2 font-black text-[#3c7c4a] hover:underline disabled:opacity-50"
+                    >
+                      Đổi
+                    </button>
+                  </div>
+
+                  <div>
+                    <label htmlFor="reset-code" className="text-xs font-bold text-[#4a5864]">
+                      Mã xác nhận
+                    </label>
+                    <input
+                      id="reset-code"
+                      type="text"
+                      inputMode="numeric"
+                      value={resetCode}
+                      onChange={(e) => setResetCode(e.target.value)}
+                      placeholder="000000"
+                      required
+                      disabled={isResetSubmitting}
+                      className="mt-1.5 h-12 w-full rounded-2xl border border-[#e3eae6] bg-[#f8faf9] px-4 text-center text-lg font-black tracking-[0.25em] text-[#172334] outline-none focus:border-[#a8c0af]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="reset-password" className="text-xs font-bold text-[#4a5864]">
+                        Mật khẩu mới
+                      </label>
+                      <input
+                        id="reset-password"
+                        type="password"
+                        value={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                        required
+                        disabled={isResetSubmitting}
+                        className="mt-1.5 h-11 w-full rounded-full border border-[#e3eae6] bg-[#f8faf9] px-4 text-sm text-[#172334] outline-none focus:border-[#a8c0af]"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="reset-confirm" className="text-xs font-bold text-[#4a5864]">
+                        Xác nhận
+                      </label>
+                      <input
+                        id="reset-confirm"
+                        type="password"
+                        value={resetConfirmPassword}
+                        onChange={(e) => setResetConfirmPassword(e.target.value)}
+                        required
+                        disabled={isResetSubmitting}
+                        className="mt-1.5 h-11 w-full rounded-full border border-[#e3eae6] bg-[#f8faf9] px-4 text-sm text-[#172334] outline-none focus:border-[#a8c0af]"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isResetSubmitting}
+                    className="h-11 w-full rounded-full bg-[#3b7948] text-sm font-bold shadow-md hover:bg-[#336b40]"
+                  >
+                    {isResetSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Đặt lại mật khẩu"}
+                  </Button>
+                </form>
+              )}
+
+              {resetStep === "done" && (
+                <Button
+                  type="button"
+                  onClick={() => setShowPasswordReset(false)}
+                  className="h-11 w-full rounded-full bg-[#3b7948] text-sm font-bold shadow-md hover:bg-[#336b40]"
+                >
+                  Quay lại đăng nhập
+                </Button>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

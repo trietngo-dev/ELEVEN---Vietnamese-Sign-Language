@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using EXE101.Application.Interfaces.Services;
 using Microsoft.Extensions.Options;
 
@@ -16,7 +17,7 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options, HttpClie
     private readonly SmtpEmailOptions _options = options.Value;
     private readonly HttpClient _httpClient = httpClient;
 
-    public async Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default)
+    public async Task SendAsync(string toEmail, string subject, string body, string? htmlBody = null, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.Host) || string.IsNullOrWhiteSpace(_options.FromEmail))
         {
@@ -25,7 +26,7 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options, HttpClie
 
         if (IsResendConfigured())
         {
-            await SendWithResendApiAsync(toEmail, subject, body, cancellationToken);
+            await SendWithResendApiAsync(toEmail, subject, body, htmlBody, cancellationToken);
             return;
         }
 
@@ -33,8 +34,8 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options, HttpClie
         {
             From = new MailAddress(_options.FromEmail, _options.FromName),
             Subject = subject,
-            Body = body,
-            IsBodyHtml = false
+            Body = htmlBody ?? body,
+            IsBodyHtml = !string.IsNullOrWhiteSpace(htmlBody)
         };
         message.To.Add(new MailAddress(toEmail));
 
@@ -67,7 +68,7 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options, HttpClie
         => string.Equals(_options.Host, ResendSmtpHost, StringComparison.OrdinalIgnoreCase)
             || string.Equals(_options.Username, "resend", StringComparison.OrdinalIgnoreCase);
 
-    private async Task SendWithResendApiAsync(string toEmail, string subject, string body, CancellationToken cancellationToken)
+    private async Task SendWithResendApiAsync(string toEmail, string subject, string body, string? htmlBody, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(_options.Password))
         {
@@ -83,7 +84,8 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options, HttpClie
             from,
             to = new[] { toEmail },
             subject,
-            text = body
+            text = body,
+            html = htmlBody
         };
 
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -91,7 +93,10 @@ public sealed class SmtpEmailSender(IOptions<SmtpEmailOptions> options, HttpClie
 
         using var request = new HttpRequestMessage(HttpMethod.Post, ResendEmailsEndpoint)
         {
-            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+            Content = new StringContent(JsonSerializer.Serialize(payload, new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            }), Encoding.UTF8, "application/json")
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.Password);
 
