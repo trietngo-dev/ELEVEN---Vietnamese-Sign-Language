@@ -1,153 +1,220 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { Trash2, AlertTriangle, ArrowLeft, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Mail, ShieldCheck, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { authApi } from "../lib/auth";
+
+type Step = "email" | "code" | "done";
 
 export default function DeleteAccountPage() {
-  const { user, deleteAccount } = useAuth();
   const navigate = useNavigate();
+  const [step, setStep] = useState<Step>("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [understandTerms, setUnderstandTerms] = useState(false);
-  const [confirmText, setConfirmText] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState("");
-  const [canDelete, setCanDelete] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const text = confirmText.trim().toUpperCase();
-    setCanDelete(text === "CONFIRM");
-  }, [confirmText]);
+  const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const canRequestCode = normalizedEmail.length > 3 && normalizedEmail.includes("@");
+  const canConfirm = canRequestCode && code.trim().length >= 4 && understandTerms;
 
-  const handleDelete = async () => {
-    if (!user?.id || !understandTerms || !canDelete) return;
-    setIsDeleting(true);
-    setDeleteError("");
+  const requestCode = async () => {
+    if (!canRequestCode) return;
+
+    setIsSubmitting(true);
+    setError("");
+    setMessage("");
+
     try {
-      await deleteAccount(user.id);
-      // AuthContext will handle logout and redirect, but let's navigate to land page just in case
-      navigate("/");
+      await authApi.requestAccountDeletionOtp({ email: normalizedEmail });
+      setStep("code");
+      setMessage("Nếu email tồn tại trong hệ thống, mã xác nhận đã được gửi đến hộp thư của bạn.");
     } catch (err: any) {
-      setDeleteError(err.message || "Không thể xóa tài khoản. Vui lòng thử lại sau.");
-      setIsDeleting(false);
+      setError(err.message || "Không thể gửi mã xác nhận. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
+  const confirmDeletion = async () => {
+    if (!canConfirm) return;
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      await authApi.confirmAccountDeletion({
+        email: normalizedEmail,
+        code: code.trim()
+      });
+      setStep("done");
+      setMessage("Tài khoản đã được xóa thành công.");
+    } catch (err: any) {
+      setError(err.message || "Không thể xác nhận xóa tài khoản. Vui lòng kiểm tra lại mã.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetEmail = () => {
+    setStep("email");
+    setCode("");
+    setUnderstandTerms(false);
+    setMessage("");
+    setError("");
+  };
+
   return (
-    <div className="min-h-screen bg-[#F8FDF8] py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center font-outfit">
+    <div className="min-h-screen bg-[#F8FDF8] px-4 py-12 sm:px-6 lg:px-8 flex items-center justify-center font-outfit">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full space-y-8 bg-white p-8 md:p-10 rounded-3xl border border-red-100 shadow-[0_10px_30px_rgba(239,68,68,0.04)]"
+        className="w-full max-w-md rounded-2xl border border-red-100 bg-white p-6 shadow-[0_10px_30px_rgba(239,68,68,0.05)] sm:p-8"
       >
-        <div>
-          <button
-            onClick={() => navigate("/ho-so")}
-            className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors mb-6 cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            Quay lại Hồ sơ
-          </button>
+        <button
+          type="button"
+          onClick={() => navigate("/")}
+          className="mb-6 flex items-center gap-2 text-xs font-bold text-slate-500 transition-colors hover:text-slate-800"
+        >
+          <ArrowLeft size={14} />
+          Về trang chủ
+        </button>
 
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center border border-red-100/50">
-              <ShieldAlert size={32} />
-            </div>
+        <div className="flex justify-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-red-100 bg-red-50 text-red-500">
+            {step === "done" ? <CheckCircle2 size={32} /> : <ShieldCheck size={32} />}
           </div>
-
-          <h2 className="mt-6 text-center text-xl font-black text-slate-800">
-            Hành động này không thể hoàn tác!
-          </h2>
-          <p className="mt-2 text-center text-xs text-slate-500 leading-relaxed">
-            Khi bạn xóa tài khoản, toàn bộ dữ liệu học tập và thông tin cá nhân của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống của chúng tôi.
-          </p>
         </div>
 
-        {/* Warning details */}
-        <div className="p-5 rounded-2xl bg-red-50/30 border border-red-100/80 text-slate-700 space-y-4">
-          <p className="text-xs font-black text-red-700 flex items-center gap-1.5">
-            <AlertTriangle size={14} />
-            Các thông tin sẽ mất vĩnh viễn:
-          </p>
-          <ul className="text-xs space-y-2 text-slate-600 font-medium">
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
-              Tiến trình học tập và lịch sử kiểm tra AI
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
-              Số điểm XP tích lũy và danh hiệu (Badges)
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
-              Quyền lợi VIP và gói đăng ký dịch vụ hoạt động
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 shrink-0" />
-              Thông tin cá nhân, cài đặt và bài học đã lưu
-            </li>
-          </ul>
-        </div>
+        <h1 className="mt-6 text-center text-xl font-black text-slate-800">
+          {step === "done" ? "Đã xóa tài khoản" : "Xóa tài khoản Sign Language Eleven"}
+        </h1>
+        <p className="mt-2 text-center text-sm leading-6 text-slate-500">
+          {step === "done"
+            ? "Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi."
+            : "Nhập email tài khoản, nhận mã xác nhận, rồi xác nhận lần cuối để xóa dữ liệu."}
+        </p>
 
-        {/* Agreement checkbox */}
-        <div className="flex items-start gap-3">
-          <input
-            id="agreement"
-            type="checkbox"
-            checked={understandTerms}
-            onChange={(e) => setUnderstandTerms(e.target.checked)}
-            disabled={isDeleting}
-            className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 mt-0.5 cursor-pointer"
-          />
-          <label
-            htmlFor="agreement"
-            className="text-xs text-slate-600 leading-normal font-medium cursor-pointer select-none"
-          >
-            Tôi hiểu và đồng ý xóa toàn bộ dữ liệu cá nhân của tôi vĩnh viễn.
-          </label>
-        </div>
-
-        {/* Confirm Text */}
-        <div className="space-y-2">
-          <label htmlFor="confirm" className="text-xs font-bold text-slate-700 block">
-            Nhập chữ "CONFIRM" bên dưới để xác nhận:
-          </label>
-          <input
-            id="confirm"
-            type="text"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            disabled={isDeleting}
-            placeholder="Gõ CONFIRM để xác nhận"
-            className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 bg-slate-50/50 text-xs font-bold text-slate-800 transition-all outline-none"
-          />
-        </div>
-
-        {deleteError && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 font-semibold text-xs text-center leading-relaxed">
-            {deleteError}
+        {step !== "done" && (
+          <div className="mt-6 rounded-xl border border-red-100 bg-red-50/50 p-4">
+            <p className="flex items-center gap-2 text-xs font-black text-red-700">
+              <AlertTriangle size={14} />
+              Dữ liệu sẽ bị xóa vĩnh viễn
+            </p>
+            <p className="mt-2 text-xs leading-5 text-slate-600">
+              Tiến trình học tập, lịch sử luyện tập, thông tin cá nhân và các dữ liệu liên quan đến tài khoản sẽ không thể khôi phục.
+            </p>
           </div>
         )}
 
-        {/* Actions */}
-        <div className="space-y-3 pt-2">
+        {step === "email" && (
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="delete-email" className="block text-xs font-bold text-slate-700">
+                Email tài khoản
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                <input
+                  id="delete-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  disabled={isSubmitting}
+                  placeholder="you@example.com"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={!canRequestCode || isSubmitting}
+              onClick={requestCode}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-600 text-xs font-extrabold text-white shadow-md shadow-red-600/10 transition-all hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
+            >
+              <Mail size={14} />
+              {isSubmitting ? "Đang gửi mã..." : "Gửi mã xác nhận"}
+            </button>
+          </div>
+        )}
+
+        {step === "code" && (
+          <div className="mt-6 space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">
+              Email: <span className="text-slate-900">{normalizedEmail}</span>
+              <button
+                type="button"
+                onClick={resetEmail}
+                disabled={isSubmitting}
+                className="ml-2 font-black text-red-600 hover:text-red-700 disabled:opacity-50"
+              >
+                Đổi
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="delete-code" className="block text-xs font-bold text-slate-700">
+                Mã xác nhận
+              </label>
+              <input
+                id="delete-code"
+                type="text"
+                inputMode="numeric"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                disabled={isSubmitting}
+                placeholder="Nhập mã trong email"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 text-center text-lg font-black tracking-[0.2em] text-slate-800 outline-none transition-all focus:border-red-500 focus:ring-1 focus:ring-red-500"
+              />
+            </div>
+
+            <label className="flex cursor-pointer select-none items-start gap-3 text-xs font-medium leading-5 text-slate-600">
+              <input
+                type="checkbox"
+                checked={understandTerms}
+                onChange={(event) => setUnderstandTerms(event.target.checked)}
+                disabled={isSubmitting}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-red-600 focus:ring-red-500"
+              />
+              Tôi chắc chắn muốn xóa tài khoản này và hiểu rằng thao tác không thể hoàn tác.
+            </label>
+
+            <button
+              type="button"
+              disabled={!canConfirm || isSubmitting}
+              onClick={confirmDeletion}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-600 text-xs font-extrabold text-white shadow-md shadow-red-600/10 transition-all hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100"
+            >
+              <Trash2 size={14} />
+              {isSubmitting ? "Đang xóa tài khoản..." : "Xác nhận xóa tài khoản"}
+            </button>
+          </div>
+        )}
+
+        {step === "done" && (
           <button
             type="button"
-            disabled={!understandTerms || !canDelete || isDeleting}
-            onClick={handleDelete}
-            className="w-full h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-md shadow-red-600/10 transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed cursor-pointer"
+            onClick={() => navigate("/")}
+            className="mt-6 h-11 w-full rounded-xl bg-emerald-600 text-xs font-extrabold text-white shadow-md shadow-emerald-600/10 transition-all hover:bg-emerald-700 active:scale-95"
           >
-            <Trash2 size={14} />
-            {isDeleting ? "Đang xóa tài khoản..." : "Xóa tài khoản vĩnh viễn"}
+            Hoàn tất
           </button>
-          <button
-            type="button"
-            disabled={isDeleting}
-            onClick={() => navigate("/ho-so")}
-            className="w-full h-11 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 cursor-pointer"
+        )}
+
+        {(message || error) && (
+          <div
+            className={`mt-5 rounded-xl border p-3 text-center text-xs font-semibold leading-5 ${
+              error
+                ? "border-red-100 bg-red-50 text-red-600"
+                : "border-emerald-100 bg-emerald-50 text-emerald-700"
+            }`}
           >
-            Hủy & Giữ lại tài khoản
-          </button>
-        </div>
+            {error || message}
+          </div>
+        )}
       </motion.div>
     </div>
   );

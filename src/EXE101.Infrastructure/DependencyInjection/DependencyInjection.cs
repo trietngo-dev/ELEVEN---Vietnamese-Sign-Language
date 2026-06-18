@@ -23,6 +23,9 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<SupabaseStorageOptions>(configuration.GetSection(SupabaseStorageOptions.SectionName));
+        services.Configure<SmtpEmailOptions>(configuration.GetSection(SmtpEmailOptions.SectionName));
+
+        services.AddMemoryCache();
 
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
@@ -89,6 +92,7 @@ public static class DependencyInjection
         services.AddScoped<IUserActivityLogService, UserActivityLogService>();
         services.AddScoped<IAdminActionLogService, AdminActionLogService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<IGesturePredictionService, GesturePredictionService>();
         services.AddSingleton<IFeatureExtractionService, GestureFeatureExtractionService>();
         services.AddSingleton<IFrameBufferService, GestureFrameBufferService>();

@@ -33,6 +33,15 @@ export interface UserResponse {
   updatedAt: string;
 }
 
+export interface RequestAccountDeletionOtpRequest {
+  email: string;
+}
+
+export interface ConfirmAccountDeletionRequest {
+  email: string;
+  code: string;
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export const authApi = {
@@ -99,6 +108,36 @@ export const authApi = {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.message || "Xóa tài khoản thất bại");
+    }
+  },
+
+  requestAccountDeletionOtp: async (data: RequestAccountDeletionOtpRequest): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/account-deletion/request-otp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Không thể gửi mã xác nhận");
+    }
+  },
+
+  confirmAccountDeletion: async (data: ConfirmAccountDeletionRequest): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/api/users/account-deletion/confirm`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Không thể xóa tài khoản");
     }
   },
 };
