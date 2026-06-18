@@ -1142,7 +1142,7 @@ export default function ProfilePage() {
 
                 <div className="pt-2">
                   <Link
-                    to="/delete-acount"
+                    to="/delete-account"
                     className="h-10 px-6 rounded-xl bg-red-600 text-white font-extrabold text-xs shadow-md shadow-red-600/10 hover:bg-red-700 transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer inline-flex"
                   >
                     <Trash2 size={13} />

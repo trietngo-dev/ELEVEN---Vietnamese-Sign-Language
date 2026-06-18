@@ -99,6 +99,8 @@ function App() {
           <Route path="danh-gia" element={<ReviewPage />} />
           <Route path="dieu-khoan" element={<TermsPage />} />
           <Route path="chinh-sach-bao-mat" element={<PrivacyPage />} />
+          <Route path="delete-account" element={<DeleteAccountPage />} />
+          <Route path="delete-acount" element={<Navigate to="/delete-account" replace />} />
           <Route
             path="*"
             element={
@@ -120,14 +122,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="delete-acount"
-            element={
-              <ProtectedRoute>
-                <DeleteAccountPage />
               </ProtectedRoute>
             }
           />

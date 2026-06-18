@@ -17,4 +17,6 @@ public interface IUserService
     Task<UserResponse?> VerifyEmailAsync(VerifyEmailRequest request, CancellationToken cancellationToken = default);
     Task<UserResponse?> UpdateAvatarAsync(long userId, UpdateAvatarRequest request, CancellationToken cancellationToken = default);
     Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken cancellationToken = default);
+    Task RequestAccountDeletionOtpAsync(RequestAccountDeletionOtpRequest request, CancellationToken cancellationToken = default);
+    Task<bool> ConfirmAccountDeletionAsync(ConfirmAccountDeletionRequest request, CancellationToken cancellationToken = default);
 }

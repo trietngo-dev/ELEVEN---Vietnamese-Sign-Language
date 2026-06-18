@@ -7,17 +7,27 @@ using EXE101.Domain.Enums;
 using EXE101.Infrastructure.Persistence;
 using Google.Apis.Auth;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using System.Security.Cryptography;
 
 namespace EXE101.Infrastructure.Services;
 
 public sealed class UserService(
     IUserRepository userRepository,
     IJwtTokenService jwtTokenService,
-    AppDbContext dbContext) : IUserService
+    AppDbContext dbContext,
+    IEmailSender emailSender,
+    IMemoryCache memoryCache) : IUserService
 {
+    private const string AccountDeletionOtpCachePrefix = "account-deletion-otp:";
+    private const int AccountDeletionOtpMinutes = 15;
+    private const int MaxAccountDeletionOtpAttempts = 5;
+
     private readonly IUserRepository _userRepository = userRepository;
     private readonly IJwtTokenService _jwtTokenService = jwtTokenService;
     private readonly AppDbContext _dbContext = dbContext;
+    private readonly IEmailSender _emailSender = emailSender;
+    private readonly IMemoryCache _memoryCache = memoryCache;
 
     public async Task<PagedResult<UserResponse>> GetPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
@@ -378,4 +388,94 @@ public sealed class UserService(
             ExpiresAtUtc = jwt.ExpiresAtUtc
         };
     }
+
+    public async Task RequestAccountDeletionOtpAsync(RequestAccountDeletionOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        var email = NormalizeEmail(request.Email);
+        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return;
+        }
+
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        var expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(AccountDeletionOtpMinutes);
+        var challenge = new AccountDeletionOtpChallenge(email, BCrypt.Net.BCrypt.HashPassword(code), expiresAtUtc, 0);
+
+        _memoryCache.Set(GetAccountDeletionOtpCacheKey(email), challenge, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpiration = expiresAtUtc
+        });
+
+        var body = $"""
+        Xin chào {user.FullName},
+
+        Bạn vừa yêu cầu xóa tài khoản Sign Language Eleven.
+
+        Mã xác nhận của bạn là: {code}
+
+        Mã này có hiệu lực trong {AccountDeletionOtpMinutes} phút. Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email.
+        """;
+
+        await _emailSender.SendAsync(email, "Mã xác nhận xóa tài khoản Sign Language Eleven", body, cancellationToken);
+    }
+
+    public async Task<bool> ConfirmAccountDeletionAsync(ConfirmAccountDeletionRequest request, CancellationToken cancellationToken = default)
+    {
+        var email = NormalizeEmail(request.Email);
+        var code = request.Code.Trim();
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new InvalidOperationException("Confirmation code is required.");
+        }
+
+        var cacheKey = GetAccountDeletionOtpCacheKey(email);
+        if (!_memoryCache.TryGetValue<AccountDeletionOtpChallenge>(cacheKey, out var challenge) || challenge is null)
+        {
+            throw new InvalidOperationException("Confirmation code is invalid or expired.");
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(code, challenge.CodeHash))
+        {
+            var failedAttempts = challenge.FailedAttempts + 1;
+            if (failedAttempts >= MaxAccountDeletionOtpAttempts)
+            {
+                _memoryCache.Remove(cacheKey);
+            }
+            else
+            {
+                _memoryCache.Set(cacheKey, challenge with { FailedAttempts = failedAttempts }, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpiration = challenge.ExpiresAtUtc
+                });
+            }
+
+            throw new InvalidOperationException("Confirmation code is invalid or expired.");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        if (user is null)
+        {
+            _memoryCache.Remove(cacheKey);
+            return false;
+        }
+
+        var deleted = await DeleteAsync(user.Id, cancellationToken);
+        if (deleted)
+        {
+            _memoryCache.Remove(cacheKey);
+        }
+
+        return deleted;
+    }
+
+    private static string GetAccountDeletionOtpCacheKey(string email)
+        => $"{AccountDeletionOtpCachePrefix}{email}";
+
+    private sealed record AccountDeletionOtpChallenge(
+        string Email,
+        string CodeHash,
+        DateTimeOffset ExpiresAtUtc,
+        int FailedAttempts);
 }

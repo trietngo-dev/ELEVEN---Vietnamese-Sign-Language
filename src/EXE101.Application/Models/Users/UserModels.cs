@@ -80,3 +80,19 @@ public sealed class ChangeStatusRequest
 {
     public UserStatus Status { get; set; }
 }
+
+public sealed class RequestAccountDeletionOtpRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ConfirmAccountDeletionRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+}
+
+public sealed class AccountDeletionOtpResponse
+{
+    public string Message { get; set; } = string.Empty;
+}

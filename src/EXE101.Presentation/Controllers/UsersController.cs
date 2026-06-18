@@ -115,6 +115,30 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         return Ok(result);
     }
 
+    [AllowAnonymous]
+    [HttpPost("account-deletion/request-otp")]
+    public async Task<IActionResult> RequestAccountDeletionOtp([FromBody] RequestAccountDeletionOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        await userService.RequestAccountDeletionOtpAsync(request, cancellationToken);
+        return Ok(new AccountDeletionOtpResponse
+        {
+            Message = "If the email exists, a confirmation code has been sent."
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("account-deletion/confirm")]
+    public async Task<IActionResult> ConfirmAccountDeletion([FromBody] ConfirmAccountDeletionRequest request, CancellationToken cancellationToken = default)
+    {
+        var deleted = await userService.ConfirmAccountDeletionAsync(request, cancellationToken);
+        if (!deleted)
+        {
+            return NotFound(new { message = "User account was not found." });
+        }
+
+        return Ok(new { message = "Account deleted successfully." });
+    }
+
     [HttpPost("{id:long}/change-password")]
     public async Task<IActionResult> ChangePassword([FromRoute] long id, [FromBody] ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
