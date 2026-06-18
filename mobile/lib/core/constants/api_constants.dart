@@ -2,8 +2,17 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
-  // Configured to dynamically resolve host IP for Emulator vs Web/Devices
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+  );
+
+  // Use --dart-define=API_BASE_URL=https://your-domain when building release.
   static String get baseUrl {
+    final configuredBaseUrl = _configuredBaseUrl.trim();
+    if (configuredBaseUrl.isNotEmpty) {
+      return configuredBaseUrl.replaceFirst(RegExp(r'/+$'), '');
+    }
+
     if (kIsWeb) {
       return "http://localhost:5000";
     }
