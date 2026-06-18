@@ -1,5 +1,6 @@
 using EXE101.Application.Interfaces.Repositories;
 using EXE101.Application.Interfaces.Services;
+using EXE101.Application.Emails;
 using EXE101.Application.Models.Common;
 using EXE101.Application.Models.Users;
 using EXE101.Domain.Entities;
@@ -20,8 +21,11 @@ public sealed class UserService(
     IMemoryCache memoryCache) : IUserService
 {
     private const string AccountDeletionOtpCachePrefix = "account-deletion-otp:";
+    private const string PasswordResetOtpCachePrefix = "password-reset-otp:";
     private const int AccountDeletionOtpMinutes = 15;
+    private const int PasswordResetOtpMinutes = 15;
     private const int MaxAccountDeletionOtpAttempts = 5;
+    private const int MaxPasswordResetOtpAttempts = 5;
 
     private readonly IUserRepository _userRepository = userRepository;
     private readonly IJwtTokenService _jwtTokenService = jwtTokenService;
@@ -402,17 +406,15 @@ public sealed class UserService(
         var expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(AccountDeletionOtpMinutes);
         var challenge = new AccountDeletionOtpChallenge(email, BCrypt.Net.BCrypt.HashPassword(code), expiresAtUtc, 0);
 
-        var body = $"""
-        Xin chào {user.FullName},
+        var emailContent = EmailTemplates.VerificationCode(
+            user.FullName,
+            "Mã xác nhận xóa tài khoản",
+            "Bạn vừa yêu cầu xóa tài khoản Sign Language Eleven. Nhập mã dưới đây để xác nhận thao tác này.",
+            code,
+            AccountDeletionOtpMinutes,
+            "Nếu bạn không yêu cầu xóa tài khoản, vui lòng bỏ qua email này và giữ an toàn thông tin đăng nhập.");
 
-        Bạn vừa yêu cầu xóa tài khoản Sign Language Eleven.
-
-        Mã xác nhận của bạn là: {code}
-
-        Mã này có hiệu lực trong {AccountDeletionOtpMinutes} phút. Nếu bạn không yêu cầu thao tác này, vui lòng bỏ qua email.
-        """;
-
-        await _emailSender.SendAsync(email, "Mã xác nhận xóa tài khoản Sign Language Eleven", body, cancellationToken);
+        await _emailSender.SendAsync(email, emailContent.Subject, emailContent.TextBody, emailContent.HtmlBody, cancellationToken);
 
         _memoryCache.Set(GetAccountDeletionOtpCacheKey(email), challenge, new MemoryCacheEntryOptions
         {
@@ -470,10 +472,102 @@ public sealed class UserService(
         return deleted;
     }
 
+    public async Task RequestPasswordResetOtpAsync(RequestPasswordResetOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        var email = NormalizeEmail(request.Email);
+        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return;
+        }
+
+        var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        var expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(PasswordResetOtpMinutes);
+        var challenge = new PasswordResetOtpChallenge(email, BCrypt.Net.BCrypt.HashPassword(code), expiresAtUtc, 0);
+
+        var emailContent = EmailTemplates.VerificationCode(
+            user.FullName,
+            "Mã đặt lại mật khẩu",
+            "Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản Sign Language Eleven. Nhập mã dưới đây để tạo mật khẩu mới.",
+            code,
+            PasswordResetOtpMinutes,
+            "Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.");
+
+        await _emailSender.SendAsync(email, emailContent.Subject, emailContent.TextBody, emailContent.HtmlBody, cancellationToken);
+
+        _memoryCache.Set(GetPasswordResetOtpCacheKey(email), challenge, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpiration = expiresAtUtc
+        });
+    }
+
+    public async Task<bool> ConfirmPasswordResetAsync(ConfirmPasswordResetRequest request, CancellationToken cancellationToken = default)
+    {
+        var email = NormalizeEmail(request.Email);
+        var code = request.Code.Trim();
+
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            throw new InvalidOperationException("Confirmation code is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            throw new InvalidOperationException("New password is required.");
+        }
+
+        var cacheKey = GetPasswordResetOtpCacheKey(email);
+        if (!_memoryCache.TryGetValue<PasswordResetOtpChallenge>(cacheKey, out var challenge) || challenge is null)
+        {
+            throw new InvalidOperationException("Confirmation code is invalid or expired.");
+        }
+
+        if (!BCrypt.Net.BCrypt.Verify(code, challenge.CodeHash))
+        {
+            var failedAttempts = challenge.FailedAttempts + 1;
+            if (failedAttempts >= MaxPasswordResetOtpAttempts)
+            {
+                _memoryCache.Remove(cacheKey);
+            }
+            else
+            {
+                _memoryCache.Set(cacheKey, challenge with { FailedAttempts = failedAttempts }, new MemoryCacheEntryOptions
+                {
+                    AbsoluteExpiration = challenge.ExpiresAtUtc
+                });
+            }
+
+            throw new InvalidOperationException("Confirmation code is invalid or expired.");
+        }
+
+        var user = await _userRepository.GetByEmailAsync(email, cancellationToken);
+        if (user is null)
+        {
+            _memoryCache.Remove(cacheKey);
+            return false;
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        _memoryCache.Remove(cacheKey);
+
+        return true;
+    }
+
     private static string GetAccountDeletionOtpCacheKey(string email)
         => $"{AccountDeletionOtpCachePrefix}{email}";
 
+    private static string GetPasswordResetOtpCacheKey(string email)
+        => $"{PasswordResetOtpCachePrefix}{email}";
+
     private sealed record AccountDeletionOtpChallenge(
+        string Email,
+        string CodeHash,
+        DateTimeOffset ExpiresAtUtc,
+        int FailedAttempts);
+
+    private sealed record PasswordResetOtpChallenge(
         string Email,
         string CodeHash,
         DateTimeOffset ExpiresAtUtc,

@@ -19,4 +19,6 @@ public interface IUserService
     Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request, CancellationToken cancellationToken = default);
     Task RequestAccountDeletionOtpAsync(RequestAccountDeletionOtpRequest request, CancellationToken cancellationToken = default);
     Task<bool> ConfirmAccountDeletionAsync(ConfirmAccountDeletionRequest request, CancellationToken cancellationToken = default);
+    Task RequestPasswordResetOtpAsync(RequestPasswordResetOtpRequest request, CancellationToken cancellationToken = default);
+    Task<bool> ConfirmPasswordResetAsync(ConfirmPasswordResetRequest request, CancellationToken cancellationToken = default);
 }

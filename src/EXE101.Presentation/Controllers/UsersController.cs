@@ -139,6 +139,30 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         return Ok(new { message = "Account deleted successfully." });
     }
 
+    [AllowAnonymous]
+    [HttpPost("password-reset/request-otp")]
+    public async Task<IActionResult> RequestPasswordResetOtp([FromBody] RequestPasswordResetOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        await userService.RequestPasswordResetOtpAsync(request, cancellationToken);
+        return Ok(new PasswordResetOtpResponse
+        {
+            Message = "If the email exists, a password reset code has been sent."
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("password-reset/confirm")]
+    public async Task<IActionResult> ConfirmPasswordReset([FromBody] ConfirmPasswordResetRequest request, CancellationToken cancellationToken = default)
+    {
+        var updated = await userService.ConfirmPasswordResetAsync(request, cancellationToken);
+        if (!updated)
+        {
+            return NotFound(new { message = "User account was not found." });
+        }
+
+        return Ok(new { message = "Password has been reset successfully." });
+    }
+
     [HttpPost("{id:long}/change-password")]
     public async Task<IActionResult> ChangePassword([FromRoute] long id, [FromBody] ChangePasswordRequest request, CancellationToken cancellationToken = default)
     {
