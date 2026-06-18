@@ -43,6 +43,27 @@ export interface ConfirmAccountDeletionRequest {
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const ACCOUNT_DELETION_TIMEOUT_MS = 25000;
+
+const fetchWithTimeout = async (input: RequestInfo | URL, init?: RequestInit, timeoutMs = ACCOUNT_DELETION_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error("Yêu cầu gửi mã quá thời gian. Vui lòng thử lại.");
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
 
 export const authApi = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -112,7 +133,7 @@ export const authApi = {
   },
 
   requestAccountDeletionOtp: async (data: RequestAccountDeletionOtpRequest): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/account-deletion/request-otp`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/account-deletion/request-otp`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -127,7 +148,7 @@ export const authApi = {
   },
 
   confirmAccountDeletion: async (data: ConfirmAccountDeletionRequest): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/api/users/account-deletion/confirm`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/users/account-deletion/confirm`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

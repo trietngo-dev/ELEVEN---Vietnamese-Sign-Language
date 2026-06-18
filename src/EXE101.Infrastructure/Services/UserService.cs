@@ -402,11 +402,6 @@ public sealed class UserService(
         var expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(AccountDeletionOtpMinutes);
         var challenge = new AccountDeletionOtpChallenge(email, BCrypt.Net.BCrypt.HashPassword(code), expiresAtUtc, 0);
 
-        _memoryCache.Set(GetAccountDeletionOtpCacheKey(email), challenge, new MemoryCacheEntryOptions
-        {
-            AbsoluteExpiration = expiresAtUtc
-        });
-
         var body = $"""
         Xin chào {user.FullName},
 
@@ -418,6 +413,11 @@ public sealed class UserService(
         """;
 
         await _emailSender.SendAsync(email, "Mã xác nhận xóa tài khoản Sign Language Eleven", body, cancellationToken);
+
+        _memoryCache.Set(GetAccountDeletionOtpCacheKey(email), challenge, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpiration = expiresAtUtc
+        });
     }
 
     public async Task<bool> ConfirmAccountDeletionAsync(ConfirmAccountDeletionRequest request, CancellationToken cancellationToken = default)
