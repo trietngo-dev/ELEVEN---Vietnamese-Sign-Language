@@ -8,7 +8,6 @@ import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
 import android.graphics.Rect
 import android.graphics.YuvImage
-import android.os.Bundle
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.holisticlandmarker.HolisticLandmarker
@@ -33,18 +32,18 @@ class MainActivity : FlutterActivity() {
         336
     )
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        initializeHolisticLandmarker()
-    }
+    @Synchronized
+    private fun initializeHolisticLandmarker(): Boolean {
+        if (holisticLandmarker != null) {
+            return true
+        }
 
-    private fun initializeHolisticLandmarker() {
         try {
             // Load model file from assets
             val modelPath = copyAssetToStorage("holistic_landmarker.task")
             if (modelPath == null) {
                 Log.e("MainActivity", "Failed to copy holistic_landmarker.task from assets")
-                return
+                return false
             }
 
             val baseOptionsBuilder = BaseOptions.builder()
@@ -68,8 +67,21 @@ class MainActivity : FlutterActivity() {
 
             holisticLandmarker = HolisticLandmarker.createFromOptions(this, options)
             Log.i("MainActivity", "Successfully initialized MediaPipe Holistic Landmarker")
+            return true
         } catch (e: Exception) {
             Log.e("MainActivity", "Error initializing MediaPipe Holistic Landmarker: $e")
+            return false
+        }
+    }
+
+    @Synchronized
+    private fun closeHolisticLandmarker() {
+        try {
+            holisticLandmarker?.close()
+        } catch (e: Exception) {
+            Log.w("MainActivity", "Error closing MediaPipe Holistic Landmarker: $e")
+        } finally {
+            holisticLandmarker = null
         }
     }
 
@@ -99,50 +111,62 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "processFrame") {
-                val bytes = call.argument<ByteArray>("bytes")
-                val width = call.argument<Int>("width")
-                val height = call.argument<Int>("height")
-
-                if (bytes == null || width == null || height == null) {
-                    result.error("INVALID_ARGUMENTS", "Required arguments bytes, width, or height are missing", null)
-                    return@setMethodCallHandler
-                }
-
-                if (holisticLandmarker == null) {
-                    result.error("NOT_INITIALIZED", "Holistic landmarker is not initialized", null)
-                    return@setMethodCallHandler
-                }
-
-                // Run inference on a background worker thread
-                Thread {
-                    try {
-                        val bitmap = nv21ToBitmap(bytes, width, height)
-                        val mpImage = BitmapImageBuilder(bitmap).build()
-                        
-                        var timestampMs = System.currentTimeMillis()
-                        if (timestampMs <= lastTimestampMs) {
-                            timestampMs = lastTimestampMs + 1
-                        }
-                        lastTimestampMs = timestampMs
-                        
-                        val detectionResult = holisticLandmarker?.detectForVideo(mpImage, timestampMs)
-                        val flatLandmarks = parseHolisticLandmarks(detectionResult)
-                        
-                        // Recycle bitmap
-                        bitmap.recycle()
-                        
-                        runOnUiThread {
-                            result.success(flatLandmarks)
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            result.error("INFERENCE_ERROR", "Error during holistic tracking inference: $e", null)
-                        }
+            when (call.method) {
+                "initializeHolistic" -> {
+                    if (initializeHolisticLandmarker()) {
+                        result.success(null)
+                    } else {
+                        result.error("INIT_FAILED", "Holistic landmarker failed to initialize", null)
                     }
-                }.start()
-            } else {
-                result.notImplemented()
+                }
+                "closeHolistic" -> {
+                    closeHolisticLandmarker()
+                    result.success(null)
+                }
+                "processFrame" -> {
+                    val bytes = call.argument<ByteArray>("bytes")
+                    val width = call.argument<Int>("width")
+                    val height = call.argument<Int>("height")
+
+                    if (bytes == null || width == null || height == null) {
+                        result.error("INVALID_ARGUMENTS", "Required arguments bytes, width, or height are missing", null)
+                        return@setMethodCallHandler
+                    }
+
+                    if (holisticLandmarker == null && !initializeHolisticLandmarker()) {
+                        result.error("NOT_INITIALIZED", "Holistic landmarker is not initialized", null)
+                        return@setMethodCallHandler
+                    }
+
+                    // Run inference on a background worker thread
+                    Thread {
+                        try {
+                            val bitmap = nv21ToBitmap(bytes, width, height)
+                            val mpImage = BitmapImageBuilder(bitmap).build()
+
+                            var timestampMs = System.currentTimeMillis()
+                            if (timestampMs <= lastTimestampMs) {
+                                timestampMs = lastTimestampMs + 1
+                            }
+                            lastTimestampMs = timestampMs
+
+                            val detectionResult = holisticLandmarker?.detectForVideo(mpImage, timestampMs)
+                            val flatLandmarks = parseHolisticLandmarks(detectionResult)
+
+                            // Recycle bitmap
+                            bitmap.recycle()
+
+                            runOnUiThread {
+                                result.success(flatLandmarks)
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("INFERENCE_ERROR", "Error during holistic tracking inference: $e", null)
+                            }
+                        }
+                    }.start()
+                }
+                else -> result.notImplemented()
             }
         }
     }
