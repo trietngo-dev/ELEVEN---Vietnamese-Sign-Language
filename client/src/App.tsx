@@ -21,6 +21,7 @@ import { useAuth } from "./context/AuthContext";
 
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
 import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
@@ -119,6 +120,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="delete-acount"
+            element={
+              <ProtectedRoute>
+                <DeleteAccountPage />
               </ProtectedRoute>
             }
           />

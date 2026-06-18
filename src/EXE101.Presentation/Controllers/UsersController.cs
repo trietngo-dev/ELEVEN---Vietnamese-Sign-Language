@@ -62,14 +62,14 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     }
 
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> SoftDelete([FromRoute] long id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Delete([FromRoute] long id, CancellationToken cancellationToken = default)
     {
         if (!IsAdmin() && GetCurrentUserId() != id)
         {
             return Forbid();
         }
 
-        var deleted = await userService.SoftDeleteAsync(id, cancellationToken);
+        var deleted = await userService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound(new { message = $"User with id {id} was not found." });

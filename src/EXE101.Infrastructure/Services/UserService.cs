@@ -98,18 +98,9 @@ public sealed class UserService(
         return Map(updated);
     }
 
-    public async Task<bool> SoftDeleteAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        var entity = await _userRepository.GetByIdAsync(id, cancellationToken);
-        if (entity is null)
-        {
-            return false;
-        }
-
-        entity.Status = UserStatus.Inactive;
-        entity.UpdatedAt = DateTime.UtcNow;
-        await _userRepository.UpdateAsync(entity, cancellationToken);
-        return true;
+        return await _userRepository.DeleteAsync(id, cancellationToken);
     }
 
     public async Task<UserResponse?> ChangeStatusAsync(long id, ChangeStatusRequest request, CancellationToken cancellationToken = default)

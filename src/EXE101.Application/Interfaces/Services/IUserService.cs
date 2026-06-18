@@ -9,7 +9,7 @@ public interface IUserService
     Task<UserResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
     Task<UserResponse> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken = default);
     Task<UserResponse?> UpdateAsync(long id, UpdateUserRequest request, CancellationToken cancellationToken = default);
-    Task<bool> SoftDeleteAsync(long id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
     Task<UserResponse?> ChangeStatusAsync(long id, ChangeStatusRequest request, CancellationToken cancellationToken = default);
     Task<UserResponse> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default);
     Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/datasources/profile_data_source.dart';
 import '../bloc/auth_bloc.dart';
+import 'delete_account_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final int userId;
@@ -229,52 +230,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showDeleteAccountDialog(BuildContext context, Color cardBg, Color textColor) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: cardBg,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
-              const SizedBox(width: 10),
-              Text(
-                "Xác Nhận Xóa",
-                style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
-              ),
-            ],
-          ),
-          content: Text(
-            "Bạn có chắc chắn muốn xóa tài khoản? Hành động này sẽ làm mất toàn bộ tiến trình học tập, huy hiệu và đăng ký VIP của bạn. Hành động này không thể hoàn tác!",
-            style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text("Hủy", style: TextStyle(color: textColor.withValues(alpha: 0.4))),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Đóng Dialog
-                context.read<AuthBloc>().add(AuthDeleteAccountRequested(widget.userId));
-                // Pop Settings page as well
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text("Xóa Vĩnh Viễn", style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -609,7 +564,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
-                                onPressed: () => _showDeleteAccountDialog(context, currentCardColor, currentTextColor),
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => DeleteAccountScreen(userId: widget.userId),
+                                    ),
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.redAccent,
                                   foregroundColor: Colors.white,
