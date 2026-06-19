@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "988927481532",
+    "project_id": "prm393-686b8",
+    "storage_bucket": "prm393-686b8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:988927481532:android:9f8c412ddaf70ecce7a2b9",
+        "android_client_info": {
+          "package_name": "com.example.vietnamese_sign_language_platform"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "988927481532-h873jbum0eco06u972bldsskfur7uvpi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vietnamese_sign_language_platform",
+            "certificate_hash": "3e46e030edb315c692d39181f486832b27a39c8b"
+          }
+        },
+        {
+          "client_id": "988927481532-60qdhch5r1ch2ot30nejgjtm4f9pfd88.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2xc0TL0SQ518XxAKYgH6DVd25mm5xMKw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "988927481532-60qdhch5r1ch2ot30nejgjtm4f9pfd88.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "988927481532-e6e3673qm23cal1tcsqi33ppcj2erp3v.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vietnameseSignLanguagePlatform"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/datasources/profile_data_source.dart';
+import 'payment_webview_screen.dart';
 
 
 class SubscriptionPaymentScreen extends StatefulWidget {
@@ -325,7 +326,7 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
 
                           // Checkout Button
                           ElevatedButton(
-                            onPressed: () => _openCheckoutDrawer(context, mintColor, currentBgColor, currentCardColor, currentTextColor, currentTextMutedColor),
+                            onPressed: () => _startActualPayment(context),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: mintColor,
                               foregroundColor: Colors.white,
@@ -347,393 +348,142 @@ class _SubscriptionPaymentScreenState extends State<SubscriptionPaymentScreen> {
     );
   }
 
-  void _openCheckoutDrawer(BuildContext context, Color mintColor, Color bg, Color cardBg, Color textColor, Color textMutedColor) {
+  Future<void> _startActualPayment(BuildContext context) async {
     if (_plans.isEmpty || _selectedPlanId == null) return;
     
     final selectedData = _plans.firstWhere(
       (p) => (p['code'] ?? p['Code'] ?? p['id'] ?? p['Id']).toString() == _selectedPlanId,
       orElse: () => _plans.first,
     );
-    final String pName = (selectedData['name'] ?? selectedData['Name'] ?? 'Gói VIP').toString();
-    final num pPriceVal = (selectedData['priceVnd'] ?? selectedData['PriceVnd'] ?? 0) as num;
-    final String pPrice = formatVnd(pPriceVal);
+    final planId = (selectedData['id'] ?? selectedData['Id']) as int;
+    final planName = (selectedData['name'] ?? selectedData['Name'] ?? 'Gói VIP').toString();
 
-    showModalBottomSheet(
+    // Show loading dialog
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(color: Color(0xFF10B981)),
       ),
-      builder: (context) {
-        return _CheckoutBottomSheet(
-          planName: pName,
-          planPrice: pPrice,
-          mintColor: mintColor,
-          bgColor: bg,
-          cardColor: cardBg,
-          textColor: textColor,
-          textMutedColor: textMutedColor,
+    );
+
+    try {
+      final ds = context.read<ProfileDataSource>();
+      const returnUrl = "https://elevensignlanguage.io.vn/payment-success";
+      const cancelUrl = "https://elevensignlanguage.io.vn/payment-cancel";
+
+      final result = await ds.createPaymentLink(
+        planId: planId,
+        returnUrl: returnUrl,
+        cancelUrl: cancelUrl,
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+
+      final checkoutUrl = (result['checkoutUrl'] ?? result['CheckoutUrl'] ?? '').toString();
+      final orderCode = (result['orderCode'] ?? result['OrderCode']) as int;
+
+      if (checkoutUrl.isEmpty) {
+        throw Exception("Không nhận được liên kết thanh toán từ máy chủ.");
+      }
+
+      // Open in-app WebView
+      if (context.mounted) {
+        final paymentSuccess = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PaymentWebviewScreen(
+              checkoutUrl: checkoutUrl,
+              orderCode: orderCode,
+              returnUrl: returnUrl,
+              cancelUrl: cancelUrl,
+            ),
+          ),
+        );
+
+        if (paymentSuccess == true) {
+          if (context.mounted) {
+            _showPaymentSuccessModal(context, planName);
+          }
+        } else {
+          if (context.mounted) {
+            _showPaymentErrorSnackBar(context, "Thanh toán bị hủy hoặc thất bại.");
+          }
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if open
+      if (context.mounted) {
+        Navigator.pop(context);
+        _showPaymentErrorSnackBar(context, "Lỗi tạo link thanh toán: ${e.toString().replaceAll('Exception: ', '')}");
+      }
+    }
+  }
+
+  void _showPaymentSuccessModal(BuildContext context, String planName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF131A16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_rounded, size: 48, color: Colors.white),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Thanh toán thành công!",
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Tài khoản của bạn đã được nâng cấp lên VIP ($planName) thành công.",
+                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx); // Close dialog
+                  Navigator.pop(context); // Close SubscriptionPaymentScreen
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text("Về trang cá nhân", style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
         );
       },
     );
   }
-}
 
-class _CheckoutBottomSheet extends StatefulWidget {
-  final String planName;
-  final String planPrice;
-  final Color mintColor;
-  final Color bgColor;
-  final Color cardColor;
-  final Color textColor;
-  final Color textMutedColor;
-
-  const _CheckoutBottomSheet({
-    required this.planName,
-    required this.planPrice,
-    required this.mintColor,
-    required this.bgColor,
-    required this.cardColor,
-    required this.textColor,
-    required this.textMutedColor,
-  });
-
-  @override
-  State<_CheckoutBottomSheet> createState() => _CheckoutBottomSheetState();
-}
-
-class _CheckoutBottomSheetState extends State<_CheckoutBottomSheet> {
-  int _paymentMethod = 0; // 0 = Credit Card, 1 = VietQR/Momo Transfer
-  bool _isProcessing = false;
-  bool _isSuccess = false;
-  int _countdown = 15;
-  Timer? _qrTimer;
-
-  final _cardNumberController = TextEditingController(text: '4312 8900 1234 5678');
-  final _cardHolderController = TextEditingController(text: 'NGUYEN VAN A');
-  final _cardExpiryController = TextEditingController(text: '12/29');
-  final _cardCvvController = TextEditingController(text: '999');
-
-  @override
-  void dispose() {
-    _qrTimer?.cancel();
-    _cardNumberController.dispose();
-    _cardHolderController.dispose();
-    _cardExpiryController.dispose();
-    _cardCvvController.dispose();
-    super.dispose();
-  }
-
-  void _startQrTimer() {
-    _qrTimer?.cancel();
-    setState(() {
-      _countdown = 15;
-    });
-    _qrTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_countdown == 0) {
-        _qrTimer?.cancel();
-        _simulatePaymentSuccess();
-      } else {
-        setState(() {
-          _countdown--;
-        });
-      }
-    });
-  }
-
-  void _processPayment() {
-    setState(() {
-      _isProcessing = true;
-    });
-    Timer(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-          _isSuccess = true;
-        });
-      }
-    });
-  }
-
-  void _simulatePaymentSuccess() {
-    if (mounted) {
-      setState(() {
-        _isSuccess = true;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final double keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
-
-    if (_isSuccess) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        height: 380,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFF10B981),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_rounded, size: 48, color: Colors.white),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              "Thanh toán thành công!",
-              style: GoogleFonts.quicksand(color: widget.textColor, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Tài khoản của bạn đã được nâng cấp lên VIP (${widget.planName})",
-              style: TextStyle(color: widget.textColor.withValues(alpha: 0.6), fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close bottom sheet
-                Navigator.of(context).pop(); // Back to Profile screen
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: widget.mintColor,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: const Text("Tuyệt vời", style: TextStyle(fontWeight: FontWeight.bold)),
-            )
-          ],
-        ),
-      );
-    }
-
-    if (_isProcessing) {
-      return Container(
-        height: 320,
-        alignment: Alignment.center,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: widget.mintColor),
-            const SizedBox(height: 20),
-            Text(
-              "Đang xử lý giao dịch an toàn...",
-              style: TextStyle(color: widget.textColor, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              "Vui lòng không đóng ứng dụng.",
-              style: TextStyle(color: widget.textColor.withValues(alpha: 0.3), fontSize: 11),
-            )
-          ],
-        ),
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: keyboardPadding),
-      child: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Bottom sheet handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: widget.textColor.withValues(alpha: 0.24),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Summary
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Gói nâng cấp", style: TextStyle(color: widget.textColor.withValues(alpha: 0.6), fontSize: 11)),
-                      const SizedBox(height: 2),
-                      Text("VSL PRO - ${widget.planName}", style: TextStyle(color: widget.textColor, fontWeight: FontWeight.bold, fontSize: 15)),
-                    ],
-                  ),
-                  Text(widget.planPrice, style: GoogleFonts.quicksand(color: widget.mintColor, fontSize: 20, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Divider(color: widget.textColor.withValues(alpha: 0.12)),
-              const SizedBox(height: 12),
-
-              // Payment Method Selectors
-              Text("Phương thức thanh toán", style: TextStyle(color: widget.textColor.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildMethodButton(
-                      index: 0,
-                      label: 'Thẻ Visa/Master',
-                      icon: Icons.credit_card_rounded,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildMethodButton(
-                      index: 1,
-                      label: 'Quét mã VietQR',
-                      icon: Icons.qr_code_scanner_rounded,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // Payment Details Forms
-              if (_paymentMethod == 0) ...[
-                // Credit Card form
-                _buildTextField('Số thẻ tín dụng', _cardNumberController, Icons.credit_card),
-                const SizedBox(height: 12),
-                _buildTextField('Tên chủ thẻ (Viết hoa không dấu)', _cardHolderController, Icons.person),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: _buildTextField('Hạn dùng (MM/YY)', _cardExpiryController, Icons.calendar_today)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildTextField('Mã bảo mật CVV', _cardCvvController, Icons.lock_outline)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _processPayment,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.mintColor,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: const Text('Thanh Toán Ngay', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-              ] else ...[
-                // VietQR scan mock
-                Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Image.network('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg', width: 140, height: 140, fit: BoxFit.contain, errorBuilder: (ctx, err, stack) => const Icon(Icons.qr_code_2, size: 140, color: Colors.black)),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text("Chuyển khoản VietQR nhanh", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Hệ thống đang kiểm tra giao dịch tự động... ($_countdown s)",
-                      style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: _simulatePaymentSuccess,
-                          icon: const Icon(Icons.done_all_rounded, size: 14),
-                          label: const Text("Giả lập Quét thành công", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
+  void _showPaymentErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-    );
-  }
-
-  Widget _buildMethodButton({required int index, required String label, required IconData icon}) {
-    final isSelected = _paymentMethod == index;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _paymentMethod = index;
-        });
-        if (index == 1) {
-          _startQrTimer();
-        } else {
-          _qrTimer?.cancel();
-        }
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? widget.mintColor.withValues(alpha: 0.1) : widget.bgColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? widget.mintColor : widget.textColor.withValues(alpha: 0.05),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: isSelected ? widget.mintColor : widget.textColor.withValues(alpha: 0.7), size: 20),
-            const SizedBox(height: 6),
-            Text(label, style: TextStyle(color: isSelected ? Colors.white : widget.textColor.withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: widget.textColor.withValues(alpha: 0.6), fontSize: 11)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          style: TextStyle(color: widget.textColor, fontSize: 13, fontWeight: FontWeight.w600),
-          decoration: InputDecoration(
-            fillColor: widget.bgColor,
-            filled: true,
-            prefixIcon: Icon(icon, color: widget.textColor.withValues(alpha: 0.3), size: 16),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
