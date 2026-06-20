@@ -368,5 +368,44 @@ class ProfileDataSource {
       throw Exception(e.response?.data?['message'] ?? 'Lỗi đổi mật khẩu.');
     }
   }
+
+  // 22. Create Payment Link (PayOS)
+  Future<Map<String, dynamic>> createPaymentLink({
+    required int planId,
+    required String returnUrl,
+    required String cancelUrl,
+  }) async {
+    try {
+      final response = await _dioClient.dio.post(
+        '${ApiConstants.baseUrl}/api/payments/create-payment-link',
+        data: {
+          'planId': planId,
+          'returnUrl': returnUrl,
+          'cancelUrl': cancelUrl,
+        },
+      );
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Không thể tạo liên kết thanh toán.');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối khi tạo link thanh toán.');
+    }
+  }
+
+  // 23. Get Payment Status (PayOS / Sync)
+  Future<Map<String, dynamic>> getPaymentStatus(int orderCode) async {
+    try {
+      final response = await _dioClient.dio.get(
+        '${ApiConstants.baseUrl}/api/payments/status/$orderCode',
+      );
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+      throw Exception('Không thể kiểm tra trạng thái thanh toán.');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối khi kiểm tra trạng thái.');
+    }
+  }
 }
 
