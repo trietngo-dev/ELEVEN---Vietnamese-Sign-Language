@@ -27,7 +27,7 @@ void main() async {
 
   try {
     final prefs = await SharedPreferences.getInstance();
-    AppTheme.isWhiteBgNotifier.value = prefs.getBool('is_white_bg') ?? false;
+    AppTheme.isWhiteBgNotifier.value = prefs.getBool('is_white_bg') ?? true;
   } catch (_) {}
 
   runApp(

@@ -407,5 +407,64 @@ class ProfileDataSource {
       throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối khi kiểm tra trạng thái.');
     }
   }
+
+  // 24. Get Active Subscription of Current User
+  Future<Map<String, dynamic>?> getActiveSubscription() async {
+    try {
+      final response = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/user_subscriptions/current');
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // 25. Get Learned Vocabulary count for a specific user
+  Future<int> getLearnedVocabCount(int userId) async {
+    try {
+      final response = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/user_vocabulary_progress?pageSize=1000');
+      if (response.statusCode == 200) {
+        final rawData = response.data;
+        List<dynamic> items = [];
+        if (rawData is List) {
+          items = rawData;
+        } else if (rawData is Map) {
+          items = rawData['items'] ?? rawData['Items'] ?? rawData['data'] ?? [];
+        }
+        // Count items belonging to userId where status is Completed (2)
+        final completedItems = items.where((p) =>
+          (p['userId'] ?? p['UserId']) == userId &&
+          (p['status'] ?? p['Status'] ?? 0) == 2
+        );
+        return completedItems.length;
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  // 26. Get user activity logs
+  Future<List<Map<String, dynamic>>> getUserActivityLogs() async {
+    try {
+      final response = await _dioClient.dio.get('${ApiConstants.baseUrl}/api/user_activity_logs?pageSize=1000');
+      if (response.statusCode == 200) {
+        final rawData = response.data;
+        List<dynamic> items = [];
+        if (rawData is List) {
+          items = rawData;
+        } else if (rawData is Map) {
+          items = rawData['items'] ?? rawData['Items'] ?? rawData['data'] ?? [];
+        }
+        return items.map((json) => json as Map<String, dynamic>).toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
 }
+
 
