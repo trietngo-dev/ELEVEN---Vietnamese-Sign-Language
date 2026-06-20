@@ -42,6 +42,9 @@ class _HomeScreenState extends State<HomeScreen> {
   int _streakDays = 12;
   List<BadgeModel> _earnedBadges = [];
   int _unreadNotificationCount = 0;
+  Map<String, dynamic>? _activeSubscription;
+  int _learnedVocabCount = 0;
+  List<double> _weeklyActivity = [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0];
 
   // Helpdesk Form Fields
   final _supportFormKey = GlobalKey<FormState>();
@@ -82,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final ds = context.read<ProfileDataSource>();
+      final courseDs = context.read<CourseDataSource>();
       
       // Post login log on mobile startup/load to sync consecutive days streak
       try {
@@ -112,6 +116,55 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       final badges = await ds.getUserEarnedBadges();
+      final activeSub = await ds.getActiveSubscription();
+      final vocabCount = await ds.getLearnedVocabCount(_userUserId);
+
+      // Tính toán hoạt động tuần thực tế
+      List<double> calculatedActivity = [8.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0];
+      try {
+        final logs = await ds.getUserActivityLogs();
+        final userLogs = logs.where((l) => (l['userId'] ?? l['UserId']) == _userUserId).toList();
+
+        final lessonProgress = await courseDs.getUserLessonProgress();
+        final userLessonProgress = lessonProgress.where((p) =>
+          (p['userId'] ?? p['UserId']) == _userUserId &&
+          (p['status'] ?? p['Status'] ?? 0) == 2
+        ).toList();
+
+        final now = DateTime.now();
+        final monday = now.subtract(Duration(days: now.weekday - 1));
+
+        for (int i = 0; i < 7; i++) {
+          final targetDate = monday.add(Duration(days: i));
+
+          final logsCount = userLogs.where((l) {
+            final createdStr = l['createdAt'] ?? l['CreatedAt'];
+            if (createdStr == null) return false;
+            final date = DateTime.tryParse(createdStr)?.toLocal();
+            if (date == null) return false;
+            return date.year == targetDate.year &&
+                date.month == targetDate.month &&
+                date.day == targetDate.day;
+          }).length;
+
+          final lessonsCount = userLessonProgress.where((p) {
+            final completedStr = p['completedAt'] ?? p['CompletedAt'];
+            if (completedStr == null) return false;
+            final date = DateTime.tryParse(completedStr)?.toLocal();
+            if (date == null) return false;
+            return date.year == targetDate.year &&
+                date.month == targetDate.month &&
+                date.day == targetDate.day;
+          }).length;
+
+          final totalCount = logsCount + lessonsCount;
+          if (totalCount > 0) {
+            calculatedActivity[i] = totalCount == 1
+                ? 35.0
+                : totalCount == 2 ? 65.0 : 90.0;
+          }
+        }
+      } catch (_) {}
 
       int unreadCount = 0;
       try {
@@ -128,6 +181,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _avatarUrl = liveAvatarUrl;
           _earnedBadges = badges;
           _unreadNotificationCount = unreadCount;
+          _activeSubscription = activeSub;
+          _learnedVocabCount = vocabCount;
+          _weeklyActivity = calculatedActivity;
         });
 
         await prefs.setInt('auth_user_xp', _userXp);
@@ -141,12 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     } catch (_) {
-      if (_earnedBadges.isEmpty && mounted) {
+      if (mounted) {
         setState(() {
-          _earnedBadges = [
-            BadgeModel(id: 1, code: 'FIRST_LESSON', name: 'Bắt Đầu', description: 'Hoàn thành bài học đầu tiên'),
-            BadgeModel(id: 2, code: 'STREAK_3', name: 'Kiên Trì', description: 'Đạt chuỗi học tập 3 ngày'),
-          ];
+          _earnedBadges = [];
         });
       }
     }
@@ -601,37 +654,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
 
-            // 3. Popular Topics (Chủ đề phổ biến) Grid
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Chủ đề phổ biến",
-                  style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "Xem tất cả",
-                  style: TextStyle(color: mint, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.5,
-              children: [
-                _buildTopicCard(Icons.waving_hand_rounded, "Chào hỏi", "15 bài học", mint, cardBg),
-                _buildTopicCard(Icons.tag_rounded, "Số đếm", "10 bài học", mint, cardBg),
-                _buildTopicCard(Icons.family_restroom_rounded, "Gia đình", "20 bài học", mint, cardBg),
-                _buildTopicCard(Icons.medical_services_rounded, "Y tế", "12 bài học", mint, cardBg),
-              ],
-            ),
-            const SizedBox(height: 24),
-
             // 4. Enrolled Courses
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1050,58 +1072,110 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           
           // Gold VIP Subscription Banner
-          Container(
-            margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFBBF24), Color(0xFFD97706)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Colors.white24,
-                    shape: BoxShape.circle,
+          _activeSubscription != null
+              ? Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF10B981), Color(0xFF047857)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  child: const Icon(Icons.workspace_premium, color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      const Text(
-                        "Nâng cấp tài khoản VIP PRO",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.white24,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.workspace_premium, color: Colors.white, size: 24),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Mở khóa các tính năng AI và Khung độc quyền",
-                        style: TextStyle(color: Colors.white70, fontSize: 11),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Tài khoản VIP PRO đang hoạt động",
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              () {
+                                String formattedEndDate = 'Vô thời hạn';
+                                if (_activeSubscription?['endAt'] != null || _activeSubscription?['EndAt'] != null) {
+                                  try {
+                                    final date = DateTime.parse((_activeSubscription?['endAt'] ?? _activeSubscription?['EndAt']) as String);
+                                    formattedEndDate = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+                                  } catch (_) {}
+                                }
+                                return "Hạn sử dụng: $formattedEndDate. Cảm ơn bạn đã đồng hành!";
+                              }(),
+                              style: const TextStyle(color: Colors.white70, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.check_circle_rounded, color: Colors.white, size: 24),
+                    ],
+                  ),
+                )
+              : Container(
+                  margin: const EdgeInsets.only(top: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFBBF24), Color(0xFFD97706)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.white24,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.workspace_premium, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Nâng cấp tài khoản VIP PRO",
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              "Mở khóa các tính năng AI và Khung độc quyền",
+                              style: TextStyle(color: Colors.white70, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 18),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SubscriptionPaymentScreen(),
+                            ),
+                          ).then((_) => _loadUserData());
+                        },
                       ),
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 18),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const SubscriptionPaymentScreen(),
-                      ),
-                    ).then((_) => _loadUserData());
-                  },
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 20),
 
           // 2. Streaks and XP Indicators Grid
@@ -1139,11 +1213,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.donut_large_rounded, color: Colors.cyan, size: 24),
+                      const Icon(Icons.menu_book_rounded, color: Colors.cyan, size: 24),
                       const SizedBox(height: 8),
-                      const Text('Độ thuần thục', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
+                      const Text('Số từ đã học', style: TextStyle(color: Color(0xFF64748B), fontSize: 11)),
                       const SizedBox(height: 2),
-                      Text('75 %', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('$_learnedVocabCount từ', style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
@@ -1182,13 +1256,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildFigmaBar('T2', 40, mint),
-                    _buildFigmaBar('T3', 60, mint),
-                    _buildFigmaBar('T4', 20, mint),
-                    _buildFigmaBar('T5', 80, mint),
-                    _buildFigmaBar('T6', 50, mint),
-                    _buildFigmaBar('T7', 10, mint),
-                    _buildFigmaBar('CN', 30, mint),
+                    _buildFigmaBar('T2', _weeklyActivity[0], mint),
+                    _buildFigmaBar('T3', _weeklyActivity[1], mint),
+                    _buildFigmaBar('T4', _weeklyActivity[2], mint),
+                    _buildFigmaBar('T5', _weeklyActivity[3], mint),
+                    _buildFigmaBar('T6', _weeklyActivity[4], mint),
+                    _buildFigmaBar('T7', _weeklyActivity[5], mint),
+                    _buildFigmaBar('CN', _weeklyActivity[6], mint),
                   ],
                 ),
               ],
@@ -1226,7 +1300,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                           child: Text(
-                            'Chưa có huy hiệu nào.',
+                            'Chưa có huy hiệu',
                             style: TextStyle(color: textColor.withValues(alpha: 0.3), fontSize: 12),
                           ),
                         ),
@@ -1455,22 +1529,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFigmaStatChip(IconData icon, Color color, String label) {
+    final isWhite = AppTheme.isWhiteBgNotifier.value;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F1412),
+        color: isWhite ? const Color(0xFFE2EFE4) : const Color(0xFF0F1412),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
+        border: Border.all(
+          color: isWhite 
+              ? const Color(0xFF29613D).withValues(alpha: 0.2) 
+              : color.withValues(alpha: 0.15), 
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 14),
+          Icon(
+            icon, 
+            color: isWhite ? const Color(0xFF29613D) : color, 
+            size: 14,
+          ),
           const SizedBox(width: 6),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color: isWhite ? const Color(0xFF29613D) : Colors.white70,
               fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
@@ -1480,40 +1564,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopicCard(IconData icon, String title, String subtitle, Color mintColor, Color cardBg) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: mintColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: mintColor, size: 18),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildFigmaBar(String day, double percentage, Color mint) {
     return Column(
@@ -1522,7 +1573,9 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 14,
           height: 100,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
+            color: AppTheme.isWhiteBgNotifier.value 
+                ? Colors.black.withValues(alpha: 0.08) 
+                : Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(7),
           ),
           child: Stack(
