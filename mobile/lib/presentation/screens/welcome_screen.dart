@@ -6,14 +6,15 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Dark themed palette matching premium dark Figma design
-    const Color darkBgColor = Color(0xFF0A0F0D);
-    const Color darkCardColor = Color(0xFF131A16);
     const Color mintColor = Color(0xFF10B981); // Emerald mint
-    const Color textMutedColor = Color(0xFF94A3B8);
+    const Color currentBgColor = Colors.white; // Màu nền trắng (sáng) tinh khiết
+    const Color currentCardColor = Color(0xFFF8FAFC); // Màu nền của card, xám nhạt tinh tế
+    const Color currentTextColor = Color(0xFF1E293B);
+    const Color currentTextMutedColor = Color(0xFF64748B);
+    const Color cardBorderColor = Color(0xFFE2E8F0);
 
     return Scaffold(
-      backgroundColor: darkBgColor,
+      backgroundColor: currentBgColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
@@ -40,10 +41,10 @@ class WelcomeScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'VSL LEARNER',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: currentTextColor,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
@@ -58,8 +59,8 @@ class WelcomeScreen extends StatelessWidget {
                         );
                       },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                        foregroundColor: currentTextColor,
+                        side: const BorderSide(color: Color(0xFFCBD5E1)),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -78,8 +79,8 @@ class WelcomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     RichText(
-                      text: const TextSpan(
-                        style: TextStyle(
+                      text: TextSpan(
+                        style: const TextStyle(
                           fontSize: 36,
                           fontWeight: FontWeight.w900,
                           height: 1.25,
@@ -87,9 +88,9 @@ class WelcomeScreen extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: 'Khám phá ngôn ngữ\nký hiệu ',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(color: currentTextColor),
                           ),
-                          TextSpan(
+                          const TextSpan(
                             text: 'VSL',
                             style: TextStyle(color: mintColor),
                           ),
@@ -97,10 +98,10 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       'Trải nghiệm nền tảng học tập trực quan, hiện đại được thiết kế riêng để kết nối cộng đồng qua Ngôn ngữ Kí hiệu Việt Nam.',
                       style: TextStyle(
-                        color: textMutedColor,
+                        color: currentTextMutedColor,
                         fontSize: 15,
                         height: 1.5,
                       ),
@@ -138,8 +139,8 @@ class WelcomeScreen extends StatelessWidget {
                         OutlinedButton(
                           onPressed: () {},
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+                            foregroundColor: currentTextColor,
+                            side: const BorderSide(color: Color(0xFFCBD5E1)),
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -159,13 +160,13 @@ class WelcomeScreen extends StatelessWidget {
                 child: Container(
                   height: 220,
                   decoration: BoxDecoration(
-                    color: darkCardColor,
+                    color: const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    border: Border.all(color: cardBorderColor),
                     image: const DecorationImage(
                       image: NetworkImage('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop'),
                       fit: BoxFit.cover,
-                      opacity: 0.35,
+                      opacity: 0.15,
                     ),
                   ),
                   child: Stack(
@@ -230,48 +231,57 @@ class WelcomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Học tập không giới hạn',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: currentTextColor,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Phương pháp tiếp cận trực quan tối đa hóa khả năng tiếp thu.',
-                      style: TextStyle(color: textMutedColor, fontSize: 13),
+                      style: TextStyle(color: currentTextMutedColor, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Prop 1: Video sắc nét
                     _buildPropCard(
                       icon: Icons.hd_rounded,
                       title: 'Video sắc nét',
                       description: 'Hệ thống bài giảng video 4K tập trung hoàn toàn vào thao tác tay và khẩu hình.',
                       mintColor: mintColor,
-                      cardColor: darkCardColor,
+                      cardColor: currentCardColor,
+                      borderColor: cardBorderColor,
+                      textColor: currentTextColor,
+                      mutedColor: currentTextMutedColor,
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // Prop 2: Thực hành tương tác
                     _buildPropCard(
                       icon: Icons.videocam_rounded,
                       title: 'Thực hành tương tác',
                       description: 'Luyện tập trực tiếp qua camera selfie với phản hồi phân tích AI ngay lập tức.',
                       mintColor: mintColor,
-                      cardColor: darkCardColor,
+                      cardColor: currentCardColor,
+                      borderColor: cardBorderColor,
+                      textColor: currentTextColor,
+                      mutedColor: currentTextMutedColor,
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // Prop 3: Theo dõi tiến độ
                     _buildPropCard(
                       icon: Icons.track_changes_rounded,
                       title: 'Theo dõi tiến độ',
                       description: 'Hệ thống vòng tròn tiến độ trực quan giúp bạn nắm bắt mục tiêu mới mỗi ngày.',
                       mintColor: mintColor,
-                      cardColor: darkCardColor,
+                      cardColor: currentCardColor,
+                      borderColor: cardBorderColor,
+                      textColor: currentTextColor,
+                      mutedColor: currentTextMutedColor,
                     ),
                   ],
                 ),
@@ -283,18 +293,18 @@ class WelcomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Khóa học nổi bật',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: currentTextColor,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Bắt đầu hành trình giao tiếp của bạn ngay hôm nay.',
-                      style: TextStyle(color: textMutedColor, fontSize: 13),
+                      style: TextStyle(color: currentTextMutedColor, fontSize: 13),
                     ),
                     const SizedBox(height: 16),
 
@@ -305,8 +315,10 @@ class WelcomeScreen extends StatelessWidget {
                       lessonsCount: 10,
                       studentsCount: '2.4K học viên',
                       imgUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=400&auto=format&fit=crop',
-                      cardColor: darkCardColor,
+                      cardColor: currentCardColor,
+                      borderColor: cardBorderColor,
                       mintColor: mintColor,
+                      textColor: currentTextColor,
                     ),
                     const SizedBox(height: 12),
 
@@ -317,8 +329,10 @@ class WelcomeScreen extends StatelessWidget {
                       lessonsCount: 15,
                       studentsCount: '1.8K học viên',
                       imgUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=400&auto=format&fit=crop',
-                      cardColor: darkCardColor,
+                      cardColor: currentCardColor,
+                      borderColor: cardBorderColor,
                       mintColor: mintColor,
+                      textColor: currentTextColor,
                     ),
                   ],
                 ),
@@ -329,13 +343,13 @@ class WelcomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 48.0),
                 child: Column(
                   children: [
-                    Divider(color: Colors.white.withValues(alpha: 0.1)),
+                    const Divider(color: Color(0xFFE2E8F0)),
                     const SizedBox(height: 16),
-                    const Text(
+                    Text(
                       '© 2026 Silent Fluency. Nền tảng học đơn giản hóa VSL.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: textMutedColor,
+                        color: currentTextMutedColor,
                         fontSize: 12,
                       ),
                     ),
@@ -355,13 +369,16 @@ class WelcomeScreen extends StatelessWidget {
     required String description,
     required Color mintColor,
     required Color cardColor,
+    required Color borderColor,
+    required Color textColor,
+    required Color mutedColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,8 +398,8 @@ class WelcomeScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
                   ),
@@ -390,8 +407,8 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
-                    color: Color(0xFF64748B),
+                  style: TextStyle(
+                    color: mutedColor,
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -411,14 +428,16 @@ class WelcomeScreen extends StatelessWidget {
     required String studentsCount,
     required String imgUrl,
     required Color cardColor,
+    required Color borderColor,
     required Color mintColor,
+    required Color textColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+        border: Border.all(color: borderColor),
       ),
       child: Row(
         children: [
@@ -458,8 +477,8 @@ class WelcomeScreen extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),
