@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/gestures.dart';
 import 'terms_policy_screen.dart';
 import '../bloc/auth_bloc.dart';
@@ -30,37 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _signInWithGoogle() async {
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn.instance;
-      await googleSignIn.initialize(
-        serverClientId: '945944118637-f8d0tagko3p0885kpo1le9q0oi0psao6.apps.googleusercontent.com',
-      );
-      
-      final googleUser = await googleSignIn.authenticate();
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
 
-      if (idToken != null) {
-        if (mounted) {
-          context.read<AuthBloc>().add(AuthGoogleLoginRequested(idToken, fullName: googleUser.displayName));
-        }
-      } else {
-        throw Exception("Không thể lấy ID Token từ Google.");
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Lỗi đăng nhập Google: ${e.toString().replaceAll('Exception: ', '')}"),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    }
-  }
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
@@ -321,37 +290,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        
-                        // Divider "Hoặc"
-                        Row(
-                          children: [
-                            const Expanded(child: Divider(endIndent: 10, indent: 20)),
-                            Text(
-                              "Hoặc",
-                              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey, fontWeight: FontWeight.bold),
-                            ),
-                            const Expanded(child: Divider(indent: 10, endIndent: 20)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black87,
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          icon: Image.network(
-                            'https://developers.google.com/static/identity/images/g-logo.png',
-                            headers: const {'User-Agent': 'Mozilla/5.0'},
-                            height: 18,
-                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.login_rounded, color: Colors.grey, size: 18),
-                          ),
-                          label: const Text("Đăng nhập bằng Google", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          onPressed: _signInWithGoogle,
-                        ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 8),
                         TextButton(
                           onPressed: () {
                             setState(() {

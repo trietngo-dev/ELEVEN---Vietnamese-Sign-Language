@@ -87,12 +87,32 @@ class MyApp extends StatelessWidget {
               } else if (state is AuthUnauthenticated || state is AuthFailure) {
                 return const WelcomeScreen();
               }
-              // Elegant green splash loader matching premium theme
-              return const Scaffold(
-                backgroundColor: Color(0xFF0A0F0D),
+              // Elegant splash loader displaying branding logo
+              return Scaffold(
+                backgroundColor: Colors.white,
                 body: Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF10B981),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          'assets/logo.jpg',
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF10B981),
+                          strokeWidth: 2.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );

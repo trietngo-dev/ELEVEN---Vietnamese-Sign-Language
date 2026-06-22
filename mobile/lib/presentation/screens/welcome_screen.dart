@@ -7,8 +7,11 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color mintColor = Color(0xFF10B981); // Emerald mint
-    const Color currentBgColor = Colors.white; // Màu nền trắng (sáng) tinh khiết
-    const Color currentCardColor = Color(0xFFF8FAFC); // Màu nền của card, xám nhạt tinh tế
+    const Color currentBgColor =
+        Colors.white; // Màu nền trắng (sáng) tinh khiết
+    const Color currentCardColor = Color(
+      0xFFF8FAFC,
+    ); // Màu nền của card, xám nhạt tinh tế
     const Color currentTextColor = Color(0xFF1E293B);
     const Color currentTextMutedColor = Color(0xFF64748B);
     const Color cardBorderColor = Color(0xFFE2E8F0);
@@ -22,7 +25,10 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               // 1. Navigation Header
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 16.0,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -55,18 +61,29 @@ class WelcomeScreen extends StatelessWidget {
                     OutlinedButton(
                       onPressed: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
                         );
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: currentTextColor,
                         side: const BorderSide(color: Color(0xFFCBD5E1)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: const Text('Đăng nhập', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Đăng nhập',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -74,7 +91,10 @@ class WelcomeScreen extends StatelessWidget {
 
               // 2. Hero Header Section
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 24.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -113,7 +133,9 @@ class WelcomeScreen extends StatelessWidget {
                           child: ElevatedButton(
                             onPressed: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                MaterialPageRoute(
+                                  builder: (_) => const LoginScreen(),
+                                ),
                               );
                             },
                             style: ElevatedButton.styleFrom(
@@ -130,7 +152,13 @@ class WelcomeScreen extends StatelessWidget {
                               children: [
                                 Icon(Icons.play_arrow_rounded, size: 18),
                                 SizedBox(width: 6),
-                                Text('Bắt đầu ngay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                Text(
+                                  'Bắt đầu ngay',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -141,12 +169,18 @@ class WelcomeScreen extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: currentTextColor,
                             side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: const Text('Tìm hiểu thêm', style: TextStyle(fontWeight: FontWeight.bold)),
+                          child: const Text(
+                            'Tìm hiểu thêm',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
@@ -156,7 +190,10 @@ class WelcomeScreen extends StatelessWidget {
 
               // 3. AI Interactive Promo Card
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 12.0,
+                ),
                 child: Container(
                   height: 220,
                   decoration: BoxDecoration(
@@ -164,7 +201,9 @@ class WelcomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: cardBorderColor),
                     image: const DecorationImage(
-                      image: NetworkImage('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop'),
+                      image: NetworkImage(
+                        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=600&auto=format&fit=crop',
+                      ),
                       fit: BoxFit.cover,
                       opacity: 0.15,
                     ),
@@ -179,28 +218,6 @@ class WelcomeScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             border: Border.all(color: mintColor, width: 2),
                             borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                      // Target corner indicators
-                      Positioned(
-                        left: 20,
-                        top: 20,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.circle, color: Colors.red, size: 8),
-                              SizedBox(width: 6),
-                              Text(
-                                'ĐỘ CHÍNH XÁC AI 95%',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            ],
                           ),
                         ),
                       ),
@@ -227,7 +244,10 @@ class WelcomeScreen extends StatelessWidget {
 
               // 4. Value Props Section ("Học tập không giới hạn")
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 24.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -242,7 +262,10 @@ class WelcomeScreen extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       'Phương pháp tiếp cận trực quan tối đa hóa khả năng tiếp thu.',
-                      style: TextStyle(color: currentTextMutedColor, fontSize: 13),
+                      style: TextStyle(
+                        color: currentTextMutedColor,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -250,7 +273,8 @@ class WelcomeScreen extends StatelessWidget {
                     _buildPropCard(
                       icon: Icons.hd_rounded,
                       title: 'Video sắc nét',
-                      description: 'Hệ thống bài giảng video 4K tập trung hoàn toàn vào thao tác tay và khẩu hình.',
+                      description:
+                          'Hệ thống bài giảng video 4K tập trung hoàn toàn vào thao tác tay và khẩu hình.',
                       mintColor: mintColor,
                       cardColor: currentCardColor,
                       borderColor: cardBorderColor,
@@ -263,7 +287,8 @@ class WelcomeScreen extends StatelessWidget {
                     _buildPropCard(
                       icon: Icons.videocam_rounded,
                       title: 'Thực hành tương tác',
-                      description: 'Luyện tập trực tiếp qua camera selfie với phản hồi phân tích AI ngay lập tức.',
+                      description:
+                          'Luyện tập trực tiếp qua camera selfie với phản hồi phân tích AI ngay lập tức.',
                       mintColor: mintColor,
                       cardColor: currentCardColor,
                       borderColor: cardBorderColor,
@@ -276,7 +301,8 @@ class WelcomeScreen extends StatelessWidget {
                     _buildPropCard(
                       icon: Icons.track_changes_rounded,
                       title: 'Theo dõi tiến độ',
-                      description: 'Hệ thống vòng tròn tiến độ trực quan giúp bạn nắm bắt mục tiêu mới mỗi ngày.',
+                      description:
+                          'Hệ thống vòng tròn tiến độ trực quan giúp bạn nắm bắt mục tiêu mới mỗi ngày.',
                       mintColor: mintColor,
                       cardColor: currentCardColor,
                       borderColor: cardBorderColor,
@@ -289,7 +315,10 @@ class WelcomeScreen extends StatelessWidget {
 
               // 5. Featured Courses Section
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 12.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -304,7 +333,10 @@ class WelcomeScreen extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       'Bắt đầu hành trình giao tiếp của bạn ngay hôm nay.',
-                      style: TextStyle(color: currentTextMutedColor, fontSize: 13),
+                      style: TextStyle(
+                        color: currentTextMutedColor,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 16),
 
@@ -314,7 +346,8 @@ class WelcomeScreen extends StatelessWidget {
                       level: 'Cơ bản',
                       lessonsCount: 10,
                       studentsCount: '2.4K học viên',
-                      imgUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=400&auto=format&fit=crop',
+                      imgUrl:
+                          'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=400&auto=format&fit=crop',
                       cardColor: currentCardColor,
                       borderColor: cardBorderColor,
                       mintColor: mintColor,
@@ -328,7 +361,8 @@ class WelcomeScreen extends StatelessWidget {
                       level: 'Trung cấp',
                       lessonsCount: 15,
                       studentsCount: '1.8K học viên',
-                      imgUrl: 'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=400&auto=format&fit=crop',
+                      imgUrl:
+                          'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=400&auto=format&fit=crop',
                       cardColor: currentCardColor,
                       borderColor: cardBorderColor,
                       mintColor: mintColor,
@@ -340,7 +374,10 @@ class WelcomeScreen extends StatelessWidget {
 
               // 6. Footer Section
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 48.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20.0,
+                  vertical: 48.0,
+                ),
                 child: Column(
                   children: [
                     const Divider(color: Color(0xFFE2E8F0)),
@@ -458,7 +495,10 @@ class WelcomeScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: mintColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -486,18 +526,32 @@ class WelcomeScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.book_rounded, color: Color(0xFF64748B), size: 12),
+                    const Icon(
+                      Icons.book_rounded,
+                      color: Color(0xFF64748B),
+                      size: 12,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '$lessonsCount bài học',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 11,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.people_alt_rounded, color: Color(0xFF64748B), size: 12),
+                    const Icon(
+                      Icons.people_alt_rounded,
+                      color: Color(0xFF64748B),
+                      size: 12,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       studentsCount,
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
