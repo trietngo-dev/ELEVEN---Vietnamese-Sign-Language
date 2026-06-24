@@ -49,7 +49,8 @@ class _SettingScreenState extends State<SettingScreen> {
   void _loadRealPhone() async {
     if (!mounted) return;
     try {
-      final getUserProfilePhoneUseCase = context.read<GetUserProfilePhoneUseCase>();
+      final getUserProfilePhoneUseCase = context
+          .read<GetUserProfilePhoneUseCase>();
       final realPhone = await getUserProfilePhoneUseCase(widget.userId);
       if (realPhone != null && mounted) {
         setState(() {
@@ -80,7 +81,10 @@ class _SettingScreenState extends State<SettingScreen> {
               SizedBox(
                 width: 16,
                 height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation(Colors.white),
+                ),
               ),
               SizedBox(width: 12),
               Text('Đang lưu thay đổi...'),
@@ -93,11 +97,15 @@ class _SettingScreenState extends State<SettingScreen> {
 
       try {
         final updateUserInfoUseCase = context.read<UpdateUserInfoUseCase>();
-        final updateUserProfilePhoneUseCase = context.read<UpdateUserProfilePhoneUseCase>();
-        
+        final updateUserProfilePhoneUseCase = context
+            .read<UpdateUserProfilePhoneUseCase>();
+
         await Future.wait([
           updateUserInfoUseCase(widget.userId, _nameController.text.trim()),
-          updateUserProfilePhoneUseCase(widget.userId, _phoneController.text.trim()),
+          updateUserProfilePhoneUseCase(
+            widget.userId,
+            _phoneController.text.trim(),
+          ),
         ]);
 
         if (!mounted) return;
@@ -111,7 +119,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
         // Refresh AuthBloc with updated cached info
         authBloc.add(AuthCheckRequested());
-        
+
         Navigator.pop(context);
       } catch (e) {
         if (!mounted) return;
@@ -163,13 +171,21 @@ class _SettingScreenState extends State<SettingScreen> {
                       TextFormField(
                         controller: currentPasswordController,
                         obscureText: obscureCurrent,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Mật khẩu hiện tại',
-                          labelStyle: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12),
+                          labelStyle: const TextStyle(
+                            color: AppTheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscureCurrent ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              obscureCurrent
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
                               color: AppTheme.onSurfaceVariant,
                               size: 18,
                             ),
@@ -191,13 +207,21 @@ class _SettingScreenState extends State<SettingScreen> {
                       TextFormField(
                         controller: newPasswordController,
                         obscureText: obscureNew,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Mật khẩu mới',
-                          labelStyle: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12),
+                          labelStyle: const TextStyle(
+                            color: AppTheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              obscureNew
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
                               color: AppTheme.onSurfaceVariant,
                               size: 18,
                             ),
@@ -222,13 +246,21 @@ class _SettingScreenState extends State<SettingScreen> {
                       TextFormField(
                         controller: confirmPasswordController,
                         obscureText: obscureConfirm,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Xác nhận mật khẩu mới',
-                          labelStyle: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12),
+                          labelStyle: const TextStyle(
+                            color: AppTheme.onSurfaceVariant,
+                            fontSize: 12,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              obscureConfirm
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
                               color: AppTheme.onSurfaceVariant,
                               size: 18,
                             ),
@@ -270,10 +302,11 @@ class _SettingScreenState extends State<SettingScreen> {
                   onPressed: () async {
                     if (formKey.currentState?.validate() ?? false) {
                       final messenger = ScaffoldMessenger.of(context);
-                      final changePasswordUseCase = context.read<ChangePasswordUseCase>();
+                      final changePasswordUseCase = context
+                          .read<ChangePasswordUseCase>();
 
                       Navigator.pop(dialogContext);
-                      
+
                       messenger.showSnackBar(
                         const SnackBar(
                           content: Row(
@@ -281,7 +314,12 @@ class _SettingScreenState extends State<SettingScreen> {
                               SizedBox(
                                 width: 16,
                                 height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    Colors.white,
+                                  ),
+                                ),
                               ),
                               SizedBox(width: 12),
                               Text('Đang đổi mật khẩu...'),
@@ -344,7 +382,10 @@ class _SettingScreenState extends State<SettingScreen> {
         backgroundColor: AppTheme.surfaceContainer,
         title: const Text(
           'Xóa tài khoản',
-          style: TextStyle(color: Color(0xFFE46C6C), fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Color(0xFFE46C6C),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         content: const Text(
           'Hành động này không thể hoàn tác. Mọi tiến trình học tập, thống kê của bạn sẽ bị xóa vĩnh viễn khỏi hệ thống. Bạn có chắc chắn muốn tiếp tục?',
@@ -358,7 +399,9 @@ class _SettingScreenState extends State<SettingScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              context.read<AuthBloc>().add(AuthDeleteAccountRequested(userId: widget.userId));
+              context.read<AuthBloc>().add(
+                AuthDeleteAccountRequested(userId: widget.userId),
+              );
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const WelcomeScreen()),
@@ -376,6 +419,76 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
+  void _showAboutAppDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: AppTheme.surfaceContainer,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Về VSL Learner',
+          style: TextStyle(
+            color: AppTheme.primaryColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Center(
+              child: CircleAvatar(
+                radius: 32,
+                backgroundImage: AssetImage('assets/logo.jpg'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Center(
+              child: Text(
+                'VSL Learner - Phiên bản 1.0.0',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(color: Colors.white12),
+            const SizedBox(height: 8),
+            const Text(
+              'Ứng dụng học Ngôn ngữ Ký hiệu Việt Nam tích hợp AI hỗ trợ nhận diện cử chỉ tay thông qua camera selfie.',
+              style: TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Nhóm phát triển: Eleven',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Môn học: PRM393 - Mobile Application Development',
+              style: TextStyle(color: Colors.white60, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text(
+              'Đóng',
+              style: TextStyle(color: AppTheme.primaryColor),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
@@ -386,7 +499,10 @@ class _SettingScreenState extends State<SettingScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.primaryColor),
+          icon: const Icon(
+            Icons.arrow_back_rounded,
+            color: AppTheme.primaryColor,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -403,16 +519,17 @@ class _SettingScreenState extends State<SettingScreen> {
             child: CircleAvatar(
               radius: 16,
               backgroundColor: AppTheme.primaryColor.withOpacity(0.2),
-              child: const Icon(Icons.person_rounded, color: AppTheme.primaryColor, size: 18),
+              child: const Icon(
+                Icons.person_rounded,
+                color: AppTheme.primaryColor,
+                size: 18,
+              ),
             ),
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: Colors.white.withOpacity(0.05),
-            height: 1.0,
-          ),
+          child: Container(color: Colors.white.withOpacity(0.05), height: 1.0),
         ),
       ),
       body: Stack(
@@ -424,12 +541,19 @@ class _SettingScreenState extends State<SettingScreen> {
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 20.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 20.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Section: Thông tin cá nhân
-                      _buildSectionHeader(Icons.person_outline_rounded, 'Thông tin cá nhân', textTheme),
+                      _buildSectionHeader(
+                        Icons.person_outline_rounded,
+                        'Thông tin cá nhân',
+                        textTheme,
+                      ),
                       const SizedBox(height: 12),
                       AppTheme.glassPanel(
                         padding: const EdgeInsets.all(20.0),
@@ -439,7 +563,10 @@ class _SettingScreenState extends State<SettingScreen> {
                               controller: _nameController,
                               label: 'Họ và tên',
                               hint: 'Nhập họ và tên',
-                              validator: (val) => val == null || val.trim().isEmpty ? 'Vui lòng nhập họ tên' : null,
+                              validator: (val) =>
+                                  val == null || val.trim().isEmpty
+                                  ? 'Vui lòng nhập họ tên'
+                                  : null,
                             ),
                             const SizedBox(height: 16),
                             _buildTextField(
@@ -455,7 +582,10 @@ class _SettingScreenState extends State<SettingScreen> {
                               label: 'Số điện thoại',
                               hint: 'Nhập số điện thoại',
                               keyboardType: TextInputType.phone,
-                              validator: (val) => val == null || val.trim().isEmpty ? 'Vui lòng nhập số điện thoại' : null,
+                              validator: (val) =>
+                                  val == null || val.trim().isEmpty
+                                  ? 'Vui lòng nhập số điện thoại'
+                                  : null,
                             ),
                           ],
                         ),
@@ -463,29 +593,68 @@ class _SettingScreenState extends State<SettingScreen> {
                       const SizedBox(height: 28),
 
                       // Section: Bảo mật
-                      _buildSectionHeader(Icons.shield_outlined, 'Bảo mật', textTheme),
+                      _buildSectionHeader(
+                        Icons.shield_outlined,
+                        'Bảo mật',
+                        textTheme,
+                      ),
                       const SizedBox(height: 12),
                       AppTheme.glassPanel(
                         padding: EdgeInsets.zero,
                         child: Column(
                           children: [
                             ListTile(
-                              leading: const Icon(Icons.lock_reset_rounded, color: AppTheme.onSurfaceVariant, size: 20),
-                              title: const Text('Đổi mật khẩu', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.onSurfaceVariant, size: 20),
+                              leading: const Icon(
+                                Icons.lock_reset_rounded,
+                                color: AppTheme.onSurfaceVariant,
+                                size: 20,
+                              ),
+                              title: const Text(
+                                'Đổi mật khẩu',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              trailing: const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppTheme.onSurfaceVariant,
+                                size: 20,
+                              ),
                               onTap: () => _onChangePasswordPressed(context),
                             ),
-                            Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                            Divider(
+                              color: Colors.white.withOpacity(0.05),
+                              height: 1,
+                            ),
                             SwitchListTile(
-                              secondary: const Icon(Icons.verified_user_rounded, color: AppTheme.onSurfaceVariant, size: 20),
-                              title: const Text('Xác thực 2 yếu tố', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                              secondary: const Icon(
+                                Icons.verified_user_rounded,
+                                color: AppTheme.onSurfaceVariant,
+                                size: 20,
+                              ),
+                              title: const Text(
+                                'Xác thực 2 yếu tố',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                               subtitle: Text(
-                                _twoFactorEnabled ? 'Đang kích hoạt' : 'Chưa kích hoạt',
-                                style: const TextStyle(fontSize: 12, color: AppTheme.onSurfaceVariant),
+                                _twoFactorEnabled
+                                    ? 'Đang kích hoạt'
+                                    : 'Chưa kích hoạt',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.onSurfaceVariant,
+                                ),
                               ),
                               value: _twoFactorEnabled,
                               activeColor: AppTheme.primaryColor,
-                              activeTrackColor: AppTheme.primaryContainer.withOpacity(0.5),
+                              activeTrackColor: AppTheme.primaryContainer
+                                  .withOpacity(0.5),
                               inactiveThumbColor: AppTheme.onSurfaceVariant,
                               inactiveTrackColor: Colors.white10,
                               onChanged: (val) {
@@ -500,7 +669,11 @@ class _SettingScreenState extends State<SettingScreen> {
                       const SizedBox(height: 28),
 
                       // Section: Thông báo
-                      _buildSectionHeader(Icons.notifications_none_rounded, 'Thông báo', textTheme),
+                      _buildSectionHeader(
+                        Icons.notifications_none_rounded,
+                        'Thông báo',
+                        textTheme,
+                      ),
                       const SizedBox(height: 12),
                       AppTheme.glassPanel(
                         padding: const EdgeInsets.all(20.0),
@@ -532,13 +705,54 @@ class _SettingScreenState extends State<SettingScreen> {
                       ),
                       const SizedBox(height: 28),
 
-                      // Section: Vùng nguy hiểm
-                      _buildSectionHeader(Icons.report_problem_outlined, 'Vùng nguy hiểm', textTheme),
+                      // Section: Về ứng dụng
+                      _buildSectionHeader(
+                        Icons.info_outline_rounded,
+                        'Về ứng dụng',
+                        textTheme,
+                      ),
                       const SizedBox(height: 12),
                       AppTheme.glassPanel(
                         padding: EdgeInsets.zero,
                         child: ListTile(
-                          leading: const Icon(Icons.delete_forever_rounded, color: Color(0xFFE46C6C), size: 20),
+                          leading: const Icon(
+                            Icons.info_outline_rounded,
+                            color: AppTheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          title: const Text(
+                            'Thông tin & Điều khoản',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          onTap: () => _showAboutAppDialog(context),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Section: Vùng nguy hiểm
+                      _buildSectionHeader(
+                        Icons.report_problem_outlined,
+                        'Vùng nguy hiểm',
+                        textTheme,
+                      ),
+                      const SizedBox(height: 12),
+                      AppTheme.glassPanel(
+                        padding: EdgeInsets.zero,
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.delete_forever_rounded,
+                            color: Color(0xFFE46C6C),
+                            size: 20,
+                          ),
                           title: const Text(
                             'Xóa tài khoản',
                             style: TextStyle(
@@ -639,9 +853,14 @@ class _SettingScreenState extends State<SettingScreen> {
           ),
           decoration: InputDecoration(
             hintText: hint,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             filled: !enabled,
-            fillColor: enabled ? Colors.transparent : Colors.white.withOpacity(0.03),
+            fillColor: enabled
+                ? Colors.transparent
+                : Colors.white.withOpacity(0.03),
           ),
         ),
       ],
@@ -663,12 +882,19 @@ class _SettingScreenState extends State<SettingScreen> {
             children: [
               Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(color: AppTheme.onSurfaceVariant, fontSize: 12),
+                style: const TextStyle(
+                  color: AppTheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
