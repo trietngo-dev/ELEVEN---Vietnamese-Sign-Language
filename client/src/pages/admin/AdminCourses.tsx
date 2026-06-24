@@ -25,15 +25,40 @@ const AdminCourses: React.FC = () => {
     onConfirm?: () => void;
   } | null>(null);
 
+  // Dynamic filter, visits, and pagination states
+  const [totalVisits, setTotalVisits] = useState<number>(0);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 7;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus]);
+
   const fetchCourses = async () => {
     try {
       setIsLoading(true);
       const authToken = tokenStorage.getToken();
       const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      
+      // Fetch courses
       const res = await fetch(`${API_BASE_URL}/api/courses`, { headers });
       if (res.ok) {
         const data = await res.json();
         setCourses(data.items || []);
+      }
+
+      // Fetch user progress for total visits (attempts count)
+      try {
+        const progressRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress?pageSize=10000`, { headers });
+        if (progressRes.ok) {
+          const progressData = await progressRes.json();
+          const items = progressData.items || (Array.isArray(progressData) ? progressData : []);
+          const sumVisits = items.reduce((sum: number, item: any) => sum + (item.attemptsCount || 1), 0);
+          setTotalVisits(sumVisits);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải lượt truy cập bài học", err);
       }
     } catch (err) {
       console.error("Lỗi khi tải danh sách khóa học", err);
@@ -139,6 +164,18 @@ const AdminCourses: React.FC = () => {
     }
   };
 
+  const filteredCourses = courses.filter(course => {
+    if (filterStatus === 'published') return course.status === 1;
+    if (filterStatus === 'draft') return course.status === 0;
+    return true;
+  });
+
+  const totalItems = filteredCourses.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedCourses = filteredCourses.slice(startIndex, endIndex);
+
   return (
     <div className="max-w-7xl mx-auto w-full space-y-8">
       {/* Header */}
@@ -152,13 +189,34 @@ const AdminCourses: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center p-1 bg-slate-100 rounded-xl">
-          <button className="px-6 py-2 rounded-lg bg-white shadow-sm text-sm font-bold text-[#3c6c44]">
+          <button 
+            onClick={() => setFilterStatus('all')}
+            className={`px-6 py-2 rounded-lg text-sm transition-all ${
+              filterStatus === 'all' 
+                ? 'bg-white shadow-sm font-bold text-[#3c6c44]' 
+                : 'font-medium text-slate-500 hover:text-slate-700'
+            }`}
+          >
             Tất cả
           </button>
-          <button className="px-6 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700">
+          <button 
+            onClick={() => setFilterStatus('published')}
+            className={`px-6 py-2 rounded-lg text-sm transition-all ${
+              filterStatus === 'published' 
+                ? 'bg-white shadow-sm font-bold text-[#3c6c44]' 
+                : 'font-medium text-slate-500 hover:text-slate-700'
+            }`}
+          >
             Đã xuất bản
           </button>
-          <button className="px-6 py-2 rounded-lg text-sm font-medium text-slate-500 hover:text-slate-700">
+          <button 
+            onClick={() => setFilterStatus('draft')}
+            className={`px-6 py-2 rounded-lg text-sm transition-all ${
+              filterStatus === 'draft' 
+                ? 'bg-white shadow-sm font-bold text-[#3c6c44]' 
+                : 'font-medium text-slate-500 hover:text-slate-700'
+            }`}
+          >
             Bản nháp
           </button>
         </div>
@@ -169,7 +227,7 @@ const AdminCourses: React.FC = () => {
         {[
           { label: "Tổng khóa học", value: courses.length.toString(), icon: <BookOpen size={16} /> },
           { label: "Đang hoạt động", value: courses.filter(c => c.status === 1).length.toString(), color: "text-[#3c6c44]" },
-          { label: "Học viên mới", value: "+128" },
+          { label: "Lượt truy cập (các bài học)", value: totalVisits.toString() },
           { label: "Tỷ lệ hoàn thành", value: "86%" },
         ].map((stat, i) => (
           <div
@@ -190,7 +248,7 @@ const AdminCourses: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {isLoading ? (
           <div className="col-span-full py-10 flex justify-center text-slate-500">Đang tải dữ liệu...</div>
-        ) : courses.map((course, i) => (
+        ) : paginatedCourses.map((course, i) => (
           <div
             key={course.id || i}
             className={`bg-white rounded-2xl overflow-hidden border border-slate-100 group flex flex-col shadow-sm transition-all hover:shadow-md ${course.status === 0 ? "opacity-80" : ""}`}
@@ -266,33 +324,47 @@ const AdminCourses: React.FC = () => {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between border-t border-slate-100 pt-6">
-        <p className="text-sm text-slate-500">
-          Hiển thị <span className="font-bold">1 - 4</span> trong số{" "}
-          <span className="font-bold">24</span> khóa học
-        </p>
-        <div className="flex items-center gap-2">
-          <button className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-[#3c6c44] transition-colors disabled:opacity-50">
-            <ChevronLeft size={20} />
-          </button>
-          <button className="w-10 h-10 rounded-lg bg-[#3c6c44] text-white font-bold text-sm">
-            1
-          </button>
-          <button className="w-10 h-10 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-100">
-            2
-          </button>
-          <button className="w-10 h-10 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-100">
-            3
-          </button>
-          <span className="px-2 text-slate-400">...</span>
-          <button className="w-10 h-10 rounded-lg text-slate-500 font-bold text-sm hover:bg-slate-100">
-            5
-          </button>
-          <button className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-[#3c6c44] transition-colors">
-            <ChevronRight size={20} />
-          </button>
+      {totalPages > 0 && (
+        <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+          <p className="text-sm text-slate-500">
+            Hiển thị <span className="font-bold">{totalItems === 0 ? 0 : startIndex + 1} - {endIndex}</span> trong số{" "}
+            <span className="font-bold">{totalItems}</span> khóa học
+          </p>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-[#3c6c44] transition-colors disabled:opacity-50 disabled:hover:text-slate-400"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-10 h-10 rounded-lg font-bold text-sm transition-all ${
+                    currentPage === page 
+                      ? 'bg-[#3c6c44] text-white shadow-md shadow-[#3c6c44]/20' 
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button 
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-[#3c6c44] transition-colors disabled:opacity-50 disabled:hover:text-slate-400"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       <AddCourseModal 
         isOpen={isModalOpen} 

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
-import { Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import xpImg from "../assets/xp-img.png";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -24,6 +26,14 @@ const FrameStorePage: React.FC = () => {
   const [userXp, setUserXp] = useState<number>(0);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Custom Modal / Notification State
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    type: 'success' | 'error';
+    title: string;
+    message: string;
+  } | null>(null);
 
   const fetchUserDataAndFrames = async () => {
     if (!user?.id) return;
@@ -80,7 +90,12 @@ const FrameStorePage: React.FC = () => {
 
   const handleRedeem = async (frameId: number, price: number) => {
     if (userXp < price) {
-      alert("Bạn không đủ điểm XP để đổi khung ảnh này.");
+      setNotification({
+        isOpen: true,
+        type: 'error',
+        title: 'Không đủ XP',
+        message: 'Bạn không đủ điểm XP để đổi khung ảnh này.'
+      });
       return;
     }
 
@@ -102,14 +117,29 @@ const FrameStorePage: React.FC = () => {
         const data = await res.json();
         setUserXp(data.totalXp);
         setOwnedFrameIds(prev => [...prev, frameId]);
-        alert("Đổi khung ảnh thành công!");
+        setNotification({
+          isOpen: true,
+          type: 'success',
+          title: 'Thành công!',
+          message: 'Đổi khung ảnh thành công!'
+        });
       } else {
         const errData = await res.json();
-        alert(errData.message || "Đổi khung thất bại");
+        setNotification({
+          isOpen: true,
+          type: 'error',
+          title: 'Đổi khung thất bại',
+          message: errData.message || 'Có lỗi xảy ra khi đổi khung.'
+        });
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi kết nối đến server");
+      setNotification({
+        isOpen: true,
+        type: 'error',
+        title: 'Lỗi kết nối',
+        message: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau!'
+      });
     }
   };
 
@@ -132,13 +162,29 @@ const FrameStorePage: React.FC = () => {
       if (res.ok) {
         setActiveFrameId(frameId);
         window.dispatchEvent(new Event("avatarChanged")); // Update Avatar in Navbar
+        setNotification({
+          isOpen: true,
+          type: 'success',
+          title: 'Thành công!',
+          message: frameId === null ? 'Đã tháo khung ảnh đại diện!' : 'Đã trang bị khung ảnh đại diện mới!'
+        });
       } else {
         const errData = await res.json();
-        alert(errData.message || "Trang bị thất bại");
+        setNotification({
+          isOpen: true,
+          type: 'error',
+          title: 'Trang bị thất bại',
+          message: errData.message || 'Có lỗi xảy ra khi trang bị khung.'
+        });
       }
     } catch (e) {
       console.error(e);
-      alert("Lỗi khi kết nối đến server");
+      setNotification({
+        isOpen: true,
+        type: 'error',
+        title: 'Lỗi kết nối',
+        message: 'Không thể kết nối đến máy chủ. Vui lòng thử lại sau!'
+      });
     }
   };
 
@@ -169,8 +215,8 @@ const FrameStorePage: React.FC = () => {
 
           {/* XP Banner */}
           <div className="bg-white/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-slate-100 shadow-[0_4px_20px_rgba(24,35,51,0.02)] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-xl text-[#3c6c44]">
-              ⚡
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+              <img src={xpImg} className="w-6 h-6 object-contain" alt="XP" />
             </div>
             <div>
               <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Số dư XP của bạn</p>
@@ -229,9 +275,15 @@ const FrameStorePage: React.FC = () => {
                 {/* Info */}
                 <div className="text-center space-y-1 w-full mb-6">
                   <h4 className="text-base font-black text-slate-800">{frame.name}</h4>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                    {isOwned ? "Đã sở hữu" : `Quy đổi: ⚡ ${frame.xpPrice} XP`}
-                  </p>
+                  <div className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center justify-center gap-1">
+                    {isOwned ? (
+                      "Đã sở hữu"
+                    ) : (
+                      <>
+                        Quy đổi: <img src={xpImg} className="w-3.5 h-3.5 object-contain" alt="XP" /> {frame.xpPrice} XP
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Button Action */}
@@ -259,7 +311,10 @@ const FrameStorePage: React.FC = () => {
                         : "bg-slate-100 text-slate-400 cursor-not-allowed"
                         }`}
                     >
-                      <span>⚡ Mở khóa bằng {frame.xpPrice} XP</span>
+                      <span className="flex items-center gap-1">
+                        <img src={xpImg} className="w-4 h-4 object-contain brightness-110" alt="XP" />
+                        Mở khóa bằng {frame.xpPrice} XP
+                      </span>
                     </button>
                   )}
                 </div>
@@ -267,6 +322,53 @@ const FrameStorePage: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Custom Confirmation / Alert Modal */}
+        <AnimatePresence>
+          {notification && notification.isOpen && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white rounded-3xl p-8 border border-slate-100 shadow-2xl max-w-sm w-full text-center relative"
+              >
+                <button
+                  onClick={() => setNotification(null)}
+                  className="absolute top-6 right-6 p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-colors"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
+                  notification.type === 'success' 
+                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                    : 'bg-rose-50 text-rose-600 border border-rose-100'
+                }`}>
+                  {notification.type === 'success' ? (
+                    <Check size={20} strokeWidth={3} />
+                  ) : (
+                    <X size={20} strokeWidth={3} />
+                  )}
+                </div>
+
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{notification.title}</h3>
+                <p className="text-xs text-slate-500 mb-6 leading-relaxed">{notification.message}</p>
+
+                <button
+                  onClick={() => setNotification(null)}
+                  className={`w-full py-3 font-bold rounded-2xl transition-all shadow-md text-sm ${
+                    notification.type === 'success'
+                      ? 'bg-[#3c6c44] text-white hover:bg-[#315736] shadow-[#3c6c44]/20'
+                      : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/20'
+                  }`}
+                >
+                  Đồng ý
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </div>
     </div>

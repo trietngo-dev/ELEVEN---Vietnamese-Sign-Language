@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, BookOpen, Search, Play, Clock, Zap, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Search, Play, Clock, Loader2 } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -8,6 +8,7 @@ import { tokenStorage } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import LoginModal from "../components/LoginModal";
 import CourseImage from "../components/CourseImage";
+import xpImg from "../assets/xp-img.png";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -386,7 +387,7 @@ function DictionaryPage() {
                           {lesson.estimatedMinutes} phút
                         </span>
                         <span className="inline-flex items-center gap-1">
-                          <Zap className="h-3.5 w-3.5 text-amber-500" />
+                          <img src={xpImg} className="w-3.5 h-3.5 object-contain shrink-0" alt="XP" />
                           <span className="font-semibold text-amber-600">+{lesson.xpReward} XP</span>
                         </span>
                       </div>
