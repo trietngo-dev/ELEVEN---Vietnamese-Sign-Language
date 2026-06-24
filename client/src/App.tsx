@@ -26,6 +26,7 @@ import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
 import SavedWordsPage from "./pages/SavedWordsPage";
+import AIPracticeHistoryPage from "./pages/AIPracticeHistoryPage";
 import AdminFrames from "./pages/admin/AdminFrames";
 import FrameStorePage from "./pages/FrameStorePage";
 import AdminRevenue from "./pages/admin/AdminRevenue";
@@ -130,6 +131,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <SavedWordsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="ai-history"
+            element={
+              <ProtectedRoute>
+                <AIPracticeHistoryPage />
               </ProtectedRoute>
             }
           />

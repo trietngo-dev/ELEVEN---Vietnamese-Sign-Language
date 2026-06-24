@@ -4,11 +4,9 @@ import { motion, type Variants } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
 import {
-  Zap,
   ArrowRight,
   Clock,
   ChevronRight,
-  Video,
   BookOpen,
   Flame,
   Check,
@@ -16,6 +14,7 @@ import {
 } from "lucide-react";
 import { notificationsApi } from "../lib/notifications";
 import flameCharacterWave from "../assets/flame_character_wave.gif";
+import xpImg from "../assets/xp-img.png";
 import CourseImage from "../components/CourseImage";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -192,7 +191,11 @@ export default function HomePage() {
                     return {
                       lessonId: p.lessonId,
                       title: lessonObj.title || `Bài học #${p.lessonId}`,
-                      accuracy: `${Math.round((p.bestAccuracy || 0.9) * 100)}%`,
+                      accuracy: (() => {
+                        const rawAccuracy = p.bestAccuracy !== undefined && p.bestAccuracy !== null ? p.bestAccuracy : 0.9;
+                        const accuracyPercent = rawAccuracy <= 1.0 ? rawAccuracy * 100 : rawAccuracy;
+                        return `${Math.min(100, Math.round(accuracyPercent))}%`;
+                      })(),
                       time: completionDate.toLocaleDateString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
                       isReal: true
                     };
@@ -325,7 +328,7 @@ export default function HomePage() {
                   {loginDays} ngày liên tiếp
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[10px] font-extrabold text-amber-600 select-none">
-                  <Zap size={12} className="fill-amber-500 stroke-amber-500 shrink-0" />
+                  <img src={xpImg} className="w-3.5 h-3.5 object-contain shrink-0" alt="XP" />
                   {accumulatedXp} XP tích lũy
                 </span>
               </div>
@@ -419,11 +422,11 @@ export default function HomePage() {
             {/* Action button */}
             <div className="relative z-10 flex items-center pt-4 lg:pt-0">
               <Link
-                to="/ai-tracker"
+                to="/ai-history"
                 className="inline-flex items-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold px-6 py-3.5 rounded-2xl shadow-lg shadow-[#2d6a4f]/10 transition-all hover:scale-[1.02] duration-300"
               >
-                <Video size={14} />
-                Mở Camera AI
+                <Clock size={14} />
+                Xem Lịch sử AI
               </Link>
             </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Plus, Edit3, Trash2, Upload, X } from "lucide-react";
 import { tokenStorage } from "../../lib/auth";
+import xpImg from "../../assets/xp-img.png";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -254,7 +255,7 @@ const AdminFrames: React.FC = () => {
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm font-extrabold text-[#3c6c44] flex items-center gap-1">
-                      ⚡ {frame.xpPrice} XP
+                      <img src={xpImg} className="w-4 h-4 object-contain" alt="XP" /> {frame.xpPrice} XP
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
