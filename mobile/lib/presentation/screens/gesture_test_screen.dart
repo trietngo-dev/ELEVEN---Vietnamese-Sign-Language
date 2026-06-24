@@ -8,8 +8,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/datasources/course_data_source.dart';
 import '../../data/models/lesson_model.dart';
 import '../../core/utils/sign_language_processor.dart';
-import '../bloc/gesture_bloc.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/datasources/gesture_data_source.dart';
+
+enum PracticeStep {
+  ready,
+  initializing,
+  countdown,
+  recording,
+  analyzing,
+  result,
+}
 
 class GestureTestScreen extends StatefulWidget {
   final LessonModel lesson;
@@ -22,40 +31,122 @@ class GestureTestScreen extends StatefulWidget {
 
 class _GestureTestScreenState extends State<GestureTestScreen>
     with WidgetsBindingObserver {
+  PracticeStep _currentStep = PracticeStep.ready;
   CameraController? _cameraController;
   final SignLanguageProcessor _processor = SignLanguageProcessor();
   bool _isCameraInitialized = false;
-  bool _isCollecting = false;
-  int _capturedFrames = 0;
-  List<String> _words = [];
-  String _finalSentence = 'Câu hoàn chỉnh sẽ hiển thị tại đây!';
-  String _status = 'Sẵn sàng kiểm tra cử chỉ';
+
+  int _countdown = 3;
+  Timer? _countdownTimer;
+
+  final List<List<double>> _collectedFrames = [];
+  int _lastFrameTime = 0;
+  bool _isProcessingFrame = false;
   List<double>? _latestFeatures;
+
+  String _status = 'Sẵn sàng kiểm tra cử chỉ';
+  String? _recognizedWord;
+  double _confidence = 0.0;
+  bool _isMatch = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_initializeHolistic());
-    _initializeCamera();
-    context.read<GestureBloc>().add(GestureSessionReset());
   }
 
-  Future<void> _initializeHolistic() async {
-    try {
-      await _processor.initialize();
-    } catch (e) {
-      if (!mounted) return;
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _countdownTimer?.cancel();
+    _cleanupCameraSync();
+    _processor.close();
+    super.dispose();
+  }
+
+  void _cleanupCameraSync() {
+    if (_cameraController != null) {
+      try {
+        if (_cameraController!.value.isStreamingImages) {
+          _cameraController!.stopImageStream();
+        }
+      } catch (e) {
+        debugPrint("Error stopping image stream sync: $e");
+      }
+      try {
+        _cameraController!.dispose();
+      } catch (e) {
+        debugPrint("Error disposing camera sync: $e");
+      }
+      _cameraController = null;
+    }
+  }
+
+  Future<void> _cleanupCamera() async {
+    if (_cameraController != null) {
+      try {
+        if (_cameraController!.value.isStreamingImages) {
+          await _cameraController!.stopImageStream();
+        }
+      } catch (e) {
+        debugPrint("Error stopping image stream: $e");
+      }
+      try {
+        await _cameraController!.dispose();
+      } catch (e) {
+        debugPrint("Error disposing camera: $e");
+      }
+      _cameraController = null;
+    }
+    if (mounted) {
       setState(() {
-        _status = 'Loi khoi tao AI: $e';
+        _isCameraInitialized = false;
       });
     }
   }
 
-  Future<void> _initializeCamera() async {
+  String _normalizeWord(String? str) {
+    if (str == null) return "";
+    
+    // Simple Vietnamese tone/diacritics removal
+    var text = str.toLowerCase();
+    
+    const vietnamese = [
+      'aàảãáạăằẳẵắặâầẩẫấậ',
+      'dđ',
+      'eèẻẽéẹêềểễếệ',
+      'iìỉĩíị',
+      'oòỏõóọôồổỗốộơờởỡớợ',
+      'uùủũúụưừửữứự',
+      'yỳỷỹýỵ'
+    ];
+    
+    const english = ['a', 'd', 'e', 'i', 'o', 'u', 'y'];
+    
+    for (int i = 0; i < vietnamese.length; i++) {
+      for (var char in vietnamese[i].split('')) {
+        text = text.replaceAll(char, english[i]);
+      }
+    }
+    
+    // Remove non-alphanumeric characters and spaces
+    return text.replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  Future<void> _startPractice() async {
+    setState(() {
+      _currentStep = PracticeStep.initializing;
+      _status = 'Đang thiết lập AI...';
+      _latestFeatures = null;
+      _collectedFrames.clear();
+    });
+
     try {
+      // 1. Initialize holistic processor
+      await _processor.initialize();
+
+      // 2. Initialize camera
       final cameras = await availableCameras();
-      // Find selfie camera (front-facing)
       final frontCamera = cameras.firstWhere(
         (cam) => cam.lensDirection == CameraLensDirection.front,
         orElse: () => cameras.first,
@@ -77,12 +168,53 @@ class _GestureTestScreenState extends State<GestureTestScreen>
         _isCameraInitialized = true;
       });
 
+      // 3. Start image stream
       _startImageStream();
+
+      // 4. Trigger countdown
+      _triggerCountdown();
     } catch (e) {
-      setState(() {
-        _status = 'Lỗi khởi tạo camera: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _currentStep = PracticeStep.ready;
+          _status = 'Lỗi khởi tạo: $e';
+        });
+      }
     }
+  }
+
+  void _triggerCountdown() {
+    setState(() {
+      _currentStep = PracticeStep.countdown;
+      _countdown = 3;
+      _status = 'Chuẩn bị bắt đầu...';
+    });
+
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_countdown > 1) {
+          _countdown--;
+        } else {
+          timer.cancel();
+          _countdownTimer = null;
+          _startRecording();
+        }
+      });
+    });
+  }
+
+  void _startRecording() {
+    setState(() {
+      _currentStep = PracticeStep.recording;
+      _collectedFrames.clear();
+      _latestFeatures = null;
+      _status = 'Hãy thực hiện cử chỉ!';
+    });
   }
 
   void _startImageStream() {
@@ -91,57 +223,45 @@ class _GestureTestScreenState extends State<GestureTestScreen>
     }
 
     _cameraController!.startImageStream((CameraImage image) async {
-      if (!_isCollecting) return;
+      if (!mounted || _currentStep != PracticeStep.recording) return;
+      if (_isProcessingFrame) return;
 
-      // Convert CameraImage to ML Kit InputImage
-      final inputImage = _convertCameraImage(image);
-      if (inputImage == null) return;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now - _lastFrameTime < 70) {
+        return; // Throttle to ~14 fps (matching web 70ms capture interval)
+      }
 
-      final features = await _processor.processImage(inputImage);
-      if (features.isNotEmpty && mounted) {
-        final rawFeatures = _processor.latestCroppedFeatures;
-        if (rawFeatures != null) {
-          if (_latestFeatures == null ||
-              _latestFeatures!.length != rawFeatures.length) {
-            _latestFeatures = List<double>.from(rawFeatures);
-          } else {
-            const double alpha = 0.35; // EMA smoothing factor
-            for (int i = 0; i < rawFeatures.length; i += 3) {
-              if (i + 2 < rawFeatures.length) {
-                final double curX = rawFeatures[i];
-                final double curY = rawFeatures[i + 1];
-                final double curZ = rawFeatures[i + 2];
+      _isProcessingFrame = true;
+      _lastFrameTime = now;
 
-                final double prevX = _latestFeatures![i];
-                final double prevY = _latestFeatures![i + 1];
-                final double prevZ = _latestFeatures![i + 2];
+      try {
+        final inputImage = _convertCameraImage(image);
+        if (inputImage == null) {
+          _isProcessingFrame = false;
+          return;
+        }
 
-                // Nếu điểm hiện tại không được nhận diện, ẩn ngay lập tức (về 0)
-                if (curX == 0.0 && curY == 0.0) {
-                  _latestFeatures![i] = 0.0;
-                  _latestFeatures![i + 1] = 0.0;
-                  _latestFeatures![i + 2] = 0.0;
-                }
-                // Nếu điểm trước đó bằng 0 (vừa xuất hiện lại), nhảy ngay tới điểm mới thay vì lướt từ góc màn hình
-                else if (prevX == 0.0 && prevY == 0.0) {
-                  _latestFeatures![i] = curX;
-                  _latestFeatures![i + 1] = curX != 0.0 ? curY : 0.0;
-                  _latestFeatures![i + 2] = curX != 0.0 ? curZ : 0.0;
-                }
-                // Nếu cả hai đều hợp lệ, làm mịn bằng EMA
-                else {
-                  _latestFeatures![i] = alpha * curX + (1.0 - alpha) * prevX;
-                  _latestFeatures![i + 1] =
-                      alpha * curY + (1.0 - alpha) * prevY;
-                  _latestFeatures![i + 2] =
-                      alpha * curZ + (1.0 - alpha) * prevZ;
-                }
-              }
-            }
+        final features = await _processor.processImage(inputImage);
+        if (!mounted || _currentStep != PracticeStep.recording) {
+          _isProcessingFrame = false;
+          return;
+        }
+
+        if (features.isNotEmpty) {
+          _collectedFrames.add(features);
+          setState(() {
+            _latestFeatures = _processor.latestCroppedFeatures;
+            _status = 'Đang ghi hình: ${_collectedFrames.length}/50';
+          });
+
+          if (_collectedFrames.length >= 50) {
+            _finishRecording();
           }
         }
-        setState(() {});
-        context.read<GestureBloc>().add(GestureFrameCaptured(features));
+      } catch (e) {
+        debugPrint("Lỗi xử lý frame: $e");
+      } finally {
+        _isProcessingFrame = false;
       }
     });
   }
@@ -222,7 +342,7 @@ class _GestureTestScreenState extends State<GestureTestScreen>
           size: imageSize,
           rotation: InputImageRotation.rotation270deg,
           format: InputImageFormat.nv21,
-          bytesPerRow: width, // No padding in our custom packed NV21 buffer
+          bytesPerRow: width,
         );
 
         return InputImage.fromBytes(bytes: nv21, metadata: inputImageMetadata);
@@ -253,25 +373,52 @@ class _GestureTestScreenState extends State<GestureTestScreen>
     }
   }
 
-  void _toggleCollection() {
-    final gestureBloc = context.read<GestureBloc>();
-    if (_isCollecting) {
+  Future<void> _finishRecording() async {
+    final gestureDs = RepositoryProvider.of<GestureDataSource>(context);
+    setState(() {
+      _currentStep = PracticeStep.analyzing;
+      _status = 'Đang phân tích cử chỉ...';
+    });
+
+    // Immediately stop image stream and dispose camera to free up resources
+    await _cleanupCamera();
+
+    try {
+      final flattenedFeatures = _collectedFrames.expand((frame) => frame).toList();
+
+      final result = await gestureDs.predictGesture(flattenedFeatures);
+
+      final word = (result['word'] ?? result['label'] ?? '') as String;
+      final confidence = (result['confidence'] ?? 0.0) as double;
+
+      final targetWord = _normalizeWord(widget.lesson.title);
+      final predictedWord = _normalizeWord(word);
+
+      final isMatch = word.isNotEmpty && predictedWord == targetWord && confidence >= 0.95;
+
+      if (!mounted) return;
+
       setState(() {
-        _isCollecting = false;
-        _latestFeatures = null;
-        _status = 'Đang hoàn tất và trau chuốt bằng Gemini...';
+        _recognizedWord = word;
+        _confidence = confidence;
+        _isMatch = isMatch;
+        _currentStep = PracticeStep.result;
+        _status = isMatch ? 'Chúc mừng! Bạn đã hoàn thành.' : 'Chưa khớp cử chỉ bài học';
       });
-      gestureBloc.add(GesturePolishRequested());
-    } else {
-      setState(() {
-        _isCollecting = true;
-        _latestFeatures = null;
-        _capturedFrames = 0;
-        _words.clear();
-        _finalSentence = '';
-        _status = 'Đang lắng nghe cử chỉ của bạn...';
-      });
-      gestureBloc.add(GestureSessionReset());
+
+      if (isMatch) {
+        await _completeLessonProgress();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _recognizedWord = 'Lỗi kết nối AI Server';
+          _confidence = 0.0;
+          _isMatch = false;
+          _currentStep = PracticeStep.result;
+          _status = 'Lỗi phân tích: $e';
+        });
+      }
     }
   }
 
@@ -280,10 +427,12 @@ class _GestureTestScreenState extends State<GestureTestScreen>
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('auth_user_id') ?? 1;
 
+    final double score = _confidence > 0 ? _confidence * 100 : 95.0;
+
     final success = await courseDs.completeLesson(
       userId: userId,
       lessonId: widget.lesson.id,
-      accuracy: 95.0, // AI Score matching LSTM accuracy fallback
+      accuracy: score,
       xpEarned: widget.lesson.xpEarned,
     );
 
@@ -326,7 +475,7 @@ class _GestureTestScreenState extends State<GestureTestScreen>
               const Icon(Icons.stars_rounded, size: 72, color: Colors.amber),
               const SizedBox(height: 16),
               Text(
-                "Bạn đã hoàn thành bài học \"${widget.lesson.title}\" xuất sắc và nhận được +${widget.lesson.xpEarned} XP điểm thưởng!",
+                "Bạn đã vượt qua bài kiểm tra cử chỉ \"${widget.lesson.title}\" xuất sắc và nhận được +${widget.lesson.xpEarned} XP điểm thưởng!",
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
@@ -349,25 +498,15 @@ class _GestureTestScreenState extends State<GestureTestScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final CameraController? cameraController = _cameraController;
-
-    if (cameraController == null || !cameraController.value.isInitialized) {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
       return;
     }
 
     if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
-    } else if (state == AppLifecycleState.resumed) {
-      _initializeCamera();
+      _cleanupCamera();
+    } else if (state == AppLifecycleState.resumed && _currentStep == PracticeStep.recording) {
+      _startPractice();
     }
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cameraController?.dispose();
-    _processor.close();
-    super.dispose();
   }
 
   @override
@@ -375,226 +514,452 @@ class _GestureTestScreenState extends State<GestureTestScreen>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Kiểm Tra AI")),
+      appBar: AppBar(
+        title: const Text("Kiểm Tra Với AI"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      extendBodyBehindAppBar: true,
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
-        child: BlocConsumer<GestureBloc, GestureState>(
-          listener: (context, state) {
-            if (state is GesturePredictionSuccess) {
-              setState(() {
-                _words = state.recognizedWords;
-                _capturedFrames = state.capturedFrames;
-                _status = 'Đã nhận dạng: ${state.predictedWord}';
-              });
-            } else if (state is GestureBufferUpdating) {
-              setState(() {
-                _capturedFrames = state.capturedFrames;
-                _words = state.recognizedWords;
-              });
-            } else if (state is GestureTranslationSuccess) {
-              setState(() {
-                _finalSentence = state.finalSentence;
-                _status = 'Đã dịch xong câu!';
-              });
-              _completeLessonProgress();
-            } else if (state is GestureFailure) {
-              setState(() {
-                _status = 'Lỗi dịch thuật: ${state.error}';
-              });
-            }
-          },
-          builder: (context, state) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. Camera Viewport
-                  AspectRatio(
-                    aspectRatio:
-                        3 /
-                        4, // 3:4 aspect ratio to display the full vertical portrait frame
-                    child: Card(
-                      clipBehavior: Clip.antiAlias,
-                      margin: EdgeInsets.zero,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          _isCameraInitialized
-                              ? CameraPreview(_cameraController!)
-                              : const Center(
-                                  child: CircularProgressIndicator(),
-                                ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Highlight Target Word Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.12)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        "CỬ CHỈ CẦN THỰC HIỆN",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.5,
+                          color: theme.primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primarySubtle,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Text(
+                          widget.lesson.title.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-                          // Futuristic Half-Body Guide Overlay
+                // Center viewport depending on state
+                Expanded(
+                  child: Card(
+                    clipBehavior: Clip.antiAlias,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    margin: EdgeInsets.zero,
+                    color: Colors.black.withOpacity(0.2),
+                    elevation: 4,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Viewport contents based on step
+                        _buildStepViewport(theme),
+
+                        // Guidelines guide outline (only when camera is active)
+                        if ((_currentStep == PracticeStep.countdown ||
+                                _currentStep == PracticeStep.recording) &&
+                            _isCameraInitialized)
                           Positioned.fill(
                             child: CustomPaint(painter: HalfBodyGuidePainter()),
                           ),
 
-                          // Live skeletal & facial landmarks overlay (Khung Landmark)
-                          if (_isCollecting && _latestFeatures != null)
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: LandmarksPainter(
-                                  features: _latestFeatures!,
-                                ),
+                        // Live landmarks skeleton overlay
+                        if (_currentStep == PracticeStep.recording &&
+                            _latestFeatures != null)
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: LandmarksPainter(
+                                features: _latestFeatures!,
                               ),
                             ),
+                          ),
 
-                          // Countdown timer overlay
-                          if (_isCollecting)
-                            Positioned(
-                              top: 16,
-                              right: 16,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.redAccent,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(
-                                      Icons.radio_button_checked_rounded,
+                        // Pulse recording banner overlay
+                        if (_currentStep == PracticeStep.recording)
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.radio_button_checked_rounded,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Ghi: ${_collectedFrames.length}/50",
+                                    style: const TextStyle(
                                       color: Colors.white,
-                                      size: 14,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
                                     ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      "Ghi: $_capturedFrames/50",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                ),
+                const SizedBox(height: 20),
 
-                  // 2. Control Button
-                  ElevatedButton(
-                    onPressed: _isCameraInitialized ? _toggleCollection : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _isCollecting
-                          ? Colors.amber[700]
-                          : theme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: Text(
-                      _isCollecting
-                          ? "Kết Thúc & Trau Chuốt"
-                          : "Bắt Đầu Dịch Cử Chỉ",
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                // Bottom Status
+                Text(
+                  "Trạng thái: $_status",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white70,
                   ),
-                  const SizedBox(height: 24),
-
-                  // 3. Translation Output Feed
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Từ vựng nhận diện được",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _words.isEmpty
-                                ? [
-                                    Text(
-                                      _isCollecting
-                                          ? "Đang lắng nghe..."
-                                          : "Chưa có từ nào",
-                                      style: const TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        color: Colors.grey,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ]
-                                : _words
-                                      .map(
-                                        (w) => Chip(
-                                          label: Text(
-                                            w,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: AppTheme.primaryColor,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                          backgroundColor:
-                                              AppTheme.primarySubtle,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                          side: BorderSide.none,
-                                        ),
-                                      )
-                                      .toList(),
-                          ),
-                          const Divider(height: 32, color: Color(0xFFEDF6E4)),
-                          const Text(
-                            "Câu dịch hoàn chỉnh",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _finalSentence,
-                            style: theme.textTheme.headlineLarge?.copyWith(
-                              fontSize: 22,
-                              color: const Color(0xFF202734),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            "Trạng thái: $_status",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Widget _buildStepViewport(ThemeData theme) {
+    switch (_currentStep) {
+      case PracticeStep.ready:
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.black.withOpacity(0.4),
+                Colors.black.withOpacity(0.6),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3), width: 2),
+                ),
+                child: const Icon(
+                  Icons.camera_front_rounded,
+                  size: 36,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Sẵn sàng kiểm tra cử chỉ?",
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  "Hãy đặt điện thoại đứng thẳng, đứng lùi ra xa sao cho camera trước nhìn rõ đầu, hai vai và hai tay của bạn.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: Colors.white60,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 36),
+              ElevatedButton.icon(
+                onPressed: _startPractice,
+                icon: const Icon(Icons.videocam_rounded),
+                label: const Text("BẮT ĐẦU NGAY"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  elevation: 5,
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case PracticeStep.initializing:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "Đang thiết lập AI & Camera...",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case PracticeStep.countdown:
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            _isCameraInitialized
+                ? CameraPreview(_cameraController!)
+                : const SizedBox.shrink(),
+            Container(
+              color: Colors.black.withOpacity(0.6),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "$_countdown",
+                      style: const TextStyle(
+                        fontSize: 96,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.amberAccent,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black45,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "CHUẨN BỊ THỰC HIỆN CỬ CHỈ...",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case PracticeStep.recording:
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            _isCameraInitialized
+                ? CameraPreview(_cameraController!)
+                : const SizedBox.shrink(),
+            // Progress bar at the bottom of the camera viewport
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 6,
+                color: Colors.black26,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: _collectedFrames.length / 50,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.redAccent, AppTheme.primaryColor],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+
+      case PracticeStep.analyzing:
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "AI đang phân tích cử chỉ của bạn...",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Đang đối chiếu dữ liệu với từ điển hệ thống",
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
+        );
+
+      case PracticeStep.result:
+        final roundedConfidence = (_confidence * 100).round();
+        return Container(
+          padding: const EdgeInsets.all(24),
+          color: Colors.black.withOpacity(0.4),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _isMatch ? Icons.check_circle_outline_rounded : Icons.highlight_off_rounded,
+                size: 80,
+                color: _isMatch ? Colors.greenAccent : Colors.redAccent,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _isMatch ? "CHÍNH XÁC!" : "CHƯA CHÍNH XÁC",
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: _isMatch ? Colors.greenAccent : Colors.redAccent,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (!_isMatch) ...[
+                Text(
+                  "Nhận diện được: \"$_recognizedWord\"",
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Độ khớp: $roundedConfidence%",
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  "Độ khớp cử chỉ đạt: $roundedConfidence%",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 36),
+              _isMatch
+                  ? ElevatedButton.icon(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text("HOÀN THÀNH"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: _startPractice,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text("THỬ LẠI"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+            ],
+          ),
+        );
+    }
   }
 }
 
