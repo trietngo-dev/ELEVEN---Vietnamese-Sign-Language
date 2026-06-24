@@ -72,7 +72,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.png
+    - assets/logo.jpg
+    - assets/logo-removebg.jpg
 
 
   # To add assets to your application, add an assets section, like this:
@@ -108,13 +109,13 @@ flutter:
 
 flutter_native_splash:
   color: "#ffffff"
-  image: assets/logo.png
+  image: assets/logo-removebg.jpg
   android_12:
-    image: assets/logo.png
+    image: assets/logo-removebg.jpg
     color: "#ffffff"
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo.png"
+  image_path: "assets/logo.jpg"
   remove_alpha_ios: true
