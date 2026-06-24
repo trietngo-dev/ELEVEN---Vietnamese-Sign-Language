@@ -38,31 +38,32 @@ const getPlanDisplayName = (code: string) => {
 
 const AdminRevenue: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'overview' | 'plans'>('overview');
-    
+
     // Core Data States
     const [plans, setPlans] = useState<any[]>([]);
     const [transactions, setTransactions] = useState<any[]>([]);
     const [userMap, setUserMap] = useState<Record<number, any>>({});
-    
+
     // UI controls
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'FAILED'>('ALL');
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 8;
-    
+
     // Loadings
     const [isLoadingStats, setIsLoadingStats] = useState(true);
     const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-    
+
     // Modal Config state
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<any | null>(null);
     const [newName, setNewName] = useState('');
     const [newPrice, setNewPrice] = useState<number>(0);
+    const [newDiscountPercent, setNewDiscountPercent] = useState<number>(0);
     const [newTranslationLimit, setNewTranslationLimit] = useState(0);
     const [newPracticeLimit, setNewPracticeLimit] = useState(0);
     const [isSaving, setIsSaving] = useState(false);
-    
+
     // Notification custom modal state
     const [notification, setNotification] = useState<{
         isOpen: boolean;
@@ -171,7 +172,7 @@ const AdminRevenue: React.FC = () => {
                 const items = data?.items || data || [];
                 if (Array.isArray(items)) {
                     // Sort transactions by date descending
-                    const sorted = [...items].sort((a: any, b: any) => 
+                    const sorted = [...items].sort((a: any, b: any) =>
                         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
                     );
                     setTransactions(sorted);
@@ -194,13 +195,13 @@ const AdminRevenue: React.FC = () => {
             const user = userMap[t.userId];
             const userName = user?.name || '';
             const userEmail = user?.email || '';
-            
-            const matchesSearch = 
+
+            const matchesSearch =
                 t.id.toString().includes(searchTerm) ||
                 t.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 userEmail.toLowerCase().includes(searchTerm.toLowerCase());
-                
+
             const isPaid = t.status === 1 || t.status === 'Paid' || t.status === 'PAID';
             const isPending = t.status === 0 || t.status === 'Pending' || t.status === 'PENDING';
             const isFailed = t.status === 2 || t.status === 'Failed' || t.status === 'FAILED';
@@ -237,7 +238,7 @@ const AdminRevenue: React.FC = () => {
         const monthTotal = monthPaid.reduce((sum, t) => sum + t.amountVnd, 0);
 
         const pending = transactions.filter(t => t.status === 0 || t.status === 'Pending' || t.status === 'PENDING').length;
-        
+
         return {
             totalRevenue: total,
             monthRevenue: monthTotal,
@@ -276,7 +277,7 @@ const AdminRevenue: React.FC = () => {
     // Top Selling Packages
     const topPackages = useMemo(() => {
         const paidTxns = transactions.filter(t => t.status === 1 || t.status === 'Paid' || t.status === 'PAID');
-        
+
         const countMap: Record<number, number> = {};
         paidTxns.forEach(t => {
             countMap[t.amountVnd] = (countMap[t.amountVnd] || 0) + 1;
@@ -301,6 +302,17 @@ const AdminRevenue: React.FC = () => {
         setNewPrice(plan.priceVnd);
         setNewTranslationLimit(plan.dailyTranslationLimit);
         setNewPracticeLimit(plan.aiPracticeLimit);
+
+        let discount = 0;
+        const cycle = plan.billingCycle || 'monthly';
+        if (cycle.includes('_')) {
+            const parts = cycle.split('_');
+            discount = parseInt(parts[parts.length - 1]) || 0;
+        } else if (cycle.toLowerCase() === 'yearly') {
+            discount = 40; // Gói Premium cũ mặc định 40%
+        }
+        setNewDiscountPercent(discount);
+
         setIsEditModalOpen(true);
     };
 
@@ -322,7 +334,7 @@ const AdminRevenue: React.FC = () => {
             const payload = {
                 code: editingPlan.code,
                 name: newName,
-                billingCycle: editingPlan.billingCycle,
+                billingCycle: `monthly_${newDiscountPercent}`, // Mặc định gói là tháng, kèm theo chiết khấu năm
                 priceVnd: newPrice,
                 dailyTranslationLimit: newTranslationLimit,
                 aiPracticeLimit: newPracticeLimit,
@@ -411,27 +423,25 @@ const AdminRevenue: React.FC = () => {
                         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Quản trị doanh thu</h1>
                         <p className="text-slate-500 mt-1">Quản lý định giá đăng ký hội viên và theo dõi lịch sử luồng tiền trực tiếp.</p>
                     </div>
-                    
+
                     {/* Navigation Tabs */}
                     <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50">
                         <button
                             onClick={() => setActiveTab('overview')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                                activeTab === 'overview'
-                                    ? 'bg-[#3c6c44] text-white shadow-md shadow-[#3c6c44]/20'
-                                    : 'text-slate-500 hover:text-slate-900'
-                            }`}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'overview'
+                                ? 'bg-[#3c6c44] text-white shadow-md shadow-[#3c6c44]/20'
+                                : 'text-slate-500 hover:text-slate-900'
+                                }`}
                         >
                             <TrendingUp size={16} />
                             Thống kê & Giao dịch
                         </button>
                         <button
                             onClick={() => setActiveTab('plans')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                                activeTab === 'plans'
-                                    ? 'bg-[#3c6c44] text-white shadow-md shadow-[#3c6c44]/20'
-                                    : 'text-slate-500 hover:text-slate-900'
-                            }`}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'plans'
+                                ? 'bg-[#3c6c44] text-white shadow-md shadow-[#3c6c44]/20'
+                                : 'text-slate-500 hover:text-slate-900'
+                                }`}
                         >
                             <Settings size={16} />
                             Quản lý Bảng giá
@@ -617,11 +627,10 @@ const AdminRevenue: React.FC = () => {
                                             <button
                                                 key={filter}
                                                 onClick={() => { setStatusFilter(filter); setCurrentPage(1); }}
-                                                className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wider transition-all uppercase ${
-                                                    statusFilter === filter
-                                                        ? 'bg-white text-slate-800 shadow-sm'
-                                                        : 'text-slate-400 hover:text-slate-700'
-                                                }`}
+                                                className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wider transition-all uppercase ${statusFilter === filter
+                                                    ? 'bg-white text-slate-800 shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-700'
+                                                    }`}
                                             >
                                                 {filter === 'ALL' ? 'Tất cả' : filter === 'PAID' ? 'Thành công' : filter === 'PENDING' ? 'Chờ duyệt' : 'Thất bại'}
                                             </button>
@@ -671,13 +680,12 @@ const AdminRevenue: React.FC = () => {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border tracking-wider uppercase ${getStatusStyle(txn.status)}`}>
-                                                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                                                txn.status === 1 || txn.status === 'Paid' || txn.status === 'PAID'
-                                                                    ? 'bg-emerald-500'
-                                                                    : txn.status === 0 || txn.status === 'Pending' || txn.status === 'PENDING'
-                                                                        ? 'bg-amber-500'
-                                                                        : 'bg-rose-500'
-                                                            }`}></div>
+                                                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${txn.status === 1 || txn.status === 'Paid' || txn.status === 'PAID'
+                                                                ? 'bg-emerald-500'
+                                                                : txn.status === 0 || txn.status === 'Pending' || txn.status === 'PENDING'
+                                                                    ? 'bg-amber-500'
+                                                                    : 'bg-rose-500'
+                                                                }`}></div>
                                                             {getStatusText(txn.status)}
                                                         </span>
                                                     </td>
@@ -694,7 +702,7 @@ const AdminRevenue: React.FC = () => {
                                     </tbody>
                                 </table>
                             </div>
-                            
+
                             <div className="p-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold bg-white">
                                 <span>Hiển thị {filteredTransactions.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} - {Math.min(currentPage * pageSize, filteredTransactions.length)} của {filteredTransactions.length} giao dịch</span>
                                 <div className="flex gap-2">
@@ -737,14 +745,35 @@ const AdminRevenue: React.FC = () => {
 
                                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Gói {getPlanDisplayName(plan.code)}</h3>
                                 <h2 className="text-xl font-black text-slate-800 mb-2">{plan.name}</h2>
-                                <div className="flex items-baseline gap-1 mb-6">
+                                <div className="flex items-baseline gap-1 mb-4">
                                     <span className="text-3xl font-extrabold text-slate-900">
                                         {plan.priceVnd.toLocaleString('vi-VN')} VNĐ
                                     </span>
                                     <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">
-                                        /{plan.billingCycle === 'yearly' ? 'năm' : 'tháng'}
+                                        /tháng
                                     </span>
                                 </div>
+
+                                {(() => {
+                                    const cycle = plan.billingCycle || 'monthly';
+                                    let discount = 0;
+                                    if (cycle.includes('_')) {
+                                        const parts = cycle.split('_');
+                                        discount = parseInt(parts[parts.length - 1]) || 0;
+                                    } else if (cycle.toLowerCase() === 'yearly') {
+                                        discount = 40; // Gói Premium cũ
+                                    }
+                                    const yearlyPrice = plan.priceVnd * 12;
+                                    const discountedYearly = yearlyPrice * (100 - discount) / 100;
+                                    return (
+                                        <div className="text-[11px] text-slate-500 space-y-1 mb-6 bg-slate-50 p-3 rounded-2xl border border-slate-100/50">
+                                            <p className="font-bold text-slate-600">Gói năm (12 tháng):</p>
+                                            <p>• Giá gốc: <span className="line-through">{yearlyPrice.toLocaleString('vi-VN')} VNĐ</span></p>
+                                            <p>• Giảm giá: <span className="text-rose-600 font-extrabold">-{discount}%</span></p>
+                                            <p>• Thực trả: <span className="text-[#3c6c44] font-black">{discountedYearly.toLocaleString('vi-VN')} VNĐ/năm</span></p>
+                                        </div>
+                                    );
+                                })()}
 
                                 <div className="space-y-4 mb-8 flex-1">
                                     <div className="flex items-center justify-between text-xs border-b border-slate-50 pb-2">
@@ -765,11 +794,10 @@ const AdminRevenue: React.FC = () => {
                                     </div>
                                     <div className="flex items-center justify-between text-xs pb-2">
                                         <span className="font-bold text-slate-400">Trạng thái hoạt động:</span>
-                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border tracking-wider uppercase ${
-                                            plan.isActive 
-                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                                : 'bg-slate-50 text-slate-500 border-slate-200'
-                                        }`}>
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold border tracking-wider uppercase ${plan.isActive
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                            : 'bg-slate-50 text-slate-500 border-slate-200'
+                                            }`}>
                                             {plan.isActive ? 'Active' : 'Disabled'}
                                         </span>
                                     </div>
@@ -835,7 +863,7 @@ const AdminRevenue: React.FC = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Đơn giá (VNĐ)</label>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Đơn giá (VNĐ/tháng)</label>
                                     <div className="relative">
                                         <input
                                             type="number"
@@ -848,8 +876,30 @@ const AdminRevenue: React.FC = () => {
                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">₫</span>
                                     </div>
                                     <p className="text-[11px] text-[#3c6c44] mt-2 font-semibold">
-                                        👉 Preview: {newPrice.toLocaleString('vi-VN')} VNĐ
+                                        Preview: {newPrice.toLocaleString('vi-VN')} VNĐ/tháng
                                     </p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Giảm giá gói năm (%)</label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            required
+                                            min={0}
+                                            max={100}
+                                            value={newDiscountPercent}
+                                            onChange={(e) => setNewDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                                            className="w-full pl-4 pr-12 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3c6c44]/20 focus:border-[#3c6c44] transition-all font-bold"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">%</span>
+                                    </div>
+                                    <div className="text-[11px] text-slate-500 mt-2 space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                        <p className="font-semibold text-slate-600">Tính giá 1 năm:</p>
+                                        <p>• Giá gốc: <span className="line-through">{(newPrice * 12).toLocaleString('vi-VN')} VNĐ</span></p>
+                                        <p>• Tiết kiệm được: <span className="text-rose-600 font-bold">-{(newPrice * 12 * newDiscountPercent / 100).toLocaleString('vi-VN')} VNĐ ({newDiscountPercent}%)</span></p>
+                                        <p>• Thực trả: <span className="text-[#3c6c44] font-black">{(newPrice * 12 * (100 - newDiscountPercent) / 100).toLocaleString('vi-VN')} VNĐ/năm</span></p>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -964,11 +1014,10 @@ const AdminRevenue: React.FC = () => {
                                 <X size={18} />
                             </button>
 
-                            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
-                                notification.type === 'success' 
-                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                    : 'bg-rose-50 text-rose-600 border border-rose-100'
-                            }`}>
+                            <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${notification.type === 'success'
+                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                : 'bg-rose-50 text-rose-600 border border-rose-100'
+                                }`}>
                                 {notification.type === 'success' ? (
                                     <Check size={20} strokeWidth={3} />
                                 ) : (
@@ -981,11 +1030,10 @@ const AdminRevenue: React.FC = () => {
 
                             <button
                                 onClick={() => setNotification(null)}
-                                className={`w-full py-3 font-bold rounded-2xl transition-all shadow-md text-sm ${
-                                    notification.type === 'success'
-                                        ? 'bg-[#3c6c44] text-white hover:bg-[#315736] shadow-[#3c6c44]/20'
-                                        : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/20'
-                                }`}
+                                className={`w-full py-3 font-bold rounded-2xl transition-all shadow-md text-sm ${notification.type === 'success'
+                                    ? 'bg-[#3c6c44] text-white hover:bg-[#315736] shadow-[#3c6c44]/20'
+                                    : 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-600/20'
+                                    }`}
                             >
                                 Đồng ý
                             </button>

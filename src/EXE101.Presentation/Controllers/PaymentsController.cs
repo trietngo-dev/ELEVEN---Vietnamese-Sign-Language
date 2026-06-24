@@ -36,15 +36,39 @@ public sealed class PaymentsController(
             return NotFound(new { message = $"Active subscription plan with id {request.PlanId} was not found." });
         }
 
+        // Tự động tính số tiền thực tế dựa trên chu kỳ thanh toán yêu cầu
+        var amount = plan.PriceVnd;
+        var requestCycle = request.BillingCycle?.ToLowerInvariant() ?? "monthly";
+        if (requestCycle == "yearly")
+        {
+            var baseYearlyPrice = plan.PriceVnd * 12;
+            var discountPercent = 0;
+            // Parse phần trăm giảm giá từ plan.BillingCycle (ví dụ: monthly_20)
+            if (!string.IsNullOrEmpty(plan.BillingCycle) && plan.BillingCycle.Contains('_'))
+            {
+                var parts = plan.BillingCycle.Split('_');
+                int.TryParse(parts[parts.Length - 1], out discountPercent);
+            }
+            // Gói Premium mặc định seed sẵn trong DB có BillingCycle="yearly", cho discount mặc định 40%
+            else if (plan.BillingCycle.ToLowerInvariant() == "yearly")
+            {
+                discountPercent = 40;
+            }
+            amount = baseYearlyPrice * (100 - discountPercent) / 100;
+        }
+
+        // Lưu tạm thông tin PlanId và BillingCycle vào trường PaymentProvider
+        var providerInfo = $"PayOS_{plan.Id}_{requestCycle}";
+
         // Create transaction in Pending status
         var transaction = new PaymentTransaction
         {
             UserId = userId.Value,
             UserSubscriptionId = null,
-            AmountVnd = plan.PriceVnd,
+            AmountVnd = amount,
             Currency = "VND",
             PaymentMethod = "VietQR",
-            PaymentProvider = "PayOS",
+            PaymentProvider = providerInfo,
             Status = PaymentStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
@@ -55,10 +79,13 @@ public sealed class PaymentsController(
         try
         {
             // For PayOS, the description must be alphanumeric and between 1-25 characters.
-            var desc = plan.Code.ToLower() == "premium" ? "Eleven Premium" : "Eleven Pro";
+            var desc = plan.Code.ToUpper() == "PREMIUM" ? "Eleven Premium" : "Eleven Pro";
+            if (requestCycle == "yearly") desc += " Yr";
+            if (desc.Length > 25) desc = desc.Substring(0, 25);
+            
             var checkoutUrl = await payOsService.CreatePaymentLinkAsync(
                 transaction.Id,
-                plan.PriceVnd,
+                amount,
                 desc,
                 request.ReturnUrl,
                 request.CancelUrl,
@@ -201,8 +228,30 @@ public sealed class PaymentsController(
             transaction.ProviderTransactionRef = reference;
         }
 
-        var plan = await dbContext.SubscriptionPlans
-            .FirstOrDefaultAsync(p => p.PriceVnd == transaction.AmountVnd && p.IsActive, cancellationToken);
+        // Parse planId và billingCycle từ trường PaymentProvider
+        SubscriptionPlan? plan = null;
+        var cycle = "monthly";
+
+        if (transaction.PaymentProvider != null && transaction.PaymentProvider.StartsWith("PayOS_"))
+        {
+            var parts = transaction.PaymentProvider.Split('_');
+            if (parts.Length >= 3 && long.TryParse(parts[1], out var planId))
+            {
+                plan = await dbContext.SubscriptionPlans.FirstOrDefaultAsync(p => p.Id == planId, cancellationToken);
+                cycle = parts[2];
+            }
+        }
+
+        // Fallback về logic cũ nếu không parse được
+        if (plan == null)
+        {
+            plan = await dbContext.SubscriptionPlans
+                .FirstOrDefaultAsync(p => p.PriceVnd == transaction.AmountVnd && p.IsActive, cancellationToken);
+            if (plan != null)
+            {
+                cycle = plan.BillingCycle.ToLowerInvariant();
+            }
+        }
 
         UserSubscription? userSub = null;
         if (plan != null)
@@ -222,7 +271,7 @@ public sealed class PaymentsController(
                 PlanId = plan.Id,
                 Status = SubscriptionStatus.Active,
                 StartAt = now,
-                EndAt = plan.BillingCycle.ToLowerInvariant() == "yearly"
+                EndAt = cycle == "yearly"
                     ? now.AddYears(1)
                     : now.AddMonths(1),
                 AutoRenew = true,
@@ -281,4 +330,5 @@ public sealed class CreatePaymentLinkRequest
     public long PlanId { get; set; }
     public string? ReturnUrl { get; set; }
     public string? CancelUrl { get; set; }
+    public string? BillingCycle { get; set; }
 }
