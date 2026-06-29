@@ -9,13 +9,12 @@ import {
   ChevronRight,
   BookOpen,
   Flame,
-  Check,
-  Activity
+  Check
 } from "lucide-react";
 import { notificationsApi } from "../lib/notifications";
-import flameCharacterWave from "../assets/flame_character_wave.gif";
 import xpImg from "../assets/xp-img.png";
 import CourseImage from "../components/CourseImage";
+import xinChaoVideo from "../assets/videoCourse/W00489.mp4";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -302,194 +301,274 @@ export default function HomePage() {
       variants={sectionStagger}
       className="min-h-screen bg-transparent py-8 md:py-10"
     >
-      <div className="container max-w-6xl mx-auto px-4 md:px-6 space-y-8">
+      <style>{`
+        @keyframes scan {
+          0% {
+            top: 0%;
+          }
+          50% {
+            top: 100%;
+          }
+          100% {
+            top: 0%;
+          }
+        }
+      `}</style>
 
-        {/* ─── ROW 1: WELCOME BANNER & STATS ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      <div className="container mx-auto px-4 md:px-6 space-y-12">
 
-          {/* Welcome glassmorphic banner */}
+        {/* ─── GRID CHÍNH 2 CỘT (TRÊN) ─── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          
+          {/* CỘT TRÁI (40% width ~ 5 cols): Video Cử chỉ Ngôn Ngữ Ký Hiệu VSL */}
           <motion.div
             variants={fadeInUp}
-            className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 h-full"
+            className="lg:col-span-5 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 flex flex-col justify-between h-[650px] relative overflow-hidden group"
           >
-            <div className="space-y-4 max-w-md text-center md:text-left">
-              <h1 className="text-3xl font-black text-slate-800 leading-tight">
-                Chào mừng trở lại,<br />
-                <span className="bg-gradient-to-r from-[#2d6a4f] to-[#3a8e63] bg-clip-text text-transparent">{user?.fullName || "Người học"}!</span>
-              </h1>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Học ngôn ngữ ký hiệu mở ra cánh cửa kết nối mới. Mỗi bài học là một bước tiến gần hơn đến sự sẻ chia và đồng cảm!
-              </p>
+            {/* Soft decorative background glow */}
+            <div className="absolute top-0 left-0 w-32 h-32 rounded-full bg-emerald-500/5 blur-[50px] pointer-events-none" />
 
-              {/* Badges */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 pt-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-[10px] font-extrabold text-[#2d6a4f] select-none">
-                  <Flame size={12} className="fill-[#2d6a4f] shrink-0" />
-                  {loginDays} ngày liên tiếp
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[10px] font-extrabold text-amber-600 select-none">
-                  <img src={xpImg} className="w-3.5 h-3.5 object-contain shrink-0" alt="XP" />
-                  {accumulatedXp} XP tích lũy
-                </span>
-              </div>
-            </div>
-
-            {/* Premium waving greeting hand icon */}
-            <div className="relative flex items-center justify-center h-28 w-28 shrink-0 select-none bg-gradient-to-br from-[#ebf5ef] to-[#d4ebde] rounded-[24px] border border-[#2d6a4f]/10 shadow-[0_8px_20px_rgba(45,106,79,0.05)] overflow-hidden group">
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.4)_0%,rgba(255,255,255,0)_60%)]" />
-              <div className="absolute inset-2 rounded-[20px] border border-dashed border-[#2d6a4f]/20 animate-[spin_12s_linear_infinite]" />
-              <div className="absolute inset-3 rounded-[18px] bg-white/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <img
-                  src={flameCharacterWave}
-                  alt="Waving Greeting"
-                  className="w-full h-full object-cover rounded-[15px]"
-                />
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Right quick stats stacked (Equal height using flex flex-col items-stretch h-full) */}
-          <div className="flex flex-col gap-4 h-full justify-between items-stretch">
-
-            {/* Stat 1: Word Count Widget */}
-            <motion.div
-              variants={fadeInUp}
-              className="flex-1 bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
-            >
-              <div>
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Từ ngữ đã học</p>
-                <p className="text-xl font-black text-slate-800 mt-1">
-                  {learnedWords} <span className="text-xs font-bold text-slate-400">từ</span>
-                </p>
-                <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Số từ đã học</p>
-              </div>
-              <div className="w-11 h-11 rounded-full bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
-                <BookOpen size={18} className="text-[#2d6a4f]" />
-              </div>
-            </motion.div>
-
-            {/* Stat 2: Learning Hours Widget */}
-            <motion.div
-              variants={fadeInUp}
-              className="flex-1 bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300"
-            >
-              <div>
-                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Tổng giờ học</p>
-                <p className="text-xl font-black text-slate-800 mt-1">
-                  {learningHours} <span className="text-xs font-bold text-slate-400">giờ</span>
-                </p>
-                <p className="text-[9px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">Thời gian luyện tập</p>
-              </div>
-              <div className="w-11 h-11 rounded-full bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
-                <Clock size={18} className="text-[#2d6a4f]" />
-              </div>
-            </motion.div>
-
-          </div>
-        </div>
-
-        {/* ─── ROW 2: AI PRACTICE & ACTIVE LESSON ─── */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-
-          {/* AI Vision Card (60% width equivalent) */}
-          <motion.div
-            variants={fadeInUp}
-            className="lg:col-span-3 relative rounded-[32px] overflow-hidden bg-gradient-to-br from-[#0c1912] via-[#102318] to-[#08120d] border border-emerald-950/30 p-8 flex flex-col justify-between shadow-[0_15px_35px_rgba(24,35,30,0.15)] group h-[350px] md:h-[340px]"
-          >
-            {/* Cyber Grid/HUD backdrop */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(45,106,79,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(45,106,79,0.04)_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none opacity-40" />
-
-            {/* Interactive glowing light blobs */}
-            <div className="absolute top-1/4 right-1/4 w-32 h-32 rounded-full bg-[#2d6a4f]/10 blur-[60px] pointer-events-none group-hover:bg-[#2d6a4f]/15 transition-all duration-500" />
-
-            {/* Top high-tech tag */}
-            <div className="relative z-10 flex items-center gap-2">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              <span className="text-[9px] font-bold text-slate-400 tracking-[0.18em] uppercase">AI Vision Ready</span>
-            </div>
-
-            {/* Description */}
-            <div className="relative z-10 max-w-sm mt-4 lg:mt-0">
-              <h3 className="text-2xl font-black text-white leading-tight mb-3">Luyện tập & Kiểm tra AI</h3>
-              <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                Sử dụng AI tiên tiến nhất để thực hành học tập, tự kiểm tra và đánh giá độ chính xác của các cử chỉ ký hiệu trực tiếp qua webcam.
-              </p>
-            </div>
-
-            {/* Action button */}
-            <div className="relative z-10 flex items-center pt-4 lg:pt-0">
-              <Link
-                to="/ai-history"
-                className="inline-flex items-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold px-6 py-3.5 rounded-2xl shadow-lg shadow-[#2d6a4f]/10 transition-all hover:scale-[1.02] duration-300"
-              >
-                <Clock size={14} />
-                Xem Lịch sử AI
-              </Link>
-            </div>
-
-            {/* High-tech HUD scanning graphic on the right */}
-            <div className="absolute right-0 bottom-0 top-0 w-1/2 hidden md:flex items-center justify-end p-6 pointer-events-none overflow-hidden select-none">
-              <div className="relative w-48 h-48 border border-emerald-500/10 rounded-full flex items-center justify-center">
-                <div className="absolute inset-2 border border-dashed border-emerald-500/10 rounded-full" />
-                <div className="absolute inset-8 border border-emerald-500/20 rounded-full animate-[spin_20s_linear_infinite]" />
-                <div className="absolute inset-16 border-2 border-emerald-500/30 rounded-full border-t-transparent animate-[spin_4s_linear_infinite]" />
-                <div className="w-12 h-12 bg-[#2d6a4f]/15 rounded-full flex items-center justify-center">
-                  <Activity size={18} className="text-emerald-400" />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Active Course Card (40% width equivalent) */}
-          <motion.div
-            variants={fadeInUp}
-            className="lg:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-8 flex flex-col items-center text-center justify-between h-[350px] md:h-[340px] hover:shadow-[0_20px_40px_rgba(24,35,51,0.06)] transition-all duration-300"
-          >
-            {/* Circular Illustration */}
-            <div className="relative w-24 h-24 rounded-full overflow-hidden bg-slate-50 border-4 border-slate-100 shadow-sm flex items-center justify-center shrink-0">
-              <CourseImage
-                coverMediaId={courseToShow?.coverMediaId}
-                title={courseToShow?.title || "VSL"}
-                className="w-full h-full object-cover animate-fade-in"
+            {/* Video Container (Hiển thị sạch sẽ, bo góc tròn sang trọng) */}
+            <div className="relative flex-1 rounded-2xl overflow-hidden border border-slate-100 shadow-inner bg-slate-900 group/video">
+              <video
+                src={xinChaoVideo}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover select-none scale-[1.01] transition-transform duration-500"
               />
             </div>
 
-            <div className="w-full">
-              <h4 className="text-base font-bold text-slate-800 leading-snug">
-                Tiếp tục học: {hasJoined && courseToShow ? courseToShow.title : "Chưa tham gia"}
-              </h4>
-              <p className="text-[10px] text-slate-400 font-extrabold mt-1 uppercase tracking-wider">
-                {hasJoined && courseToShow ? `Cơ bản • Tiến độ ${Math.round(courseProgress)}%` : "Học ngay"}
+            {/* Description & Intro */}
+            <div className="relative z-10 space-y-4 mt-5">
+              <div className="space-y-1.5">
+                <span className="text-[10px] font-black text-[#2d6a4f] tracking-[0.15em] uppercase">VSL Sign Language</span>
+                <h3 className="text-xl font-black text-slate-800 leading-tight">Học Ngôn Ngữ Ký Hiệu Với AI</h3>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                Chào mừng bạn đến với **Eleven**! Giao diện học tập được định hướng rõ ràng qua sơ đồ lộ trình (Learning Roadmap). Hệ thống giúp bạn kết nối với cộng đồng người khiếm thính thông qua các bài học ngôn ngữ ký hiệu (VSL) trực quan, kết hợp với công nghệ camera chấm điểm AI.
               </p>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full px-2">
-              <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-1.5">
-                <span>Tiến độ bài</span>
-                <span className="text-slate-600">{hasJoined && courseToShow ? `${Math.round(courseProgress)}%` : "0%"}</span>
+              <div className="pt-2 flex gap-3">
+                <Link
+                  to="/khoa-hoc"
+                  className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300"
+                >
+                  <BookOpen size={14} />
+                  Vào Học Ngay
+                </Link>
+                <Link
+                  to="/tu-dien"
+                  className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 text-xs font-bold rounded-2xl border border-slate-200/60 transition-colors duration-300"
+                >
+                  Tra Từ Điển
+                </Link>
               </div>
-              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: hasJoined && courseToShow ? `${courseProgress}%` : "0%" }} />
-              </div>
             </div>
-
-            {/* CTA Button */}
-            <Link
-              to={hasJoined && courseToShow ? `/khoa-hoc/${courseToShow.id}` : "/khoa-hoc"}
-              className="w-full h-11 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300"
-            >
-              {hasJoined && courseToShow ? "Học tiếp" : "Học ngay"}
-              <ArrowRight size={14} />
-            </Link>
           </motion.div>
+
+          {/* CỘT PHẢI (60% width ~ 7 cols): Welcome + Stats + Active Course + AI Practice (Cùng chiều cao với cột trái) */}
+          <div className="lg:col-span-7 flex flex-col justify-between gap-8 h-full">
+            
+            {/* ROW 1: Welcome Banner & Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch flex-1">
+              
+              {/* Banner (2/3 width) */}
+              <motion.div
+                variants={fadeInUp}
+                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col justify-between h-full min-h-[220px]"
+              >
+                <div className="space-y-3">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-[10px] font-extrabold text-[#2d6a4f] select-none">
+                    Hệ Thống Học Ngôn Ngữ Ký Hiệu Việt Nam (VSL)
+                  </div>
+                  <h1 className="text-2xl md:text-3xl font-black text-slate-800 leading-tight">
+                    Chào mừng trở lại,<br />
+                    <span className="bg-gradient-to-r from-[#2d6a4f] to-[#3a8e63] bg-clip-text text-transparent">{user?.fullName || "Người học"}!</span>
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-sm">
+                    Mỗi ngày học tập là một bước tiến gần hơn đến thế giới của sự sẻ chia và thấu hiểu. Cùng rèn luyện nhé!
+                  </p>
+                </div>
+                
+                {/* Badges */}
+                <div className="flex flex-wrap items-center gap-2 pt-4">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-[10px] font-extrabold text-[#2d6a4f] select-none">
+                    <Flame size={12} className="fill-[#2d6a4f] shrink-0" />
+                    {loginDays} ngày liên tiếp
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[10px] font-extrabold text-amber-600 select-none">
+                    <img src={xpImg} className="w-3.5 h-3.5 object-contain shrink-0" alt="XP" />
+                    {accumulatedXp} XP tích lũy
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* Stats stacked (1/3 width) */}
+              <div className="flex flex-col gap-4 justify-between h-full">
+                
+                {/* Words */}
+                <motion.div
+                  variants={fadeInUp}
+                  className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300 flex-1"
+                >
+                  <div>
+                    <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Từ đã học</p>
+                    <p className="text-lg font-black text-slate-800 mt-1">
+                      {learnedWords} <span className="text-xs font-bold text-slate-400">từ</span>
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
+                    <BookOpen size={18} className="text-[#2d6a4f]" />
+                  </div>
+                </motion.div>
+
+                {/* Hours */}
+                <motion.div
+                  variants={fadeInUp}
+                  className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300 flex-1"
+                >
+                  <div>
+                    <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Giờ học</p>
+                    <p className="text-lg font-black text-slate-800 mt-1">
+                      {learningHours} <span className="text-xs font-bold text-slate-400">giờ</span>
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
+                    <Clock size={18} className="text-[#2d6a4f]" />
+                  </div>
+                </motion.div>
+                
+              </div>
+
+            </div>
+
+            {/* ROW 2: Active Lesson (Full width, horizontal layout) */}
+            <div className="flex-1 w-full">
+              <motion.div
+                variants={fadeInUp}
+                className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 flex flex-col md:flex-row items-stretch gap-6 h-full min-h-[220px] hover:shadow-[0_20px_40px_rgba(24,35,51,0.06)] transition-all duration-300"
+              >
+                
+                {/* Left side: Cover image takes up large portion */}
+                <div className="w-full md:w-[240px] h-[140px] md:h-auto rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm shrink-0 flex items-center justify-center">
+                  <CourseImage
+                    coverMediaId={courseToShow?.coverMediaId}
+                    title={courseToShow?.title || "VSL"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                {/* Right side: Course details, description, progress, CTA */}
+                <div className="flex-1 flex flex-col justify-between space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] text-[#2d6a4f] bg-emerald-50 px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider">Bài học đang học</span>
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">
+                        {hasJoined && courseToShow ? `Mức độ: ${courseToShow.level || "Cơ bản"}` : ""}
+                      </span>
+                    </div>
+                    
+                    <h4 className="text-lg font-black text-slate-800 leading-snug">
+                      {hasJoined && courseToShow ? courseToShow.title : "Chưa đăng ký khóa học"}
+                    </h4>
+                    
+                    {/* Course description */}
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed line-clamp-2">
+                      {hasJoined && courseToShow && courseToShow.description 
+                        ? courseToShow.description 
+                        : "Bắt đầu hành trình chinh phục ngôn ngữ ký hiệu cùng với Eleven ngay hôm nay."}
+                    </p>
+                  </div>
+
+                  {/* Progress and CTA button */}
+                  <div className="space-y-4">
+                    <div className="w-full">
+                      <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-1">
+                        <span>Tiến độ bài</span>
+                        <span className="text-slate-600">{hasJoined && courseToShow ? `${Math.round(courseProgress)}%` : "0%"}</span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: hasJoined && courseToShow ? `${courseProgress}%` : "0%" }} />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Link
+                        to={hasJoined && courseToShow ? `/khoa-hoc/${courseToShow.id}` : "/khoa-hoc"}
+                        className="h-11 px-6 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300 animate-pulse-slow w-full md:w-auto"
+                      >
+                        {hasJoined && courseToShow ? "Học Tiếp Bài Học" : "Tìm Khóa Học Phù Hợp"}
+                        <ArrowRight size={14} />
+                      </Link>
+                    </div>
+                  </div>
+
+                </div>
+
+              </motion.div>
+            </div>
+
+          </div>
 
         </div>
 
-        {/* ─── ROW 3: RECENT LESSONS ─── */}
+        {/* ─── ROW 3: LEARNING ROADMAP (LỘ TRÌNH HỌC TẬP) ─── */}
+        <div className="space-y-6 pt-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-800">Lộ Trình Học Tập VSL</h2>
+            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Sơ đồ các giai đoạn rèn luyện ngôn ngữ ký hiệu</p>
+          </div>
+
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.02)] p-8 relative overflow-hidden">
+            
+            {/* Background connection path line */}
+            <div className="absolute top-1/2 left-20 right-20 h-1 bg-slate-100 -translate-y-8 hidden md:block z-0" />
+            <div className="absolute top-1/2 left-20 w-[45%] h-1 bg-gradient-to-r from-emerald-500 to-[#2d6a4f] -translate-y-8 hidden md:block z-0" />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+              
+              {/* Milestone 1 */}
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                  <Check size={22} className="stroke-[3]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">Giai đoạn 1</span>
+                  <h4 className="text-sm font-bold text-slate-800 mt-1">Nhập Môn (Cơ bản)</h4>
+                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Làm quen với bảng chữ cái, số đếm và chủ đề chào hỏi giao tiếp thông thường.</p>
+                </div>
+              </div>
+
+              {/* Milestone 2 */}
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                  <Clock size={20} className="stroke-[3]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-[#2d6a4f] px-2 py-0.5 rounded-full">Đang rèn luyện</span>
+                  <h4 className="text-sm font-bold text-slate-800 mt-1">Hội Thoại Gia Đình</h4>
+                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Học từ vựng và mẫu câu giao tiếp về gia đình, đồ ăn thức uống, màu sắc và cảm xúc.</p>
+                </div>
+              </div>
+
+              {/* Milestone 3 */}
+              <div className="flex flex-col items-center text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
+                  <BookOpen size={20} className="stroke-[2.5]" />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[8px] font-black uppercase bg-slate-100 border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full">Chưa mở khóa</span>
+                  <h4 className="text-sm font-bold text-slate-500 mt-1">Nâng Cao & Xã Hội</h4>
+                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Mở rộng chủ đề trường học, giao thông công cộng, thời tiết và tương tác cộng đồng phức tạp.</p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {/* ─── ROW 4: RECENT LESSONS ─── */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
