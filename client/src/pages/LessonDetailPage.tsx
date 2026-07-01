@@ -451,7 +451,10 @@ export default function LessonDetailPage() {
       setIsVideoWatched(true);
       setTimeout(() => {
         setShowFreeQuiz(false);
-        setShowUpgradeModal(true);
+        const dismissed = localStorage.getItem("hide_upgrade_ai_modal");
+        if (!dismissed) {
+          setShowUpgradeModal(true);
+        }
       }, 1500);
     } else {
       setFreeQuizResult("incorrect");
@@ -923,12 +926,27 @@ export default function LessonDetailPage() {
                 Nâng cấp tài khoản Pro
               </Link>
               <button
-                onClick={() => setShowUpgradeModal(false)}
+                onClick={() => {
+                  const checkbox = document.getElementById("hide-upgrade-modal-checkbox") as HTMLInputElement;
+                  if (checkbox?.checked) {
+                    localStorage.setItem("hide_upgrade_ai_modal", "true");
+                  }
+                  setShowUpgradeModal(false);
+                }}
                 className="w-full py-3 border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-colors"
               >
                 Để sau, tiếp tục học Free
               </button>
             </div>
+
+            <label className="flex items-center gap-2 mt-4 cursor-pointer select-none relative z-10 justify-center">
+              <input
+                id="hide-upgrade-modal-checkbox"
+                type="checkbox"
+                className="w-4 h-4 rounded border-slate-300 text-[#3c6d44] focus:ring-[#3c6d44] accent-[#3c6d44] cursor-pointer"
+              />
+              <span className="text-[11px] text-slate-400 font-semibold">Không hiện lại thông báo này</span>
+            </label>
           </div>
         </div>
       )}
