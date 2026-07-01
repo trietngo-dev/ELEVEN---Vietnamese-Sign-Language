@@ -832,7 +832,19 @@ export default function LessonDetailPage() {
             </div>
 
             <h3 className="text-lg font-black text-slate-800 mb-2">Cử chỉ trong video có nghĩa là gì?</h3>
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">Chọn ý nghĩa chính xác tương ứng với cử chỉ ngôn ngữ ký hiệu bạn vừa xem.</p>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">Chọn ý nghĩa chính xác tương ứng với cử chỉ ngôn ngữ ký hiệu bạn vừa xem.</p>
+
+            {/* Lesson Video Preview */}
+            <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black mb-5 shadow-inner">
+              <video
+                src={videoUrl || videoXinChao}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
 
             {/* Options */}
             <div className="flex flex-col gap-2.5 mb-6">
