@@ -272,7 +272,7 @@ export default function LessonDetailPage() {
 
   const handleContinueLearning = () => {
     setShowCompletionModal(false);
-    
+
     // 1. Kiểm tra bài tiếp theo
     if (nextLesson) {
       // 2. Pro user: Tự động qua bài tiếp theo. Free user: Chỉ tự động qua bài tiếp theo khi cùng moduleId
@@ -489,9 +489,6 @@ export default function LessonDetailPage() {
                 className="w-full h-full object-contain"
                 onEnded={() => {
                   setIsVideoWatched(true);
-                  if (!isUserPremium) {
-                    setAiScore(100);
-                  }
                 }}
               />
             </div>
@@ -654,12 +651,12 @@ export default function LessonDetailPage() {
             {isUserPremium ? (
               <div className="bg-gradient-to-br from-[#f4fbf6] to-[#e8f5ec] rounded-[32px] border border-[#d4ebd9] p-6 relative overflow-hidden shadow-sm animate-pulse-slow">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-                
+
                 <div className="flex items-center gap-2 text-[#3c6d44] mb-3 relative z-10">
                   <Bot size={18} />
                   <h3 className="text-xs font-black uppercase tracking-wider">Rèn luyện cử chỉ VSL</h3>
                 </div>
-                
+
                 <p className="text-xs text-[#3c6d44]/80 font-semibold mb-4 relative z-10 leading-relaxed">
                   Học viên Pro: Bật Camera AI để hệ thống nhận diện và chấm điểm động tác tay của bạn tức thời.
                 </p>
@@ -685,12 +682,12 @@ export default function LessonDetailPage() {
             ) : (
               <div className="bg-gradient-to-br from-[#fffdf5] to-[#fef9e6] rounded-[32px] border border-[#fbf2d0] p-6 relative overflow-hidden shadow-sm">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-                
+
                 <div className="flex items-center gap-2 text-amber-600 mb-3 relative z-10">
                   <HelpCircle size={18} />
                   <h3 className="text-xs font-black uppercase tracking-wider">Kiểm tra ghi nhớ</h3>
                 </div>
-                
+
                 <p className="text-xs text-amber-700/80 font-semibold mb-4 relative z-10 leading-relaxed">
                   Học viên Free: Trả lời câu hỏi trắc nghiệm nhanh để xác minh mức độ hiểu và hoàn thành bài giảng.
                 </p>
@@ -705,11 +702,11 @@ export default function LessonDetailPage() {
                       : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                   )}
                 >
-                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh 📝
+                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh
                 </button>
                 {!isVideoWatched && (
                   <p className="text-[10px] text-red-500 font-bold mt-2.5 text-center relative z-10 animate-pulse">
-                    ⚠️ Vui lòng xem hết video để mở khóa trắc nghiệm
+                    Vui lòng xem hết video để mở khóa trắc nghiệm
                   </p>
                 )}
               </div>
