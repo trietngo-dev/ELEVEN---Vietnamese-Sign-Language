@@ -32,6 +32,9 @@ export default function LessonDetailPage() {
   const [progressId, setProgressId] = useState<number | null>(null);
   const [existingProgress, setExistingProgress] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
+  const [showChapterQuizPrompt, setShowChapterQuizPrompt] = useState(false);
+  const [allLessons, setAllLessons] = useState<any[]>([]);
 
   // Free user quiz states
   const [showFreeQuiz, setShowFreeQuiz] = useState(false);
@@ -93,6 +96,25 @@ export default function LessonDetailPage() {
             ...mockCourseLessons.filter(ml => !courseLessons.some(cl => cl.id === ml.id)),
             ...courseLessons
           ].sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+
+          setAllLessons(mergedLessons);
+
+          // Fetch all completed lessons for course completion check
+          try {
+            const allProgRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers });
+            let apiCompleted: number[] = [];
+            if (allProgRes.ok) {
+              const progData = await allProgRes.json();
+              const items = progData.items || (Array.isArray(progData) ? progData : progData.items) || [];
+              apiCompleted = items.filter((p: any) => p.userId === userId && p.status === 2).map((p: any) => p.lessonId);
+            }
+            const mockCompleted = mergedLessons
+              .filter((l: any) => ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023"].includes(l.id.toString()) && localStorage.getItem(`mock_lesson_progress_${l.id}`) === "completed")
+              .map((l: any) => l.id);
+            setCompletedLessonIds([...apiCompleted, ...mockCompleted]);
+          } catch (err) {
+            console.error("Lỗi khi tải danh sách bài học đã hoàn thành", err);
+          }
 
           const currentIdx = mergedLessons.findIndex((l: any) => l.id.toString() === id);
           if (currentIdx !== -1 && currentIdx < mergedLessons.length - 1) {
@@ -202,6 +224,10 @@ export default function LessonDetailPage() {
           localStorage.setItem(`mock_lesson_progress_${id}`, "completed");
           setIsCompleted(true);
           setShowCompletionModal(true);
+          const parsedId = parseInt(id || "0");
+          if (parsedId > 0) {
+            setCompletedLessonIds(prev => Array.from(new Set([...prev, parsedId])));
+          }
         } else {
           try {
             const authToken = tokenStorage.getToken();
@@ -232,6 +258,7 @@ export default function LessonDetailPage() {
             if (res.ok) {
               setIsCompleted(true);
               setShowCompletionModal(true);
+              setCompletedLessonIds(prev => Array.from(new Set([...prev, lesson.id])));
             }
           } catch (error) {
             console.error("Lỗi khi cập nhật tiến độ bài học", error);
@@ -242,6 +269,36 @@ export default function LessonDetailPage() {
 
     completeLesson();
   }, [isVideoWatched, aiScore, isCompleted, lesson, user, id]);
+
+  const handleContinueLearning = () => {
+    setShowCompletionModal(false);
+    
+    // 1. Kiểm tra bài tiếp theo
+    if (nextLesson) {
+      // 2. Pro user: Tự động qua bài tiếp theo. Free user: Chỉ tự động qua bài tiếp theo khi cùng moduleId
+      const isSameModule = nextLesson.moduleId === lesson.moduleId;
+      if (isUserPremium || isSameModule) {
+        setIsVideoWatched(false);
+        setAiScore(null);
+        setIsCompleted(false);
+        navigate(`/bai-hoc/${nextLesson.id}`);
+        return;
+      }
+    }
+
+    // 3. Nếu là bài cuối của chương hoặc bài tiếp theo thuộc chương khác
+    // Kiểm tra xem tất cả bài học trong chương hiện tại đã được hoàn thành hay chưa
+    const currentModuleLessons = allLessons.filter((l: any) => l.moduleId === lesson.moduleId);
+    const isAllModuleCompleted = currentModuleLessons.every((l: any) => completedLessonIds.includes(l.id) || l.id === lesson.id);
+
+    if (isAllModuleCompleted) {
+      // Hiện modal nhắc nhở làm bài kiểm tra toàn chương để qua chương tiếp theo
+      setShowChapterQuizPrompt(true);
+    } else {
+      // Nếu chưa hoàn thành các bài khác trong chương, chỉ đưa về trang chi tiết khóa học
+      navigate(`/khoa-hoc/${lesson.courseId}`);
+    }
+  };
 
   const handleToggleSave = async () => {
     if (isSaving || !lesson) return;
@@ -445,26 +502,21 @@ export default function LessonDetailPage() {
                 <h1 className="text-4xl font-black text-slate-800 mb-3">{lesson.title}</h1>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-slate-400">Cấp độ: {lesson.difficultyLevel || "Cơ bản"}</span>
-                  {lesson.xpReward && (
-                    <span className="bg-[#fef3c7] text-[#71540a] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
-                      +{lesson.xpReward} XP
-                    </span>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <button
+                {/* <button
                   onClick={handleInteractionClick}
                   className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all animate-pulse-slow"
                 >
                   <Bot size={18} /> Tương tác với AI
-                </button>
+                </button> */}
                 <button
                   onClick={handleToggleSave}
                   disabled={isSaving}
                   className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-75 ${isSaved
-                      ? "bg-[#efca4c] text-[#4b3c14] hover:bg-[#e7c13f] shadow-[#efca4c]/20"
-                      : "bg-[#3c6d44] text-white hover:bg-[#315736] shadow-[#3c6d44]/20"
+                    ? "bg-[#efca4c] text-[#4b3c14] hover:bg-[#e7c13f] shadow-[#efca4c]/20"
+                    : "bg-[#3c6d44] text-white hover:bg-[#315736] shadow-[#3c6d44]/20"
                     }`}
                 >
                   <Bookmark size={18} className={isSaved ? "fill-[#4b3c14] text-[#4b3c14]" : "text-white"} />
@@ -509,7 +561,7 @@ export default function LessonDetailPage() {
                   </li>
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-black">3</span>
-                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Đừng quên thực hành với Trợ lý AI để lấy XP nhé!</p>
+                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Đừng quên thực hành sau bài học nhé!</p>
                   </li>
                 </ul>
               </div>
@@ -576,7 +628,7 @@ export default function LessonDetailPage() {
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${aiScore !== null ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
                       {aiScore !== null ? "✓" : "2"}
                     </span>
-                    <span className={`font-semibold ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra với AI</span>
+                    <span className={`font-semibold ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra từ đã học</span>
                   </div>
                   <span className={`font-bold px-2 py-0.5 rounded-md ${aiScore !== null ? "bg-[#fdf8e9] text-[#71540a]" : "bg-slate-50 text-slate-400"}`}>
                     {aiScore !== null ? `Đạt ${Math.round(aiScore)}%` : "Chưa làm"}
@@ -602,62 +654,71 @@ export default function LessonDetailPage() {
             {isUserPremium ? (
               <div className="bg-gradient-to-br from-[#f4fbf6] to-[#e8f5ec] rounded-[32px] border border-[#d4ebd9] p-6 relative overflow-hidden shadow-sm animate-pulse-slow">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-
+                
                 <div className="flex items-center gap-2 text-[#3c6d44] mb-3 relative z-10">
                   <Bot size={18} />
                   <h3 className="text-xs font-black uppercase tracking-wider">Rèn luyện cử chỉ VSL</h3>
                 </div>
-
+                
                 <p className="text-xs text-[#3c6d44]/80 font-semibold mb-4 relative z-10 leading-relaxed">
                   Học viên Pro: Bật Camera AI để hệ thống nhận diện và chấm điểm động tác tay của bạn tức thời.
                 </p>
 
                 <button
+                  disabled={!isVideoWatched}
                   onClick={handleInteractionClick}
-                  className="w-full py-3 bg-[#3c6d44] hover:bg-[#315736] text-white rounded-2xl font-black text-xs shadow-md shadow-[#3c6d44]/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative z-10"
+                  className={cn(
+                    "w-full py-3 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
+                    isVideoWatched
+                      ? "bg-[#3c6d44] hover:bg-[#315736] hover:-translate-y-0.5 shadow-md shadow-[#3c6d44]/20 cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  )}
                 >
                   <Bot size={14} /> Kiểm tra cử chỉ với AI 🤖
                 </button>
+                {!isVideoWatched && (
+                  <p className="text-[10px] text-red-500 font-bold mt-2.5 text-center relative z-10 animate-pulse">
+                    ⚠️ Vui lòng xem hết video để mở khóa kiểm tra AI
+                  </p>
+                )}
               </div>
             ) : (
               <div className="bg-gradient-to-br from-[#fffdf5] to-[#fef9e6] rounded-[32px] border border-[#fbf2d0] p-6 relative overflow-hidden shadow-sm">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-
+                
                 <div className="flex items-center gap-2 text-amber-600 mb-3 relative z-10">
                   <HelpCircle size={18} />
                   <h3 className="text-xs font-black uppercase tracking-wider">Kiểm tra ghi nhớ</h3>
                 </div>
-
+                
                 <p className="text-xs text-amber-700/80 font-semibold mb-4 relative z-10 leading-relaxed">
                   Học viên Free: Trả lời câu hỏi trắc nghiệm nhanh để xác minh mức độ hiểu và hoàn thành bài giảng.
                 </p>
 
                 <button
+                  disabled={!isVideoWatched}
                   onClick={handleInteractionClick}
-                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-xs shadow-md shadow-amber-500/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative z-10"
+                  className={cn(
+                    "w-full py-3 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
+                    isVideoWatched
+                      ? "bg-amber-500 hover:bg-amber-600 hover:-translate-y-0.5 shadow-md shadow-amber-500/20 cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  )}
                 >
-                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh
+                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh 📝
                 </button>
+                {!isVideoWatched && (
+                  <p className="text-[10px] text-red-500 font-bold mt-2.5 text-center relative z-10 animate-pulse">
+                    ⚠️ Vui lòng xem hết video để mở khóa trắc nghiệm
+                  </p>
+                )}
               </div>
             )}
 
             {/* Next Button */}
             <button
               disabled={!isCompleted}
-              onClick={() => {
-                if (nextLesson) {
-                  // Reset player completion states for the next lesson
-                  setIsVideoWatched(false);
-                  setAiScore(null);
-                  setIsCompleted(false);
-                  setShowCompletionModal(false);
-                  // Navigate to the next lesson page
-                  navigate(`/bai-hoc/${nextLesson.id}`);
-                } else {
-                  // Navigate back to course detail page
-                  navigate(`/khoa-hoc/${lesson.courseId}`);
-                }
-              }}
+              onClick={handleContinueLearning}
               className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold transition-all shadow-xl ${isCompleted
                 ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
                 : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
@@ -694,10 +755,7 @@ export default function LessonDetailPage() {
             </div>
 
             <button
-              onClick={() => {
-                setShowCompletionModal(false);
-                navigate(-1);
-              }}
+              onClick={handleContinueLearning}
               className="w-full py-4 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center font-bold hover:bg-[#315736] transition-all shadow-xl shadow-[#3c6d44]/20 hover:-translate-y-0.5 relative z-10"
             >
               Tiếp tục học
@@ -705,6 +763,49 @@ export default function LessonDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Chapter Quiz Prompt Modal */}
+      {showChapterQuizPrompt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            <button onClick={() => setShowChapterQuizPrompt(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
+              <X size={20} />
+            </button>
+
+            <div className="size-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner relative z-10 animate-bounce-slow">
+              <Trophy size={40} className="text-amber-500" />
+            </div>
+
+            <h2 className="text-xl font-black text-slate-800 mb-2 relative z-10">Hoàn thành chương học!</h2>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed relative z-10">
+              Chúc mừng bạn đã hoàn thành tất cả bài giảng trong chương học này! Hãy kiểm tra toàn chương để ôn luyện và mở khóa chương học tiếp theo nhé.
+            </p>
+
+            <div className="flex flex-col gap-3 relative z-10">
+              <button
+                onClick={() => {
+                  setShowChapterQuizPrompt(false);
+                  navigate(`/khoa-hoc/${lesson.courseId}?startQuiz=${lesson.moduleId}`);
+                }}
+                className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-amber-500/20 hover:-translate-y-0.5 transition-all"
+              >
+                Làm test chương 📝
+              </button>
+              <button
+                onClick={() => {
+                  setShowChapterQuizPrompt(false);
+                  navigate(`/khoa-hoc/${lesson.courseId}`);
+                }}
+                className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs transition-all"
+              >
+                Về trang khóa học
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Practice Modal Overlay */}
       {showAI && (
         <AIPracticePopup
@@ -822,7 +923,7 @@ export default function LessonDetailPage() {
                 onClick={() => setShowUpgradeModal(false)}
                 className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center font-bold hover:bg-[#315736] transition-all shadow-xl shadow-[#3c6d44]/10 hover:-translate-y-0.5"
               >
-                Nâng cấp tài khoản Pro 👑
+                Nâng cấp tài khoản Pro
               </Link>
               <button
                 onClick={() => setShowUpgradeModal(false)}
