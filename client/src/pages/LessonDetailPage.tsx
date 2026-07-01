@@ -411,7 +411,7 @@ export default function LessonDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
-      <div className="mx-auto max-w-[1600px] px-6 md:px-12 py-6">
+      <div className="container mx-auto px-4 md:px-6 py-6">
 
         {/* Back Button */}
         <div className="my-6">

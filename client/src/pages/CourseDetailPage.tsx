@@ -326,7 +326,7 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
-      <div className="mx-auto max-w-[1600px] px-6 md:px-12 py-10">
+      <div className="container mx-auto px-4 md:px-6 py-10">
 
         {/* Top Bar: Back Button + Premium Notice */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
