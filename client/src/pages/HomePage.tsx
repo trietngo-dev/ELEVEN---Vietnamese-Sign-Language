@@ -14,7 +14,7 @@ import {
 import { notificationsApi } from "../lib/notifications";
 import xpImg from "../assets/xp-img.png";
 import CourseImage from "../components/CourseImage";
-import xinChaoVideo from "../assets/videoCourse/W00489.mp4";
+import instructorVideo from "../assets/instructor.mp4";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -331,7 +331,7 @@ export default function HomePage() {
             {/* Video Container (Hiển thị sạch sẽ, bo góc tròn sang trọng) */}
             <div className="relative flex-1 rounded-2xl overflow-hidden border border-slate-100 shadow-inner bg-slate-900 group/video">
               <video
-                src={xinChaoVideo}
+                src={instructorVideo}
                 autoPlay
                 loop
                 muted
@@ -392,14 +392,14 @@ export default function HomePage() {
                 </div>
                 
                 {/* Badges */}
-                <div className="flex flex-wrap items-center gap-2 pt-4">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1.5 text-[10px] font-extrabold text-[#2d6a4f] select-none">
-                    <Flame size={12} className="fill-[#2d6a4f] shrink-0" />
-                    {loginDays} ngày liên tiếp
+                <div className="flex flex-row items-center gap-3 pt-4">
+                  <span className="inline-flex items-center gap-2 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-4 py-2 text-xs font-bold text-[#2d6a4f] shadow-sm select-none shrink-0">
+                    <Flame size={16} className="fill-[#2d6a4f] shrink-0 text-orange-500" />
+                    <span className="text-base font-black text-emerald-800">{loginDays}</span> ngày liên tiếp
                   </span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-1.5 text-[10px] font-extrabold text-amber-600 select-none">
-                    <img src={xpImg} className="w-3.5 h-3.5 object-contain shrink-0" alt="XP" />
-                    {accumulatedXp} XP tích lũy
+                  <span className="inline-flex items-center gap-2 rounded-2xl bg-amber-50/70 border border-amber-100 px-4 py-2 text-xs font-bold text-amber-700 shadow-sm select-none shrink-0">
+                    <img src={xpImg} className="w-5 h-5 object-contain shrink-0" alt="XP" />
+                    <span className="text-base font-black text-amber-800">{accumulatedXp}</span> XP tích lũy
                   </span>
                 </div>
               </motion.div>
@@ -534,8 +534,8 @@ export default function HomePage() {
                   <Check size={22} className="stroke-[3]" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">Giai đoạn 1</span>
-                  <h4 className="text-sm font-bold text-slate-800 mt-1">Nhập Môn (Cơ bản)</h4>
+                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">Cấp độ 1</span>
+                  <h4 className="text-sm font-bold text-slate-800 mt-1">Cơ bản</h4>
                   <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Làm quen với bảng chữ cái, số đếm và chủ đề chào hỏi giao tiếp thông thường.</p>
                 </div>
               </div>
@@ -546,9 +546,9 @@ export default function HomePage() {
                   <Clock size={20} className="stroke-[3]" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-[#2d6a4f] px-2 py-0.5 rounded-full">Đang rèn luyện</span>
-                  <h4 className="text-sm font-bold text-slate-800 mt-1">Hội Thoại Gia Đình</h4>
-                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Học từ vựng và mẫu câu giao tiếp về gia đình, đồ ăn thức uống, màu sắc và cảm xúc.</p>
+                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-[#2d6a4f] px-2 py-0.5 rounded-full">Đang học</span>
+                  <h4 className="text-sm font-bold text-slate-800 mt-1">Trung cấp</h4>
+                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Rèn luyện từ vựng và mẫu câu về địa lý, hành chính, cảm xúc và các thói quen sinh hoạt.</p>
                 </div>
               </div>
 
@@ -559,8 +559,8 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[8px] font-black uppercase bg-slate-100 border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full">Chưa mở khóa</span>
-                  <h4 className="text-sm font-bold text-slate-500 mt-1">Nâng Cao & Xã Hội</h4>
-                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Mở rộng chủ đề trường học, giao thông công cộng, thời tiết và tương tác cộng đồng phức tạp.</p>
+                  <h4 className="text-sm font-bold text-slate-500 mt-1">Nâng cao</h4>
+                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Mở rộng vốn từ vựng về các sự kiện xã hội, lễ hội truyền thống, cùng các thuật ngữ kinh tế & thương mại.</p>
                 </div>
               </div>
 

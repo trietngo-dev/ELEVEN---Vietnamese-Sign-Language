@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, PlayCircle, Lock, Crown, Star, Loader2, Plus, CheckCircle2, AlertCircle, X, HelpCircle } from "lucide-react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
@@ -10,6 +10,7 @@ import { mockCourses, mockModules, mockLessons } from "../lib/coursesData";
 export default function CourseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const [course, setCourse] = useState<any>(null);
@@ -36,9 +37,12 @@ export default function CourseDetailPage() {
   const [quizQuestion, setQuizQuestion] = useState<any>(null);
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [quizResult, setQuizResult] = useState<"correct" | "incorrect" | null>(null);
+  const [quizResult, setQuizResult] = useState<"correct" | "incorrect" | "next" | null>(null);
   const [completedQuizModuleIds, setCompletedQuizModuleIds] = useState<number[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [quizLessons, setQuizLessons] = useState<any[]>([]);
+  const [quizCurrentIndex, setQuizCurrentIndex] = useState(0);
+  const [quizCorrectCount, setQuizCorrectCount] = useState(0);
 
   // Load completed quiz module IDs from localStorage
   useEffect(() => {
@@ -152,6 +156,22 @@ export default function CourseDetailPage() {
     };
     if (id) loadData();
   }, [id, user]);
+
+  useEffect(() => {
+    if (!isLoading && modules.length > 0 && lessons.length > 0) {
+      const queryParams = new URLSearchParams(location.search);
+      const startQuizModuleId = queryParams.get("startQuiz");
+      if (startQuizModuleId) {
+        const targetModule = modules.find(m => m.id.toString() === startQuizModuleId);
+        if (targetModule) {
+          const moduleLessons = lessons.filter(l => l.moduleId === targetModule.id);
+          startQuiz(targetModule, moduleLessons);
+          // Clear query param to keep URL clean and prevent re-triggering
+          navigate(`/khoa-hoc/${id}`, { replace: true });
+        }
+      }
+    }
+  }, [isLoading, modules, lessons, location.search, id, navigate]);
   const totalTimeMinutes = useMemo(() => {
     return lessons.reduce((acc, l) => acc + (l.estimatedMinutes || 0), 0);
   }, [lessons]);
@@ -170,8 +190,8 @@ export default function CourseDetailPage() {
   };
 
   const courseReviews = useMemo(() => {
-    return reviews.filter((r: any) => 
-      r.categoryId === courseCategoryId && 
+    return reviews.filter((r: any) =>
+      r.categoryId === courseCategoryId &&
       r.subject === `CourseId:${id}`
     );
   }, [reviews, courseCategoryId, id]);
@@ -270,11 +290,13 @@ export default function CourseDetailPage() {
 
   const startQuiz = (module: any, moduleLessons: any[]) => {
     if (moduleLessons.length === 0) return;
-    const randomLesson = moduleLessons[Math.floor(Math.random() * moduleLessons.length)];
+    const shuffled = [...moduleLessons].sort(() => 0.5 - Math.random());
+    setQuizLessons(shuffled);
+    setQuizCurrentIndex(0);
+    setQuizCorrectCount(0);
     setQuizModule(module);
-    setQuizQuestion(randomLesson);
-    const options = generateQuizOptions(randomLesson.title);
-    setQuizOptions(options);
+    setQuizQuestion(shuffled[0]);
+    setQuizOptions(generateQuizOptions(shuffled[0].title));
     setSelectedOption(null);
     setQuizResult(null);
     setShowQuiz(true);
@@ -283,16 +305,50 @@ export default function CourseDetailPage() {
   const handleAnswerSubmit = () => {
     if (!selectedOption || !quizQuestion) return;
     if (selectedOption === quizQuestion.title) {
-      setQuizResult("correct");
-      localStorage.setItem(`quiz_completed_module_${quizModule.id}`, "true");
-      setCompletedQuizModuleIds(prev => [...prev, quizModule.id]);
-      setTimeout(() => {
-        setShowQuiz(false);
-        setShowUpgradeModal(true);
-      }, 1500);
+      const newCorrectCount = quizCorrectCount + 1;
+      setQuizCorrectCount(newCorrectCount);
+      const nextIndex = quizCurrentIndex + 1;
+
+      if (nextIndex >= quizLessons.length) {
+        // All questions answered correctly → quiz completed
+        setQuizResult("correct");
+        localStorage.setItem(`quiz_completed_module_${quizModule.id}`, "true");
+        setCompletedQuizModuleIds(prev => [...prev, quizModule.id]);
+      } else {
+        // Move to next question after a brief delay
+        setQuizResult("next");
+        setTimeout(() => {
+          setQuizCurrentIndex(nextIndex);
+          setQuizQuestion(quizLessons[nextIndex]);
+          setQuizOptions(generateQuizOptions(quizLessons[nextIndex].title));
+          setSelectedOption(null);
+          setQuizResult(null);
+        }, 800);
+      }
     } else {
       setQuizResult("incorrect");
     }
+  };
+
+  const handleQuizRewardClaim = async () => {
+    try {
+      const authToken = tokenStorage.getToken();
+      const userId = user?.id || 1;
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+      await fetch(`${API_BASE_URL}/api/user_profiles/${userId}/add-xp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+        },
+        body: JSON.stringify({ xpToAdd: 50 })
+      });
+    } catch (err) {
+      console.error("Lỗi khi cộng XP hoàn thành chương học", err);
+    }
+    setShowQuiz(false);
+    setShowUpgradeModal(true);
   };
 
   if (isLoading) {
@@ -309,7 +365,7 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="container mx-auto px-4 md:px-6 py-10">
 
         {/* Top Bar: Back Button + Premium Notice */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
@@ -421,7 +477,7 @@ export default function CourseDetailPage() {
           <div className="space-y-12">
             {modules.map((module, mIdx) => {
               const moduleLessons = lessons.filter(l => l.moduleId === module.id);
-              
+
               // Progression & premium lock check
               const isPremiumLocked = course.isPremium && !module.isPreview && !isUserPremium;
               const isFreeProgressLocked = !isUserPremium && mIdx > 0 && !completedQuizModuleIds.includes(modules[mIdx - 1].id);
@@ -472,25 +528,35 @@ export default function CourseDetailPage() {
                           <div className="flex items-center gap-4">
                             {isLocked ? (
                               <Lock size={20} className="text-slate-300 flex-shrink-0 ml-1" />
+                            ) : isLessonCompleted ? (
+                              <CheckCircle2 size={24} className="text-emerald-500 flex-shrink-0" aria-hidden="true" />
                             ) : (
-                              <PlayCircle size={24} className={cn("flex-shrink-0", isLessonCompleted ? "text-emerald-500" : "text-[#d9aa17]")} />
+                              <PlayCircle size={24} className="text-[#d9aa17] flex-shrink-0" />
                             )}
                             <div>
                               <h4 className={`font-bold text-[15px] ${isLocked ? "text-slate-400" : "text-slate-800"}`}>
                                 {lesson.title}
                                 {isLessonCompleted && (
-                                  <span className="ml-2 text-xs text-emerald-500 font-bold">(Đã học)</span>
+                                  <span className="ml-2 text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded-md">Đã học</span>
                                 )}
                               </h4>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {lesson.estimatedMinutes ? `${lesson.estimatedMinutes} phút` : "0 phút"} • {isLocked ? "Đang khóa" : "Sẵn sàng"}
+                              <p className="text-xs text-slate-400 mt-1">
+                                {lesson.estimatedMinutes ? `${lesson.estimatedMinutes} phút` : "0 phút"} • {isLocked ? "Đang khóa" : isLessonCompleted ? "Đã học" : "Sẵn sàng"}
                               </p>
                             </div>
                           </div>
                           {isLocked ? (
                             <Lock size={16} className="text-slate-300 mr-2" />
                           ) : (
-                            <Link to={`/bai-hoc/${lesson.id}`} className="px-6 py-2 rounded-xl bg-[#3c6d44] text-white text-[13px] font-bold hover:bg-[#315736] shadow-sm">
+                            <Link
+                              to={`/bai-hoc/${lesson.id}`}
+                              className={cn(
+                                "px-5 py-2 rounded-xl text-[13px] font-bold shadow-sm transition-all min-w-[90px] text-center",
+                                isLessonCompleted
+                                  ? "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60"
+                                  : "bg-[#3c6d44] text-white hover:bg-[#315736]"
+                              )}
+                            >
                               {isLessonCompleted ? "Học lại" : "Học"}
                             </Link>
                           )}
@@ -730,137 +796,173 @@ export default function CourseDetailPage() {
           </div>
         )}
 
-      {/* Quiz Modal */}
-      {showQuiz && quizQuestion && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 relative overflow-hidden animate-in zoom-in-95 duration-300">
-            <button 
-              onClick={() => setShowQuiz(false)} 
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="flex items-center gap-2.5 text-amber-600 mb-4 bg-amber-50 border border-amber-100/50 px-4 py-2 rounded-2xl w-fit">
-              <HelpCircle size={18} />
-              <span className="text-[11px] font-black uppercase tracking-wider">Bài test chương: {quizModule?.title}</span>
-            </div>
-
-            <h3 className="text-lg font-black text-slate-800 mb-2">Chọn từ đúng tương ứng với cử chỉ VSL</h3>
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">Xem video hướng dẫn bên dưới và chọn ý nghĩa chính xác của cử chỉ ngôn ngữ ký hiệu này.</p>
-
-            {/* Video preview */}
-            <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-sm mb-6 border border-slate-100">
-              <video 
-                src={quizQuestion.videoUrl} 
-                controls 
-                autoPlay 
-                loop 
-                muted 
-                className="w-full h-full object-contain"
-              />
-            </div>
-
-            {/* 4 Options Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              {quizOptions.map((opt) => {
-                const isSelected = selectedOption === opt;
-                return (
-                  <button
-                    key={opt}
-                    onClick={() => {
-                      if (quizResult !== "correct") {
-                        setSelectedOption(opt);
-                        setQuizResult(null);
-                      }
-                    }}
-                    disabled={quizResult === "correct"}
-                    className={cn(
-                      "p-4 rounded-2xl border text-sm font-bold transition-all text-center flex items-center justify-center min-h-[58px]",
-                      isSelected
-                        ? "border-[#3c6d44] bg-[#f4fbf6] text-[#3c6d44]"
-                        : "border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50/50"
-                    )}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Result display */}
-            {quizResult === "correct" && (
-              <div className="flex items-center gap-2.5 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6">
-                <CheckCircle2 size={20} className="shrink-0" />
-                <span className="text-xs font-bold leading-normal">Chính xác! Bạn đã hoàn thành bài test chương xuất sắc.</span>
-              </div>
-            )}
-            {quizResult === "incorrect" && (
-              <div className="flex items-center gap-2.5 text-red-600 bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
-                <AlertCircle size={20} className="shrink-0" />
-                <span className="text-xs font-bold leading-normal">Chưa đúng rồi! Hãy quan sát kỹ lại video cử chỉ và chọn lại nhé.</span>
-              </div>
-            )}
-
-            {/* Footer actions */}
-            <div className="flex justify-end gap-3 pt-2">
+        {/* Quiz Modal */}
+        {showQuiz && quizQuestion && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-8 relative overflow-hidden animate-in zoom-in-95 duration-300">
               <button
                 onClick={() => setShowQuiz(false)}
-                className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition-colors"
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
               >
-                Hủy bỏ
+                <X size={18} />
               </button>
-              <button
-                onClick={handleAnswerSubmit}
-                disabled={!selectedOption || quizResult === "correct"}
-                className="px-6 py-2.5 bg-[#3c6d44] hover:bg-[#315736] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#3c6d44]/20 disabled:opacity-50"
-              >
-                Xác nhận
-              </button>
+
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5 text-amber-600 bg-amber-50 border border-amber-100/50 px-4 py-2 rounded-2xl w-fit">
+                  <HelpCircle size={18} />
+                  <span className="text-[11px] font-black uppercase tracking-wider">Bài test chương: {quizModule?.title}</span>
+                </div>
+                <span className="text-xs font-black text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl">
+                  {quizCurrentIndex + 1}/{quizLessons.length}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-5">
+                <div
+                  className="h-full bg-[#3c6d44] rounded-full transition-all duration-500"
+                  style={{ width: `${((quizCurrentIndex + (quizResult === 'correct' ? 1 : 0)) / quizLessons.length) * 100}%` }}
+                />
+              </div>
+
+              <h3 className="text-lg font-black text-slate-800 mb-2">Chọn từ đúng tương ứng với cử chỉ VSL</h3>
+              <p className="text-xs text-slate-500 mb-4 leading-relaxed">Câu {quizCurrentIndex + 1}/{quizLessons.length}: Xem video bên dưới và chọn ý nghĩa chính xác.</p>
+
+              {/* Video preview */}
+              <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-sm mb-6 border border-slate-100">
+                <video
+                  src={quizQuestion.videoUrl}
+                  controls
+                  autoPlay
+                  loop
+                  muted
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              {/* 4 Options Grid */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {quizOptions.map((opt) => {
+                  const isSelected = selectedOption === opt;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => {
+                        if (quizResult !== "correct") {
+                          setSelectedOption(opt);
+                          setQuizResult(null);
+                        }
+                      }}
+                      disabled={quizResult === "correct"}
+                      className={cn(
+                        "p-4 rounded-2xl border text-sm font-bold transition-all text-center flex items-center justify-center min-h-[58px]",
+                        isSelected
+                          ? "border-[#3c6d44] bg-[#f4fbf6] text-[#3c6d44]"
+                          : "border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:bg-slate-50/50"
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Result display */}
+              {quizResult === "next" && (
+                <div className="flex items-center gap-2.5 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6 animate-pulse">
+                  <CheckCircle2 size={20} className="shrink-0" />
+                  <span className="text-xs font-bold leading-normal">Chính xác! Đang chuyển sang câu tiếp theo...</span>
+                </div>
+              )}
+              {quizResult === "correct" && (
+                <div className="flex flex-col gap-3 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-6 text-center items-center justify-center animate-pulse-slow">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 size={24} className="shrink-0 text-emerald-500" />
+                    <span className="text-sm font-black leading-normal">Xuất sắc! Bạn đã trả lời đúng tất cả {quizLessons.length} câu hỏi!</span>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl px-5 py-2 flex flex-col items-center justify-center gap-0.5 select-none">
+                    <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Phần thưởng hoàn thành</span>
+                    <span className="text-2xl font-black text-amber-600">+50 XP</span>
+                  </div>
+                </div>
+              )}
+              {quizResult === "incorrect" && (
+                <div className="flex items-center gap-2.5 text-red-600 bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
+                  <AlertCircle size={20} className="shrink-0" />
+                  <span className="text-xs font-bold leading-normal">Chưa đúng rồi! Hãy quan sát kỹ lại video cử chỉ và chọn lại nhé.</span>
+                </div>
+              )}
+
+              {/* Footer actions */}
+              <div className="flex justify-end gap-3 pt-2">
+                {quizResult === "correct" ? (
+                  <button
+                    onClick={handleQuizRewardClaim}
+                    className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm rounded-xl transition-all shadow-md shadow-amber-500/20"
+                  >
+                    Nhận 50 XP & Tiếp tục
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setShowQuiz(false)}
+                      className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition-colors"
+                    >
+                      Hủy bỏ
+                    </button>
+                    <button
+                      onClick={handleAnswerSubmit}
+                      disabled={!selectedOption}
+                      className="px-6 py-2.5 bg-[#3c6d44] hover:bg-[#315736] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#3c6d44]/20 disabled:opacity-50"
+                    >
+                      Xác nhận
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Upgrade Suggestion Modal */}
-      {showUpgradeModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-            <button 
-              onClick={() => setShowUpgradeModal(false)} 
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="size-20 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner relative z-10">
-              <Crown size={38} className="text-amber-500" />
-            </div>
-
-            <h2 className="text-xl font-black text-slate-800 mb-2 relative z-10">Mở khóa chương tiếp theo!</h2>
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed relative z-10 px-2">
-              Bạn đã hoàn thành bài test chương thành công. Để đạt hiệu quả học tập đột phá, sửa sai tư thế tay trực quan, hãy nâng cấp tài khoản Pro để kích hoạt **hệ thống chấm điểm AI qua Camera** nhé!
-            </p>
-
-            <div className="flex flex-col gap-2.5 relative z-10">
-              <Link
-                to="/nang-cap"
-                onClick={() => setShowUpgradeModal(false)}
-                className="w-full py-3.5 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold hover:bg-amber-600 transition-all shadow-xl shadow-amber-500/10 hover:-translate-y-0.5"
-              >
-                Nâng cấp tài khoản Pro 👑
-              </Link>
+        {/* Upgrade Suggestion Modal */}
+        {showUpgradeModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
               <button
                 onClick={() => setShowUpgradeModal(false)}
-                className="w-full py-3 border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-colors"
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
               >
-                Để sau, tiếp tục học Free
+                <X size={18} />
               </button>
+
+              <div className="size-20 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner relative z-10">
+                <Crown size={38} className="text-amber-500" />
+              </div>
+
+              <h2 className="text-xl font-black text-slate-800 mb-2 relative z-10">Mở khóa chương tiếp theo!</h2>
+              <p className="text-xs text-slate-500 mb-6 leading-relaxed relative z-10 px-2">
+                Bạn đã hoàn thành bài test chương thành công. Để đạt hiệu quả học tập đột phá, sửa sai tư thế tay trực quan, hãy nâng cấp tài khoản Pro để kích hoạt **hệ thống chấm điểm AI qua Camera** nhé!
+              </p>
+
+              <div className="flex flex-col gap-2.5 relative z-10">
+                <Link
+                  to="/nang-cap"
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="w-full py-3.5 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold hover:bg-amber-600 transition-all shadow-xl shadow-amber-500/10 hover:-translate-y-0.5"
+                >
+                  Nâng cấp tài khoản Pro
+                </Link>
+                <button
+                  onClick={() => setShowUpgradeModal(false)}
+                  className="w-full py-3 border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-colors"
+                >
+                  Để sau, tiếp tục học Free
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       </div>
     </div>
