@@ -37,9 +37,12 @@ export default function CourseDetailPage() {
   const [quizQuestion, setQuizQuestion] = useState<any>(null);
   const [quizOptions, setQuizOptions] = useState<string[]>([]);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [quizResult, setQuizResult] = useState<"correct" | "incorrect" | null>(null);
+  const [quizResult, setQuizResult] = useState<"correct" | "incorrect" | "next" | null>(null);
   const [completedQuizModuleIds, setCompletedQuizModuleIds] = useState<number[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [quizLessons, setQuizLessons] = useState<any[]>([]);
+  const [quizCurrentIndex, setQuizCurrentIndex] = useState(0);
+  const [quizCorrectCount, setQuizCorrectCount] = useState(0);
 
   // Load completed quiz module IDs from localStorage
   useEffect(() => {
@@ -287,11 +290,13 @@ export default function CourseDetailPage() {
 
   const startQuiz = (module: any, moduleLessons: any[]) => {
     if (moduleLessons.length === 0) return;
-    const randomLesson = moduleLessons[Math.floor(Math.random() * moduleLessons.length)];
+    const shuffled = [...moduleLessons].sort(() => 0.5 - Math.random());
+    setQuizLessons(shuffled);
+    setQuizCurrentIndex(0);
+    setQuizCorrectCount(0);
     setQuizModule(module);
-    setQuizQuestion(randomLesson);
-    const options = generateQuizOptions(randomLesson.title);
-    setQuizOptions(options);
+    setQuizQuestion(shuffled[0]);
+    setQuizOptions(generateQuizOptions(shuffled[0].title));
     setSelectedOption(null);
     setQuizResult(null);
     setShowQuiz(true);
@@ -300,9 +305,26 @@ export default function CourseDetailPage() {
   const handleAnswerSubmit = () => {
     if (!selectedOption || !quizQuestion) return;
     if (selectedOption === quizQuestion.title) {
-      setQuizResult("correct");
-      localStorage.setItem(`quiz_completed_module_${quizModule.id}`, "true");
-      setCompletedQuizModuleIds(prev => [...prev, quizModule.id]);
+      const newCorrectCount = quizCorrectCount + 1;
+      setQuizCorrectCount(newCorrectCount);
+      const nextIndex = quizCurrentIndex + 1;
+
+      if (nextIndex >= quizLessons.length) {
+        // All questions answered correctly → quiz completed
+        setQuizResult("correct");
+        localStorage.setItem(`quiz_completed_module_${quizModule.id}`, "true");
+        setCompletedQuizModuleIds(prev => [...prev, quizModule.id]);
+      } else {
+        // Move to next question after a brief delay
+        setQuizResult("next");
+        setTimeout(() => {
+          setQuizCurrentIndex(nextIndex);
+          setQuizQuestion(quizLessons[nextIndex]);
+          setQuizOptions(generateQuizOptions(quizLessons[nextIndex].title));
+          setSelectedOption(null);
+          setQuizResult(null);
+        }, 800);
+      }
     } else {
       setQuizResult("incorrect");
     }
@@ -785,13 +807,26 @@ export default function CourseDetailPage() {
                 <X size={18} />
               </button>
 
-              <div className="flex items-center gap-2.5 text-amber-600 mb-4 bg-amber-50 border border-amber-100/50 px-4 py-2 rounded-2xl w-fit">
-                <HelpCircle size={18} />
-                <span className="text-[11px] font-black uppercase tracking-wider">Bài test chương: {quizModule?.title}</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5 text-amber-600 bg-amber-50 border border-amber-100/50 px-4 py-2 rounded-2xl w-fit">
+                  <HelpCircle size={18} />
+                  <span className="text-[11px] font-black uppercase tracking-wider">Bài test chương: {quizModule?.title}</span>
+                </div>
+                <span className="text-xs font-black text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl">
+                  {quizCurrentIndex + 1}/{quizLessons.length}
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-5">
+                <div
+                  className="h-full bg-[#3c6d44] rounded-full transition-all duration-500"
+                  style={{ width: `${((quizCurrentIndex + (quizResult === 'correct' ? 1 : 0)) / quizLessons.length) * 100}%` }}
+                />
               </div>
 
               <h3 className="text-lg font-black text-slate-800 mb-2">Chọn từ đúng tương ứng với cử chỉ VSL</h3>
-              <p className="text-xs text-slate-500 mb-6 leading-relaxed">Xem video hướng dẫn bên dưới và chọn ý nghĩa chính xác của cử chỉ ngôn ngữ ký hiệu này.</p>
+              <p className="text-xs text-slate-500 mb-4 leading-relaxed">Câu {quizCurrentIndex + 1}/{quizLessons.length}: Xem video bên dưới và chọn ý nghĩa chính xác.</p>
 
               {/* Video preview */}
               <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-sm mb-6 border border-slate-100">
@@ -833,11 +868,17 @@ export default function CourseDetailPage() {
               </div>
 
               {/* Result display */}
+              {quizResult === "next" && (
+                <div className="flex items-center gap-2.5 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6 animate-pulse">
+                  <CheckCircle2 size={20} className="shrink-0" />
+                  <span className="text-xs font-bold leading-normal">Chính xác! Đang chuyển sang câu tiếp theo...</span>
+                </div>
+              )}
               {quizResult === "correct" && (
                 <div className="flex flex-col gap-3 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-6 text-center items-center justify-center animate-pulse-slow">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 size={24} className="shrink-0 text-emerald-500" />
-                    <span className="text-sm font-black leading-normal">Chính xác! Bạn đã vượt qua bài test chương!</span>
+                    <span className="text-sm font-black leading-normal">Xuất sắc! Bạn đã trả lời đúng tất cả {quizLessons.length} câu hỏi!</span>
                   </div>
                   <div className="bg-amber-50 border border-amber-100 rounded-xl px-5 py-2 flex flex-col items-center justify-center gap-0.5 select-none">
                     <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Phần thưởng hoàn thành</span>
