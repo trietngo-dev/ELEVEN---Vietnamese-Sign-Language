@@ -51,7 +51,7 @@ export default function LessonDetailPage() {
         const userId = user?.id || 1;
 
         // Check if the current lesson is from static mock data
-        const isMockLessonId = ["2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023"].includes(id || "");
+        const isMockLessonId = ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023"].includes(id || "");
 
         let data = null;
 
@@ -140,7 +140,7 @@ export default function LessonDetailPage() {
               const mapping = lessonVocabItems.find((lv: any) => lv.lessonId === data.id);
               if (mapping) {
                 setVocabId(mapping.vocabularyId);
-                
+
                 const vocabProgRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress?pageSize=1000`, { headers });
                 if (vocabProgRes.ok) {
                   const vocabProgData = await vocabProgRes.json();
@@ -196,7 +196,7 @@ export default function LessonDetailPage() {
   useEffect(() => {
     const completeLesson = async () => {
       if (isVideoWatched && aiScore !== null && !isCompleted && lesson) {
-        const isMockLessonId = ["2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023"].includes(id || "");
+        const isMockLessonId = ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023"].includes(id || "");
 
         if (isMockLessonId) {
           localStorage.setItem(`mock_lesson_progress_${id}`, "completed");
@@ -225,7 +225,7 @@ export default function LessonDetailPage() {
                 bestAccuracy: aiScore,
                 bestScore: aiScore,
                 totalTimeSeconds: lesson.estimatedMinutes * 60,
-                xpEarned: lesson.xpReward || 50
+                xpEarned: 0
               })
             });
 
@@ -378,7 +378,7 @@ export default function LessonDetailPage() {
       const uniqueIncorrect = Array.from(new Set(incorrect));
       const shuffled = uniqueIncorrect.sort(() => 0.5 - Math.random()).slice(0, 3);
       const options = [correct, ...shuffled].sort(() => 0.5 - Math.random());
-      
+
       setFreeQuizOptions(options);
       setSelectedFreeOption(null);
       setFreeQuizResult(null);
@@ -411,7 +411,7 @@ export default function LessonDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
-      <div className="mx-auto max-w-[1200px] px-6 py-6">
+      <div className="mx-auto max-w-[1600px] px-6 md:px-12 py-6">
 
         {/* Back Button */}
         <div className="my-6">
@@ -462,11 +462,10 @@ export default function LessonDetailPage() {
                 <button
                   onClick={handleToggleSave}
                   disabled={isSaving}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-75 ${
-                    isSaved
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-75 ${isSaved
                       ? "bg-[#efca4c] text-[#4b3c14] hover:bg-[#e7c13f] shadow-[#efca4c]/20"
                       : "bg-[#3c6d44] text-white hover:bg-[#315736] shadow-[#3c6d44]/20"
-                  }`}
+                    }`}
                 >
                   <Bookmark size={18} className={isSaved ? "fill-[#4b3c14] text-[#4b3c14]" : "text-white"} />
                   {isSaved ? "Đã lưu" : "Lưu từ"}
@@ -599,27 +598,48 @@ export default function LessonDetailPage() {
               </div>
             </div>
 
-            {/* Daily Challenge */}
-            <div className="bg-[#f4fbf6] rounded-[32px] border border-[#eef7ee] p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            {/* Practice & Verification Widget */}
+            {isUserPremium ? (
+              <div className="bg-gradient-to-br from-[#f4fbf6] to-[#e8f5ec] rounded-[32px] border border-[#d4ebd9] p-6 relative overflow-hidden shadow-sm animate-pulse-slow">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
 
-              <h3 className="text-sm font-black text-[#3c6d44] mb-2 relative z-10">Thử thách hàng ngày</h3>
-              <p className="text-xs text-[#3c6d44]/70 font-medium mb-6 relative z-10 leading-relaxed">
-                Hoàn thành 5 từ vựng giao tiếp để nhận huy hiệu mới!
-              </p>
+                <div className="flex items-center gap-2 text-[#3c6d44] mb-3 relative z-10">
+                  <Bot size={18} />
+                  <h3 className="text-xs font-black uppercase tracking-wider">Rèn luyện cử chỉ VSL</h3>
+                </div>
 
-              <div className="relative z-10">
-                <div className="w-full h-2 bg-[#d4e4d8] rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-[#3c6d44] w-[60%] rounded-full"></div>
-                </div>
-                <div className="flex justify-between items-center text-[10px] font-bold text-[#3c6d44]">
-                  <span>3/5 hoàn thành</span>
-                  <span>60%</span>
-                </div>
+                <p className="text-xs text-[#3c6d44]/80 font-semibold mb-4 relative z-10 leading-relaxed">
+                  Học viên Pro: Bật Camera AI để hệ thống nhận diện và chấm điểm động tác tay của bạn tức thời.
+                </p>
+
+                <button
+                  onClick={handleInteractionClick}
+                  className="w-full py-3 bg-[#3c6d44] hover:bg-[#315736] text-white rounded-2xl font-black text-xs shadow-md shadow-[#3c6d44]/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative z-10"
+                >
+                  <Bot size={14} /> Kiểm tra cử chỉ với AI 🤖
+                </button>
               </div>
+            ) : (
+              <div className="bg-gradient-to-br from-[#fffdf5] to-[#fef9e6] rounded-[32px] border border-[#fbf2d0] p-6 relative overflow-hidden shadow-sm">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
 
-              <Trophy size={100} strokeWidth={1} className="absolute -bottom-6 -right-6 text-[#3c6d44]/10 transform -rotate-12 pointer-events-none" />
-            </div>
+                <div className="flex items-center gap-2 text-amber-600 mb-3 relative z-10">
+                  <HelpCircle size={18} />
+                  <h3 className="text-xs font-black uppercase tracking-wider">Kiểm tra ghi nhớ</h3>
+                </div>
+
+                <p className="text-xs text-amber-700/80 font-semibold mb-4 relative z-10 leading-relaxed">
+                  Học viên Free: Trả lời câu hỏi trắc nghiệm nhanh để xác minh mức độ hiểu và hoàn thành bài giảng.
+                </p>
+
+                <button
+                  onClick={handleInteractionClick}
+                  className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-xs shadow-md shadow-amber-500/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 relative z-10"
+                >
+                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh
+                </button>
+              </div>
+            )}
 
             {/* Next Button */}
             <button
@@ -668,9 +688,9 @@ export default function LessonDetailPage() {
               Tuyệt vời! Bạn đã xem xong video và thực hành cử chỉ cực chuẩn với AI đạt <strong>{aiScore}%</strong>.
             </p>
 
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 relative z-10 flex flex-col items-center justify-center gap-1">
-              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Phần thưởng</span>
-              <span className="text-3xl font-black text-amber-600">+{lesson?.xpReward || 50} XP</span>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6 relative z-10 flex flex-col items-center justify-center gap-1 text-center">
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Trạng thái</span>
+              <span className="text-sm font-black text-emerald-800">Đã hoàn thành bài học này!</span>
             </div>
 
             <button
@@ -698,8 +718,8 @@ export default function LessonDetailPage() {
       {showFreeQuiz && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative overflow-hidden animate-in zoom-in-95 duration-300">
-            <button 
-              onClick={() => setShowFreeQuiz(false)} 
+            <button
+              onClick={() => setShowFreeQuiz(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
             >
               <X size={18} />
@@ -780,8 +800,8 @@ export default function LessonDetailPage() {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-            <button 
-              onClick={() => setShowUpgradeModal(false)} 
+            <button
+              onClick={() => setShowUpgradeModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
             >
               <X size={18} />

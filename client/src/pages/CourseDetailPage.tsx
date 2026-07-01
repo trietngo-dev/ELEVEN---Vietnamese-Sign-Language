@@ -286,13 +286,30 @@ export default function CourseDetailPage() {
       setQuizResult("correct");
       localStorage.setItem(`quiz_completed_module_${quizModule.id}`, "true");
       setCompletedQuizModuleIds(prev => [...prev, quizModule.id]);
-      setTimeout(() => {
-        setShowQuiz(false);
-        setShowUpgradeModal(true);
-      }, 1500);
     } else {
       setQuizResult("incorrect");
     }
+  };
+
+  const handleQuizRewardClaim = async () => {
+    try {
+      const authToken = tokenStorage.getToken();
+      const userId = user?.id || 1;
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+
+      await fetch(`${API_BASE_URL}/api/user_profiles/${userId}/add-xp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+        },
+        body: JSON.stringify({ xpToAdd: 50 })
+      });
+    } catch (err) {
+      console.error("Lỗi khi cộng XP hoàn thành chương học", err);
+    }
+    setShowQuiz(false);
+    setShowUpgradeModal(true);
   };
 
   if (isLoading) {
@@ -309,7 +326,7 @@ export default function CourseDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="mx-auto max-w-[1600px] px-6 md:px-12 py-10">
 
         {/* Top Bar: Back Button + Premium Notice */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
@@ -472,25 +489,35 @@ export default function CourseDetailPage() {
                           <div className="flex items-center gap-4">
                             {isLocked ? (
                               <Lock size={20} className="text-slate-300 flex-shrink-0 ml-1" />
+                            ) : isLessonCompleted ? (
+                              <CheckCircle2 size={24} className="text-emerald-500 flex-shrink-0" aria-hidden="true" />
                             ) : (
-                              <PlayCircle size={24} className={cn("flex-shrink-0", isLessonCompleted ? "text-emerald-500" : "text-[#d9aa17]")} />
+                              <PlayCircle size={24} className="text-[#d9aa17] flex-shrink-0" />
                             )}
                             <div>
                               <h4 className={`font-bold text-[15px] ${isLocked ? "text-slate-400" : "text-slate-800"}`}>
                                 {lesson.title}
                                 {isLessonCompleted && (
-                                  <span className="ml-2 text-xs text-emerald-500 font-bold">(Đã học)</span>
+                                  <span className="ml-2 text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded-md">Đã học</span>
                                 )}
                               </h4>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {lesson.estimatedMinutes ? `${lesson.estimatedMinutes} phút` : "0 phút"} • {isLocked ? "Đang khóa" : "Sẵn sàng"}
+                              <p className="text-xs text-slate-400 mt-1">
+                                {lesson.estimatedMinutes ? `${lesson.estimatedMinutes} phút` : "0 phút"} • {isLocked ? "Đang khóa" : isLessonCompleted ? "Đã học" : "Sẵn sàng"}
                               </p>
                             </div>
                           </div>
                           {isLocked ? (
                             <Lock size={16} className="text-slate-300 mr-2" />
                           ) : (
-                            <Link to={`/bai-hoc/${lesson.id}`} className="px-6 py-2 rounded-xl bg-[#3c6d44] text-white text-[13px] font-bold hover:bg-[#315736] shadow-sm">
+                            <Link 
+                              to={`/bai-hoc/${lesson.id}`} 
+                              className={cn(
+                                "px-5 py-2 rounded-xl text-[13px] font-bold shadow-sm transition-all min-w-[90px] text-center",
+                                isLessonCompleted 
+                                  ? "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60" 
+                                  : "bg-[#3c6d44] text-white hover:bg-[#315736]"
+                              )}
+                            >
                               {isLessonCompleted ? "Học lại" : "Học"}
                             </Link>
                           )}
@@ -790,9 +817,15 @@ export default function CourseDetailPage() {
 
             {/* Result display */}
             {quizResult === "correct" && (
-              <div className="flex items-center gap-2.5 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6">
-                <CheckCircle2 size={20} className="shrink-0" />
-                <span className="text-xs font-bold leading-normal">Chính xác! Bạn đã hoàn thành bài test chương xuất sắc.</span>
+              <div className="flex flex-col gap-3 text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-6 text-center items-center justify-center animate-pulse-slow">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={24} className="shrink-0 text-emerald-500" />
+                  <span className="text-sm font-black leading-normal">Chính xác! Bạn đã vượt qua bài test chương!</span>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 rounded-xl px-5 py-2 flex flex-col items-center justify-center gap-0.5 select-none">
+                  <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Phần thưởng hoàn thành</span>
+                  <span className="text-2xl font-black text-amber-600">+50 XP</span>
+                </div>
               </div>
             )}
             {quizResult === "incorrect" && (
@@ -804,19 +837,30 @@ export default function CourseDetailPage() {
 
             {/* Footer actions */}
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                onClick={() => setShowQuiz(false)}
-                className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                onClick={handleAnswerSubmit}
-                disabled={!selectedOption || quizResult === "correct"}
-                className="px-6 py-2.5 bg-[#3c6d44] hover:bg-[#315736] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#3c6d44]/20 disabled:opacity-50"
-              >
-                Xác nhận
-              </button>
+              {quizResult === "correct" ? (
+                <button
+                  onClick={handleQuizRewardClaim}
+                  className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm rounded-xl transition-all shadow-md shadow-amber-500/20"
+                >
+                  Nhận 50 XP & Tiếp tục
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowQuiz(false)}
+                    className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-sm transition-colors"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    onClick={handleAnswerSubmit}
+                    disabled={!selectedOption}
+                    className="px-6 py-2.5 bg-[#3c6d44] hover:bg-[#315736] text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-[#3c6d44]/20 disabled:opacity-50"
+                  >
+                    Xác nhận
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
