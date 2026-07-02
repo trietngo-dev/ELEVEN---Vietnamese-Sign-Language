@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
 import '../models/user_model.dart';
+import '../../core/utils/error_handler.dart';
 
 class AuthRemoteDataSource {
   final DioClient _dioClient;
@@ -47,7 +48,7 @@ class AuthRemoteDataSource {
         throw Exception(response.data['message'] ?? 'Đăng nhập thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ hoặc sai thông tin.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ hoặc sai thông tin.');
       throw Exception(message);
     } catch (e) {
       throw Exception('Lỗi không xác định: ${e.toString()}');
@@ -93,7 +94,7 @@ class AuthRemoteDataSource {
         throw Exception(response.data['message'] ?? 'Đăng ký thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ hoặc email đã tồn tại.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ hoặc email đã tồn tại.');
       throw Exception(message);
     } catch (e) {
       throw Exception('Lỗi không xác định: ${e.toString()}');
@@ -198,7 +199,7 @@ class AuthRemoteDataSource {
     } on fb.FirebaseAuthException catch (e) {
       throw Exception('Lỗi Firebase Auth: ${e.message}');
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     } catch (e) {
       throw Exception(e.toString().replaceAll('Exception: ', ''));
@@ -221,7 +222,7 @@ class AuthRemoteDataSource {
 
       await logout();
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     } catch (e) {
       throw Exception(e.toString().replaceAll('Exception: ', ''));
@@ -263,7 +264,7 @@ class AuthRemoteDataSource {
         throw Exception(putResponse.data['message'] ?? 'Cập nhật thông tin thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     } catch (e) {
       throw Exception(e.toString().replaceAll('Exception: ', ''));
@@ -306,7 +307,7 @@ class AuthRemoteDataSource {
         throw Exception(putResponse.data?['message'] ?? 'Cập nhật số điện thoại thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     } catch (e) {
       throw Exception(e.toString().replaceAll('Exception: ', ''));
@@ -326,7 +327,7 @@ class AuthRemoteDataSource {
         throw Exception(response.data?['message'] ?? 'Thay đổi mật khẩu thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ hoặc mật khẩu hiện tại không đúng.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ hoặc mật khẩu hiện tại không đúng.');
       throw Exception(message);
     } catch (e) {
       throw Exception(e.toString().replaceAll('Exception: ', ''));

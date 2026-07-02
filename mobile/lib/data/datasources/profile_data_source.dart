@@ -1,11 +1,10 @@
 import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
-
-
 import '../../core/network/dio_client.dart';
 import '../models/avatar_frame_model.dart';
 import '../models/badge_model.dart';
 import '../models/notification_model.dart';
+import '../../core/utils/error_handler.dart';
 
 class ProfileDataSource {
   final DioClient _dioClient;
@@ -21,7 +20,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể tải thông tin hồ sơ.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ khi lấy hồ sơ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ khi lấy hồ sơ.'));
     }
   }
 
@@ -34,7 +33,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể cập nhật hồ sơ.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi cập nhật hồ sơ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi cập nhật hồ sơ.'));
     }
   }
 
@@ -50,7 +49,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể cộng XP.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi khi cộng XP.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi khi cộng XP.'));
     }
   }
 
@@ -64,7 +63,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể tải danh sách khung ảnh.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi tải danh sách khung ảnh.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi tải danh sách khung ảnh.'));
     }
   }
 
@@ -91,7 +90,7 @@ class ProfileDataSource {
       }
       throw Exception('Giao dịch đổi khung không thành công.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi khi đổi khung ảnh.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi khi đổi khung ảnh.'));
     }
   }
 
@@ -107,7 +106,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể trang bị khung ảnh.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi khi trang bị khung ảnh.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi khi trang bị khung ảnh.'));
     }
   }
 
@@ -215,7 +214,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể lấy chi tiết tài khoản.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi lấy thông tin tài khoản.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi lấy thông tin tài khoản.'));
     }
   }
 
@@ -228,7 +227,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể tải tệp tin đa phương tiện.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi tải tệp tin.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi tải tệp tin.'));
     }
   }
 
@@ -251,7 +250,7 @@ class ProfileDataSource {
       }
       throw Exception('Tải ảnh đại diện thất bại.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi tải ảnh đại diện lên máy chủ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi tải ảnh đại diện lên máy chủ.'));
     }
   }
 
@@ -267,7 +266,7 @@ class ProfileDataSource {
       }
       throw Exception('Cập nhật ảnh đại diện thất bại.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi cập nhật ảnh đại diện.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi cập nhật ảnh đại diện.'));
     }
   }
 
@@ -316,7 +315,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể tải các gói dịch vụ.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối khi tải các gói dịch vụ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối khi tải các gói dịch vụ.'));
     }
   }
 
@@ -347,7 +346,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể cập nhật thông tin tài khoản.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi cập nhật thông tin.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi cập nhật thông tin.'));
     }
   }
 
@@ -365,7 +364,7 @@ class ProfileDataSource {
         throw Exception('Không thể đổi mật khẩu.');
       }
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi đổi mật khẩu.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi đổi mật khẩu.'));
     }
   }
 
@@ -389,7 +388,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể tạo liên kết thanh toán.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối khi tạo link thanh toán.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối khi tạo link thanh toán.'));
     }
   }
 
@@ -404,7 +403,7 @@ class ProfileDataSource {
       }
       throw Exception('Không thể kiểm tra trạng thái thanh toán.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối khi kiểm tra trạng thái.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối khi kiểm tra trạng thái.'));
     }
   }
 

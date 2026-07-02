@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, CheckCircle2, Mail, ShieldCheck, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { authApi } from "../lib/auth";
+import { useAuth } from "../context/AuthContext";
 
 type Step = "email" | "code" | "done";
 
 export default function DeleteAccountPage() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
@@ -49,6 +51,7 @@ export default function DeleteAccountPage() {
         email: normalizedEmail,
         code: code.trim()
       });
+      logout();
       setStep("done");
       setMessage("Tài khoản đã được xóa thành công.");
     } catch (err: any) {

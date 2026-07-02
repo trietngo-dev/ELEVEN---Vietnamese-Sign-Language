@@ -17,7 +17,7 @@ interface AuthSliderLayoutProps {
 
 function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
   const { common, authPages } = viText;
-  const { login, loginWithGoogle, register } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const [isLogin, setIsLogin] = useState(initialMode === "login");
@@ -28,110 +28,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
     setIsLogin(initialMode === "login");
   }, [initialMode]);
 
-  // Google Sign In Integration
-  const isLoginRef = useRef(isLogin);
-  useEffect(() => {
-    isLoginRef.current = isLogin;
-  }, [isLogin]);
 
-  const [googleInitialized, setGoogleInitialized] = useState(false);
-
-  const handleGoogleCredentialResponse = async (response: any) => {
-    if (!response.credential) return;
-    
-    const currentIsLogin = isLoginRef.current;
-    if (currentIsLogin) {
-      setIsLoginSubmitting(true);
-      setLoginError(null);
-    } else {
-      setIsRegSubmitting(true);
-      setRegError(null);
-    }
-
-    try {
-      const user = await loginWithGoogle(response.credential);
-      if (user?.role === "admin") {
-        navigate("/admin/dashboard");
-      } else {
-        navigate("/home-page");
-      }
-    } catch (err: any) {
-      const errMsg = err.message || "Đăng nhập Google thất bại. Vui lòng thử lại.";
-      if (currentIsLogin) {
-        setLoginError(errMsg);
-      } else {
-        setRegError(errMsg);
-      }
-    } finally {
-      setIsLoginSubmitting(false);
-      setIsRegSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    const initGoogleGSI = () => {
-      if ((window as any).google?.accounts?.id) {
-        (window as any).google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "100827282828-mockclientid.apps.googleusercontent.com",
-          callback: handleGoogleCredentialResponse,
-        });
-        setGoogleInitialized(true);
-      }
-    };
-
-    if ((window as any).google?.accounts?.id) {
-      initGoogleGSI();
-    } else {
-      const checkInterval = setInterval(() => {
-        if ((window as any).google?.accounts?.id) {
-          initGoogleGSI();
-          clearInterval(checkInterval);
-        }
-      }, 500);
-
-      const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-      if (script) {
-        script.addEventListener("load", initGoogleGSI);
-      }
-
-      return () => {
-        clearInterval(checkInterval);
-        if (script) {
-          script.removeEventListener("load", initGoogleGSI);
-        }
-      };
-    }
-  }, []);
-
-  useEffect(() => {
-    if (googleInitialized && (window as any).google?.accounts?.id) {
-      const timer = setTimeout(() => {
-        const loginBtn = document.getElementById("google-signin-btn-login");
-        if (loginBtn) {
-          (window as any).google.accounts.id.renderButton(loginBtn, {
-            theme: "outline",
-            size: "large",
-            text: "signin_with",
-            shape: "pill",
-            width: 240,
-          });
-        }
-
-        const registerBtn = document.getElementById("google-signin-btn-register");
-        if (registerBtn) {
-          (window as any).google.accounts.id.renderButton(registerBtn, {
-            theme: "outline",
-            size: "large",
-            text: "signup_with",
-            shape: "pill",
-            width: 240,
-          });
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [googleInitialized, isLogin]);
 
   // Login Form States
   const [loginEmail, setLoginEmail] = useState("");
@@ -390,27 +287,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     {isLoginSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : authPages.login.submitButton}
                   </Button>
 
-                  <div className="flex items-center gap-3 my-2">
-                    <span className="h-px flex-1 bg-[#dce5df]" />
-                    <span className="text-[10px] font-bold text-[#9aa7b0] uppercase tracking-wider">{authPages.socialDivider}</span>
-                    <span className="h-px flex-1 bg-[#dce5df]" />
-                  </div>
 
-                  <div className="flex justify-center items-center w-full my-1">
-                    <div className="h-10 flex items-center justify-center overflow-hidden">
-                      {googleInitialized ? (
-                        <div id="google-signin-btn-login" className="w-full flex justify-center"></div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="inline-flex h-10 px-6 items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.82rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8] w-[240px]"
-                        >
-                          <span className="text-[1.05rem] font-black bg-[linear-gradient(90deg,#ea4335_0%,#fbbc05_33%,#34a853_66%,#4285f4_100%)] bg-clip-text text-transparent">G</span>
-                          {authPages.providers.google}
-                        </button>
-                      )}
-                    </div>
-                  </div>
 
                   <p className="text-center text-xs text-[#8d99a2] mt-4">
                     {authPages.login.noAccount}{" "}
@@ -571,27 +448,7 @@ function AuthSliderLayout({ initialMode }: AuthSliderLayoutProps) {
                     {isRegSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : authPages.register.submitButton}
                   </Button>
 
-                  <div className="flex items-center gap-3 my-1">
-                    <span className="h-px flex-1 bg-[#dce5df]" />
-                    <span className="text-[9px] font-bold text-[#9aa7b0] uppercase tracking-wider">{authPages.socialDivider}</span>
-                    <span className="h-px flex-1 bg-[#dce5df]" />
-                  </div>
 
-                  <div className="flex justify-center items-center w-full my-1">
-                    <div className="h-9 flex items-center justify-center overflow-hidden">
-                      {googleInitialized ? (
-                        <div id="google-signin-btn-register" className="w-full flex justify-center"></div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="inline-flex h-9 px-6 items-center justify-center gap-2 rounded-full border border-[#dde6e1] bg-white text-[0.78rem] font-bold text-[#2e3c48] hover:bg-[#f7faf8] w-[240px]"
-                        >
-                          <span className="text-[1rem] font-black bg-[linear-gradient(90deg,#ea4335_0%,#fbbc05_33%,#34a853_66%,#4285f4_100%)] bg-clip-text text-transparent">G</span>
-                          {authPages.providers.google}
-                        </button>
-                      )}
-                    </div>
-                  </div>
 
                   <p className="text-center text-xs text-[#8d99a2] mt-3">
                     {authPages.register.hasAccount}{" "}

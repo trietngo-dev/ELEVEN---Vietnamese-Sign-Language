@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/utils/error_handler.dart';
 
 class GestureDataSource {
   final DioClient _dioClient;
@@ -21,7 +22,7 @@ class GestureDataSource {
       }
       throw Exception('Dự đoán cử chỉ thất bại.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ nhận diện cử chỉ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ nhận diện cử chỉ.'));
     }
   }
 
@@ -40,7 +41,7 @@ class GestureDataSource {
       }
       throw Exception('Trau chuốt câu dịch cử chỉ thất bại.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ dịch thuật.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ dịch thuật.'));
     }
   }
 }

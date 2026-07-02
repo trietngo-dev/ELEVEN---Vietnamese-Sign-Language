@@ -3,6 +3,7 @@ import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
 import '../models/course_model.dart';
 import '../models/lesson_model.dart';
+import '../../core/utils/error_handler.dart';
 
 class CourseDataSource {
   final DioClient _dioClient;
@@ -96,7 +97,7 @@ class CourseDataSource {
       }
       throw Exception('Không thể lấy danh sách khóa học.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ khi lấy khóa học.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ khi lấy khóa học.'));
     }
   }
 
@@ -171,7 +172,7 @@ class CourseDataSource {
       }
       throw Exception('Không thể lấy chi tiết khóa học.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.'));
     }
   }
 
@@ -198,7 +199,7 @@ class CourseDataSource {
       }
       throw Exception('Không thể lấy danh sách bài học.');
     } on DioException catch (e) {
-      throw Exception(e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.');
+      throw Exception(ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.'));
     }
   }
 

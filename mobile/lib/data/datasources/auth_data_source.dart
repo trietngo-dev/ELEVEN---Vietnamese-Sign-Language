@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
 import '../models/user_model.dart';
+import '../../core/utils/error_handler.dart';
 
 class AuthDataSource {
   final DioClient _dioClient;
@@ -45,7 +46,7 @@ class AuthDataSource {
         throw Exception(response.data['message'] ?? 'Đăng nhập thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     }
   }
@@ -89,7 +90,7 @@ class AuthDataSource {
         throw Exception(response.data['message'] ?? 'Đăng ký thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     }
   }
@@ -144,7 +145,7 @@ class AuthDataSource {
         throw Exception(response.data['message'] ?? 'Đăng nhập Google thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ.');
       throw Exception(message);
     }
   }
@@ -159,7 +160,7 @@ class AuthDataSource {
         throw Exception(response.data['message'] ?? 'Xóa tài khoản thất bại.');
       }
     } on DioException catch (e) {
-      final message = e.response?.data?['message'] ?? 'Lỗi kết nối máy chủ khi xóa tài khoản.';
+      final message = ErrorHandler.getDioErrorMessage(e, 'Lỗi kết nối máy chủ khi xóa tài khoản.');
       throw Exception(message);
     }
   }
