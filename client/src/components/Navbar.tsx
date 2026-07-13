@@ -325,22 +325,25 @@ function Navbar() {
             <ul className="m-0 flex list-none items-center gap-8 p-0">
               {navbar.items
                 .filter(item => isAuthenticated || item.to !== "/tu-dien")
-                .map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      className={({ isActive }) =>
-                        cn(
-                          "relative py-1 text-[15px] font-medium text-slate-500 transition-colors hover:text-[#3c6c44]",
-                          isActive &&
-                          "text-[#3c6c44] font-semibold",
-                        )
-                      }
-                    >
-                      {item.label}
-                    </NavLink>
-                  </li>
-                ))}
+                .map((item) => {
+                  const resolveTo = item.to === "/" && isAuthenticated ? "/home-page" : item.to;
+                  return (
+                    <li key={item.to}>
+                      <NavLink
+                        to={resolveTo}
+                        className={({ isActive }) =>
+                          cn(
+                            "relative py-1 border-b-2 border-transparent pb-1 text-[17px] font-semibold text-slate-600 transition-colors hover:text-[#3c6c44]",
+                            isActive &&
+                            "text-[#3c6c44] font-extrabold border-[#3c6c44]",
+                          )
+                        }
+                      >
+                        {item.label}
+                      </NavLink>
+                    </li>
+                  );
+                })}
             </ul>
           </nav>
 

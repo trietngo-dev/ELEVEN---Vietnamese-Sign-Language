@@ -207,9 +207,9 @@ const FrameStorePage: React.FC = () => {
         <div className="flex items-center justify-between">
           <Link
             to="/home-page"
-            className="inline-flex items-center gap-2 text-slate-500 hover:text-[#3c6c44] font-bold text-sm transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/60 shadow-sm text-slate-600 hover:text-[#2d6a4f] hover:border-[#2d6a4f]/30 hover:bg-emerald-50/20 transition-all duration-300 font-bold text-sm"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={16} className="stroke-[2.5]" />
             Quay lại Trang chủ
           </Link>
 
@@ -230,9 +230,6 @@ const FrameStorePage: React.FC = () => {
           <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-2.5">
             Cửa hàng Khung Ảnh Đại diện
           </h2>
-          <p className="text-sm text-slate-500 max-w-2xl font-medium">
-            Tích lũy điểm XP thông qua các bài học hàng ngày để quy đổi những khung viền sang trọng, giúp tài khoản trở nên độc đáo hơn!
-          </p>
         </div>
 
         {/* Store Grid */}

@@ -1,8 +1,9 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { tokenStorage } from "../lib/auth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bookmark,
   Search,
@@ -48,61 +49,50 @@ const staggerContainer: Variants = {
 export default function SavedWordsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [savedWords, setSavedWords] = useState<SavedWordItem[]>([]);
   const [unsavingId, setUnsavingId] = useState<number | null>(null);
 
-  const fetchSavedWords = async () => {
-    if (!user?.id) return;
-    try {
-      setIsLoading(true);
+  const { data: savedWordsData, isLoading } = useQuery<SavedWordItem[]>({
+    queryKey: ["savedWords", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
       const token = tokenStorage.getToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // 1. Fetch user vocabulary progress
       const progressRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress?pageSize=1000`, { headers });
       if (!progressRes.ok) throw new Error("Không thể tải tiến trình từ vựng");
       const progressData = await progressRes.json();
       const progressItems = progressData.items || (Array.isArray(progressData) ? progressData : progressData.items) || [];
 
-      // Filter only saved items for the logged-in user
       const userSavedProgress = progressItems.filter(
-        (p: any) => p.userId === user.id && p.isSaved === true
+        (p: any) => p.userId === user?.id && p.isSaved === true
       );
 
-      if (userSavedProgress.length === 0) {
-        setSavedWords([]);
-        setIsLoading(false);
-        return;
-      }
+      if (userSavedProgress.length === 0) return [];
 
-      // 2. Fetch vocabulary list
-      const vocabRes = await fetch(`${API_BASE_URL}/api/vocabularies?pageSize=1000`, { headers });
+      const [vocabRes, lessonVocabRes, lessonsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/vocabularies?pageSize=1000`, { headers }),
+        fetch(`${API_BASE_URL}/api/lesson_vocabularies?pageSize=1000`, { headers }),
+        fetch(`${API_BASE_URL}/api/lessons?pageSize=1000`, { headers })
+      ]);
+
       const vocabData = await vocabRes.json();
       const vocabItems = vocabData.items || (Array.isArray(vocabData) ? vocabData : vocabData.items) || [];
 
-      // 3. Fetch lesson vocabularies mapping
-      const lessonVocabRes = await fetch(`${API_BASE_URL}/api/lesson_vocabularies?pageSize=1000`, { headers });
       const lessonVocabData = await lessonVocabRes.json();
       const lessonVocabItems = lessonVocabData.items || (Array.isArray(lessonVocabData) ? lessonVocabData : lessonVocabData.items) || [];
 
-      // 4. Fetch all lessons
-      const lessonsRes = await fetch(`${API_BASE_URL}/api/lessons?pageSize=1000`, { headers });
       const lessonsData = await lessonsRes.json();
       const lessonItems = lessonsData.items || (Array.isArray(lessonsData) ? lessonsData : lessonsData.items) || [];
 
-      // Map progress to detailed vocabulary and lesson info
-      const detailedItems: SavedWordItem[] = userSavedProgress.map((prog: any) => {
+      return userSavedProgress.map((prog: any) => {
         const vocab = vocabItems.find((v: any) => v.id === prog.vocabularyId);
         const term = vocab ? vocab.termVi : "Từ vựng";
         const difficulty = vocab ? vocab.difficultyLevel : "Cơ bản";
 
-        // Find mapping to lesson
         const mapping = lessonVocabItems.find((lv: any) => lv.vocabularyId === prog.vocabularyId);
         const lessonId = mapping ? mapping.lessonId : null;
-        
-        // Find lesson info
         const lesson = lessonId ? lessonItems.find((l: any) => l.id === lessonId) : null;
 
         return {
@@ -113,23 +103,15 @@ export default function SavedWordsPage() {
           difficultyLevel: difficulty,
           isSaved: prog.isSaved,
           lessonTitle: lesson ? lesson.title : term,
-          lessonCoverMediaId: lesson ? lesson.coverMediaId : null,
+          lessonCoverMediaId: lesson ? (lesson.coverMediaId || lesson.videoMediaId) : null,
           lessonXpReward: lesson ? lesson.xpReward : 50,
           lessonDuration: lesson ? lesson.estimatedMinutes : 0
         };
       });
-
-      setSavedWords(detailedItems);
-    } catch (error) {
-      console.error("Lỗi khi tải từ đã lưu:", error);
-    } finally {
-      setIsLoading(false);
     }
-  };
+  });
 
-  useEffect(() => {
-    fetchSavedWords();
-  }, [user]);
+  const savedWords = savedWordsData || [];
 
   const handleUnsave = async (progressId: number, vocabId: number) => {
     setUnsavingId(vocabId);
@@ -140,18 +122,17 @@ export default function SavedWordsPage() {
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       };
 
-      // Call API to update saved status to false
       const res = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress/${progressId}`, {
         method: "PUT",
         headers,
         body: JSON.stringify({
-          status: 0, // Unstarted
+          status: 0,
           isSaved: false
         })
       });
 
       if (res.ok) {
-        setSavedWords(prev => prev.filter(w => w.vocabularyId !== vocabId));
+        queryClient.invalidateQueries({ queryKey: ["savedWords", user?.id] });
         window.dispatchEvent(new Event("savedWordsChanged"));
       } else {
         alert("Bỏ lưu từ thất bại, vui lòng thử lại.");
@@ -189,17 +170,14 @@ export default function SavedWordsPage() {
           <div className="space-y-2">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors font-bold text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/60 shadow-sm text-slate-600 hover:text-[#2d6a4f] hover:border-[#2d6a4f]/30 hover:bg-emerald-50/20 transition-all duration-300 font-bold text-sm mb-2"
             >
-              <ArrowLeft size={16} /> Quay lại
+              <ArrowLeft size={16} className="stroke-[2.5]" /> Quay lại
             </button>
             <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
               <Bookmark className="text-[#efca4c] fill-[#efca4c] shrink-0" size={28} />
               Từ vựng đã lưu
             </h1>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-              Bạn có {savedWords.length} từ vựng trong danh sách ôn tập
-            </p>
           </div>
 
           {/* Search bar */}

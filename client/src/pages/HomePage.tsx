@@ -341,15 +341,8 @@ export default function HomePage() {
             </div>
 
             {/* Description & Intro */}
-            <div className="relative z-10 space-y-4 mt-5">
-              <div className="space-y-1.5">
-                <span className="text-[10px] font-black text-[#2d6a4f] tracking-[0.15em] uppercase">VSL Sign Language</span>
-                <h3 className="text-xl font-black text-slate-800 leading-tight">Học Ngôn Ngữ Ký Hiệu Với AI</h3>
-              </div>
-              <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                Chào mừng bạn đến với **Eleven**! Giao diện học tập được định hướng rõ ràng qua sơ đồ lộ trình (Learning Roadmap). Hệ thống giúp bạn kết nối với cộng đồng người khiếm thính thông qua các bài học ngôn ngữ ký hiệu (VSL) trực quan, kết hợp với công nghệ camera chấm điểm AI.
-              </p>
-              <div className="pt-2 flex gap-3">
+            <div className="relative z-10 mt-5">
+              <div className="flex gap-3">
                 <Link
                   to="/khoa-hoc"
                   className="flex-1 h-11 inline-flex items-center justify-center gap-1.5 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300"
@@ -376,9 +369,9 @@ export default function HomePage() {
               {/* Banner (2/3 width) */}
               <motion.div
                 variants={fadeInUp}
-                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col justify-between h-full min-h-[220px]"
+                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 h-full min-h-[220px]"
               >
-                <div className="space-y-3">
+                <div className="space-y-3 text-center md:text-left flex-1">
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-[10px] font-extrabold text-[#2d6a4f] select-none">
                     Hệ Thống Học Ngôn Ngữ Ký Hiệu Việt Nam (VSL)
                   </div>
@@ -386,21 +379,24 @@ export default function HomePage() {
                     Chào mừng trở lại,<br />
                     <span className="bg-gradient-to-r from-[#2d6a4f] to-[#3a8e63] bg-clip-text text-transparent">{user?.fullName || "Người học"}!</span>
                   </h1>
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed max-w-sm">
-                    Mỗi ngày học tập là một bước tiến gần hơn đến thế giới của sự sẻ chia và thấu hiểu. Cùng rèn luyện nhé!
-                  </p>
                 </div>
                 
-                {/* Badges */}
-                <div className="flex flex-row items-center gap-3 pt-4">
-                  <span className="inline-flex items-center gap-2 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-4 py-2 text-xs font-bold text-[#2d6a4f] shadow-sm select-none shrink-0">
-                    <Flame size={16} className="fill-[#2d6a4f] shrink-0 text-orange-500" />
-                    <span className="text-base font-black text-emerald-800">{loginDays}</span> ngày liên tiếp
-                  </span>
-                  <span className="inline-flex items-center gap-2 rounded-2xl bg-amber-50/70 border border-amber-100 px-4 py-2 text-xs font-bold text-amber-700 shadow-sm select-none shrink-0">
-                    <img src={xpImg} className="w-5 h-5 object-contain shrink-0" alt="XP" />
-                    <span className="text-base font-black text-amber-800">{accumulatedXp}</span> XP tích lũy
-                  </span>
+                {/* Badges on the right */}
+                <div className="flex flex-row md:flex-col gap-3 shrink-0 w-full md:w-auto justify-center">
+                  <div className="flex-1 md:flex-initial inline-flex items-center gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-5 py-3 text-xs font-bold text-[#2d6a4f] shadow-sm select-none">
+                    <Flame size={20} className="fill-[#2d6a4f] shrink-0 text-orange-500" />
+                    <div>
+                      <span className="text-lg font-black text-emerald-800 block leading-none">{loginDays}</span>
+                      <span className="text-[10px] text-slate-500 font-bold mt-1 block whitespace-nowrap">ngày liên tiếp</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 md:flex-initial inline-flex items-center gap-3 rounded-2xl bg-amber-50/70 border border-amber-100 px-5 py-3 text-xs font-bold text-amber-700 shadow-sm select-none">
+                    <img src={xpImg} className="w-6 h-6 object-contain shrink-0" alt="XP" />
+                    <div>
+                      <span className="text-lg font-black text-amber-800 block leading-none">{accumulatedXp}</span>
+                      <span className="text-[10px] text-slate-500 font-bold mt-1 block whitespace-nowrap">XP tích lũy</span>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
 
@@ -410,32 +406,32 @@ export default function HomePage() {
                 {/* Words */}
                 <motion.div
                   variants={fadeInUp}
-                  className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300 flex-1"
+                  className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-6 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300 flex-1"
                 >
                   <div>
-                    <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Từ đã học</p>
-                    <p className="text-lg font-black text-slate-800 mt-1">
-                      {learnedWords} <span className="text-xs font-bold text-slate-400">từ</span>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-wider leading-none">Từ đã học</p>
+                    <p className="text-2xl md:text-3xl font-black text-slate-800 mt-2">
+                      {learnedWords} <span className="text-sm font-bold text-[#2d6a4f]">từ</span>
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
-                    <BookOpen size={18} className="text-[#2d6a4f]" />
+                  <div className="w-12 h-12 rounded-2xl bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50/50 shadow-sm">
+                    <BookOpen size={22} className="text-[#2d6a4f]" />
                   </div>
                 </motion.div>
 
                 {/* Hours */}
                 <motion.div
                   variants={fadeInUp}
-                  className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-5 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300 flex-1"
+                  className="bg-white rounded-[24px] border border-slate-100 shadow-[0_10px_20px_rgba(24,35,51,0.02)] p-6 flex items-center justify-between hover:shadow-[0_15px_25px_rgba(24,35,51,0.04)] transition-all duration-300 flex-1"
                 >
                   <div>
-                    <p className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">Giờ học</p>
-                    <p className="text-lg font-black text-slate-800 mt-1">
-                      {learningHours} <span className="text-xs font-bold text-slate-400">giờ</span>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-wider leading-none">Giờ học</p>
+                    <p className="text-2xl md:text-3xl font-black text-slate-800 mt-2">
+                      {learningHours} <span className="text-sm font-bold text-[#2d6a4f]">giờ</span>
                     </p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50">
-                    <Clock size={18} className="text-[#2d6a4f]" />
+                  <div className="w-12 h-12 rounded-2xl bg-[#f4fbf6] flex items-center justify-center shrink-0 border border-emerald-50/50 shadow-sm">
+                    <Clock size={22} className="text-[#2d6a4f]" />
                   </div>
                 </motion.div>
                 
@@ -517,7 +513,6 @@ export default function HomePage() {
         <div className="space-y-6 pt-4">
           <div>
             <h2 className="text-xl font-black text-slate-800">Lộ Trình Học Tập VSL</h2>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Sơ đồ các giai đoạn rèn luyện ngôn ngữ ký hiệu</p>
           </div>
 
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.02)] p-8 relative overflow-hidden">
@@ -573,7 +568,6 @@ export default function HomePage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-black text-slate-800">Bài học gần đây</h2>
-              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Tiến độ luyện tập bài học gần nhất</p>
             </div>
             <Link
               to="/khoa-hoc"
