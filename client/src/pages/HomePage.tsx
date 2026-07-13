@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion, type Variants } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
@@ -54,6 +54,8 @@ const sectionStagger: Variants = {
 export default function HomePage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [enrollments, setEnrollments] = useState<any[]>([]);
 
   // Dynamic Statistics States
   const [loginDays, setLoginDays] = useState<number>(0);
@@ -77,9 +79,13 @@ export default function HomePage() {
         const published = (data.items || []).filter(
           (c: Course) => c.status === 1 || c.status === "Published" || c.status === "published"
         );
+        setAllCourses(published);
         setCourses(published.slice(0, 3));
       })
-      .catch(() => setCourses([]));
+      .catch(() => {
+        setAllCourses([]);
+        setCourses([]);
+      });
   }, [user]);
 
   // 2. Fetch User Stats & Proactive Notification Generation
@@ -265,8 +271,9 @@ export default function HomePage() {
     // E. Fetch Enrollments & Active Course Real Progress
     fetch(`${API_BASE_URL}/api/enrollments/user/${user.id}`, { headers })
       .then(res => res.ok ? res.json() : [])
-      .then(async (enrollments) => {
-        const list = Array.isArray(enrollments) ? enrollments : [];
+      .then(async (enrollmentsData) => {
+        const list = Array.isArray(enrollmentsData) ? enrollmentsData : [];
+        setEnrollments(list);
         if (list.length > 0) {
           setHasJoined(true);
           const latestEnrollment = [...list].sort((a: any, b: any) => new Date(b.updatedAt || b.enrolledAt || 0).getTime() - new Date(a.updatedAt || a.enrolledAt || 0).getTime())[0];
@@ -290,6 +297,35 @@ export default function HomePage() {
       .catch(() => {});
 
   }, [user]);
+
+  // Dynamic Level Status for Roadmap
+  const levelStatus = useMemo(() => {
+    const getCourseProgress = (courseId: number) => {
+      const e = enrollments.find(x => x.courseId === courseId);
+      return e ? (e.progressPercent ?? 0) : 0;
+    };
+
+    const basicCourses = allCourses.filter(c => c.level === "Cơ bản");
+    const intermediateCourses = allCourses.filter(c => c.level === "Trung cấp");
+    const advancedCourses = allCourses.filter(c => c.level === "Nâng cao");
+
+    const basicCompleted = basicCourses.length > 0 && basicCourses.every(c => getCourseProgress(c.id) >= 100);
+    const basicInProgress = basicCourses.some(c => enrollments.some(x => x.courseId === c.id)) && !basicCompleted;
+
+    const intermediateUnlocked = basicCompleted;
+    const intermediateCompleted = intermediateUnlocked && intermediateCourses.length > 0 && intermediateCourses.every(c => getCourseProgress(c.id) >= 100);
+    const intermediateInProgress = intermediateUnlocked && intermediateCourses.some(c => enrollments.some(x => x.courseId === c.id)) && !intermediateCompleted;
+
+    const advancedUnlocked = intermediateCompleted;
+    const advancedCompleted = advancedUnlocked && advancedCourses.length > 0 && advancedCourses.every(c => getCourseProgress(c.id) >= 100);
+    const advancedInProgress = advancedUnlocked && advancedCourses.some(c => enrollments.some(x => x.courseId === c.id)) && !advancedCompleted;
+
+    return {
+      "Cơ bản": basicCompleted ? "completed" : (basicInProgress ? "in_progress" : "not_started"),
+      "Trung cấp": intermediateCompleted ? "completed" : (intermediateInProgress ? "in_progress" : (intermediateUnlocked ? "not_started" : "locked")),
+      "Nâng cao": advancedCompleted ? "completed" : (advancedInProgress ? "in_progress" : (advancedUnlocked ? "not_started" : "locked")),
+    };
+  }, [allCourses, enrollments]);
 
   // "Tiếp tục học" - fallback course if activeCourse is not set but user has courses
   const courseToShow = activeCourse || courses[0];
@@ -541,44 +577,120 @@ export default function HomePage() {
 
           <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.02)] p-8 relative overflow-hidden">
             
-            {/* Background connection path line */}
+            {/* Background connection path lines (dynamic) */}
             <div className="absolute top-1/2 left-20 right-20 h-1 bg-slate-100 -translate-y-8 hidden md:block z-0" />
-            <div className="absolute top-1/2 left-20 w-[45%] h-1 bg-gradient-to-r from-emerald-500 to-[#2d6a4f] -translate-y-8 hidden md:block z-0" />
+            <div className={`absolute top-1/2 left-[16.6%] w-[33.3%] h-1 -translate-y-8 hidden md:block z-0 transition-colors duration-500 ${
+              levelStatus["Cơ bản"] === "completed" ? "bg-[#2d6a4f]" : "bg-slate-100"
+            }`} />
+            <div className={`absolute top-1/2 left-[50%] w-[33.3%] h-1 -translate-y-8 hidden md:block z-0 transition-colors duration-500 ${
+              levelStatus["Trung cấp"] === "completed" ? "bg-[#2d6a4f]" : "bg-slate-100"
+            }`} />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
               
-              {/* Milestone 1 */}
+              {/* Milestone 1: Cơ bản */}
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
-                  <Check size={22} className="stroke-[3]" />
-                </div>
+                {levelStatus["Cơ bản"] === "completed" && (
+                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                    <Check size={22} className="stroke-[3]" />
+                  </div>
+                )}
+                {levelStatus["Cơ bản"] === "in_progress" && (
+                  <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                    <Clock size={20} className="stroke-[3]" />
+                  </div>
+                )}
+                {levelStatus["Cơ bản"] === "not_started" && (
+                  <div className="w-14 h-14 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
+                    <BookOpen size={20} className="stroke-[2.5]" />
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full">Cấp độ 1</span>
+                  <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${
+                    levelStatus["Cơ bản"] === "completed" ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
+                    levelStatus["Cơ bản"] === "in_progress" ? "bg-emerald-50 border-emerald-100 text-[#2d6a4f]" :
+                    "bg-slate-50 border-slate-200 text-slate-500"
+                  }`}>
+                    {levelStatus["Cơ bản"] === "completed" ? "Hoàn thành" :
+                     levelStatus["Cơ bản"] === "in_progress" ? "Đang học" : "Chưa học"}
+                  </span>
                   <h4 className="text-sm font-bold text-slate-800 mt-1">Cơ bản</h4>
                   <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Làm quen với bảng chữ cái, số đếm và chủ đề chào hỏi giao tiếp thông thường.</p>
                 </div>
               </div>
 
-              {/* Milestone 2 */}
+              {/* Milestone 2: Trung cấp */}
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
-                  <Clock size={20} className="stroke-[3]" />
-                </div>
+                {levelStatus["Trung cấp"] === "completed" && (
+                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                    <Check size={22} className="stroke-[3]" />
+                  </div>
+                )}
+                {levelStatus["Trung cấp"] === "in_progress" && (
+                  <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                    <Clock size={20} className="stroke-[3]" />
+                  </div>
+                )}
+                {levelStatus["Trung cấp"] === "not_started" && (
+                  <div className="w-14 h-14 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
+                    <BookOpen size={20} className="stroke-[2.5]" />
+                  </div>
+                )}
+                {levelStatus["Trung cấp"] === "locked" && (
+                  <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
+                    <Clock size={20} className="stroke-[2.5]" />
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase bg-emerald-50 border border-emerald-100 text-[#2d6a4f] px-2 py-0.5 rounded-full">Đang học</span>
-                  <h4 className="text-sm font-bold text-slate-800 mt-1">Trung cấp</h4>
+                  <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${
+                    levelStatus["Trung cấp"] === "completed" ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
+                    levelStatus["Trung cấp"] === "in_progress" ? "bg-emerald-50 border-emerald-100 text-[#2d6a4f]" :
+                    levelStatus["Trung cấp"] === "not_started" ? "bg-slate-50 border-slate-200 text-[#2d6a4f]" :
+                    "bg-slate-100 border-slate-200 text-slate-500"
+                  }`}>
+                    {levelStatus["Trung cấp"] === "completed" ? "Hoàn thành" :
+                     levelStatus["Trung cấp"] === "in_progress" ? "Đang học" :
+                     levelStatus["Trung cấp"] === "not_started" ? "Sẵn sàng" : "Chưa mở khóa"}
+                  </span>
+                  <h4 className={`text-sm font-bold mt-1 ${levelStatus["Trung cấp"] === "locked" ? "text-slate-400" : "text-slate-800"}`}>Trung cấp</h4>
                   <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Rèn luyện từ vựng và mẫu câu về địa lý, hành chính, cảm xúc và các thói quen sinh hoạt.</p>
                 </div>
               </div>
 
-              {/* Milestone 3 */}
+              {/* Milestone 3: Nâng cao */}
               <div className="flex flex-col items-center text-center space-y-4">
-                <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
-                  <BookOpen size={20} className="stroke-[2.5]" />
-                </div>
+                {levelStatus["Nâng cao"] === "completed" && (
+                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                    <Check size={22} className="stroke-[3]" />
+                  </div>
+                )}
+                {levelStatus["Nâng cao"] === "in_progress" && (
+                  <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                    <Clock size={20} className="stroke-[3]" />
+                  </div>
+                )}
+                {levelStatus["Nâng cao"] === "not_started" && (
+                  <div className="w-14 h-14 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
+                    <BookOpen size={20} className="stroke-[2.5]" />
+                  </div>
+                )}
+                {levelStatus["Nâng cao"] === "locked" && (
+                  <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
+                    <BookOpen size={20} className="stroke-[2.5]" />
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <span className="text-[8px] font-black uppercase bg-slate-100 border border-slate-200 text-slate-500 px-2 py-0.5 rounded-full">Chưa mở khóa</span>
-                  <h4 className="text-sm font-bold text-slate-500 mt-1">Nâng cao</h4>
+                  <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${
+                    levelStatus["Nâng cao"] === "completed" ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
+                    levelStatus["Nâng cao"] === "in_progress" ? "bg-emerald-50 border-emerald-100 text-[#2d6a4f]" :
+                    levelStatus["Nâng cao"] === "not_started" ? "bg-slate-50 border-slate-200 text-[#2d6a4f]" :
+                    "bg-slate-100 border-slate-200 text-slate-500"
+                  }`}>
+                    {levelStatus["Nâng cao"] === "completed" ? "Hoàn thành" :
+                     levelStatus["Nâng cao"] === "in_progress" ? "Đang học" :
+                     levelStatus["Nâng cao"] === "not_started" ? "Sẵn sàng" : "Chưa mở khóa"}
+                  </span>
+                  <h4 className={`text-sm font-bold mt-1 ${levelStatus["Nâng cao"] === "locked" ? "text-slate-400" : "text-slate-800"}`}>Nâng cao</h4>
                   <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Mở rộng vốn từ vựng về các sự kiện xã hội, lễ hội truyền thống, cùng các thuật ngữ kinh tế & thương mại.</p>
                 </div>
               </div>
