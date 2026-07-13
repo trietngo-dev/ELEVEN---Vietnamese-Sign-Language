@@ -64,6 +64,36 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
             return false;
         }
 
+        // Reassign created/performed content to default admin to prevent RESTRICT constraint violations
+        var defaultAdmin = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == "admin@exe101.local", cancellationToken);
+        long defaultAdminId = defaultAdmin?.Id ?? 1;
+
+        var coursesCreated = await _dbContext.Courses
+            .Where(c => c.CreatedBy == id)
+            .ToListAsync(cancellationToken);
+        foreach (var course in coursesCreated)
+        {
+            course.CreatedBy = defaultAdminId;
+        }
+
+        var vocabCreated = await _dbContext.Vocabularies
+            .Where(v => v.CreatedBy == id)
+            .ToListAsync(cancellationToken);
+        foreach (var vocab in vocabCreated)
+        {
+            vocab.CreatedBy = defaultAdminId;
+        }
+
+        var adminLogs = await _dbContext.AdminActionLogs
+            .Where(l => l.AdminUserId == id)
+            .ToListAsync(cancellationToken);
+        foreach (var log in adminLogs)
+        {
+            log.AdminUserId = defaultAdminId;
+        }
+
         _dbContext.Users.Remove(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
         return true;
