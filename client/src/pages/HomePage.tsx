@@ -369,9 +369,9 @@ export default function HomePage() {
               {/* Banner (2/3 width) */}
               <motion.div
                 variants={fadeInUp}
-                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col md:flex-row justify-between items-center gap-6 h-full min-h-[220px]"
+                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col justify-between items-start gap-6 h-full min-h-[220px]"
               >
-                <div className="space-y-3 text-center md:text-left flex-1">
+                <div className="space-y-3 text-left flex-1">
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-[10px] font-extrabold text-[#2d6a4f] select-none">
                     Hệ Thống Học Ngôn Ngữ Ký Hiệu Việt Nam (VSL)
                   </div>
@@ -381,16 +381,16 @@ export default function HomePage() {
                   </h1>
                 </div>
                 
-                {/* Badges on the right */}
-                <div className="flex flex-row md:flex-col gap-3 shrink-0 w-full md:w-auto justify-center">
-                  <div className="flex-1 md:flex-initial inline-flex items-center gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-5 py-3 text-xs font-bold text-[#2d6a4f] shadow-sm select-none">
+                {/* Badges in a horizontal row */}
+                <div className="flex flex-row gap-4 w-full justify-start items-center overflow-x-auto">
+                  <div className="inline-flex items-center gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-5 py-3 text-xs font-bold text-[#2d6a4f] shadow-sm select-none">
                     <Flame size={20} className="fill-[#2d6a4f] shrink-0 text-orange-500" />
                     <div>
                       <span className="text-lg font-black text-emerald-800 block leading-none">{loginDays}</span>
-                      <span className="text-[10px] text-slate-500 font-bold mt-1 block whitespace-nowrap">ngày liên tiếp</span>
+                      <span className="text-[10px] text-slate-500 font-bold mt-1 block whitespace-nowrap">đăng nhập liên tiếp</span>
                     </div>
                   </div>
-                  <div className="flex-1 md:flex-initial inline-flex items-center gap-3 rounded-2xl bg-amber-50/70 border border-amber-100 px-5 py-3 text-xs font-bold text-amber-700 shadow-sm select-none">
+                  <div className="inline-flex items-center gap-3 rounded-2xl bg-amber-50/70 border border-amber-100 px-5 py-3 text-xs font-bold text-amber-700 shadow-sm select-none">
                     <img src={xpImg} className="w-6 h-6 object-contain shrink-0" alt="XP" />
                     <div>
                       <span className="text-lg font-black text-amber-800 block leading-none">{accumulatedXp}</span>
@@ -445,63 +445,82 @@ export default function HomePage() {
                 variants={fadeInUp}
                 className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 flex flex-col md:flex-row items-stretch gap-6 h-full min-h-[220px] hover:shadow-[0_20px_40px_rgba(24,35,51,0.06)] transition-all duration-300"
               >
-                
-                {/* Left side: Cover image takes up large portion */}
-                <div className="w-full md:w-[240px] h-[140px] md:h-auto rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm shrink-0 flex items-center justify-center">
-                  <CourseImage
-                    coverMediaId={courseToShow?.coverMediaId}
-                    title={courseToShow?.title || "VSL"}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                {/* Right side: Course details, description, progress, CTA */}
-                <div className="flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] text-[#2d6a4f] bg-emerald-50 px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider">Bài học đang học</span>
-                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">
-                        {hasJoined && courseToShow ? `Mức độ: ${courseToShow.level || "Cơ bản"}` : ""}
-                      </span>
-                    </div>
-                    
-                    <h4 className="text-lg font-black text-slate-800 leading-snug">
-                      {hasJoined && courseToShow ? courseToShow.title : "Chưa đăng ký khóa học"}
-                    </h4>
-                    
-                    {/* Course description */}
-                    <p className="text-xs text-slate-400 font-medium leading-relaxed line-clamp-2">
-                      {hasJoined && courseToShow && courseToShow.description 
-                        ? courseToShow.description 
-                        : "Bắt đầu hành trình chinh phục ngôn ngữ ký hiệu cùng với Eleven ngay hôm nay."}
-                    </p>
-                  </div>
-
-                  {/* Progress and CTA button */}
-                  <div className="space-y-4">
-                    <div className="w-full">
-                      <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-1">
-                        <span>Tiến độ bài</span>
-                        <span className="text-slate-600">{hasJoined && courseToShow ? `${Math.round(courseProgress)}%` : "0%"}</span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: hasJoined && courseToShow ? `${courseProgress}%` : "0%" }} />
-                      </div>
+                {hasJoined && courseToShow ? (
+                  <>
+                    {/* Left side: Cover image takes up large portion */}
+                    <div className="w-full md:w-[240px] h-[140px] md:h-auto rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 shadow-sm shrink-0 flex items-center justify-center">
+                      <CourseImage
+                        coverMediaId={courseToShow?.coverMediaId}
+                        title={courseToShow?.title || "VSL"}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
 
-                    <div className="flex justify-end">
+                    {/* Right side: Course details, description, progress, CTA */}
+                    <div className="flex-1 flex flex-col justify-between space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] text-[#2d6a4f] bg-emerald-50 px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider">Bài học đang học</span>
+                          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wide">
+                            Mức độ: {courseToShow.level || "Cơ bản"}
+                          </span>
+                        </div>
+                        
+                        <h4 className="text-lg font-black text-slate-800 leading-snug">
+                          {courseToShow.title}
+                        </h4>
+                        
+                        <p className="text-xs text-slate-400 font-medium leading-relaxed line-clamp-2">
+                          {courseToShow.description}
+                        </p>
+                      </div>
+
+                      {/* Progress and CTA button */}
+                      <div className="space-y-4">
+                        <div className="w-full">
+                          <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-1">
+                            <span>Tiến độ bài</span>
+                            <span className="text-slate-600">{Math.round(courseProgress)}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#2d6a4f] rounded-full transition-all duration-500" style={{ width: `${courseProgress}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Link
+                            to={`/khoa-hoc/${courseToShow.id}`}
+                            className="h-11 px-6 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300 animate-pulse-slow w-full md:w-auto"
+                          >
+                            Học Tiếp Bài Học
+                            <ArrowRight size={14} />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col justify-between p-2">
+                    <div className="space-y-2">
+                      <h4 className="text-lg font-black text-slate-800 leading-snug">
+                        Chưa đăng ký khóa học
+                      </h4>
+                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                        Bắt đầu hành trình chinh phục ngôn ngữ ký hiệu cùng với Eleven ngay hôm nay.
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end mt-4">
                       <Link
-                        to={hasJoined && courseToShow ? `/khoa-hoc/${courseToShow.id}` : "/khoa-hoc"}
-                        className="h-11 px-6 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300 animate-pulse-slow w-full md:w-auto"
+                        to="/khoa-hoc"
+                        className="h-11 px-6 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300 w-full md:w-auto"
                       >
-                        {hasJoined && courseToShow ? "Học Tiếp Bài Học" : "Tìm Khóa Học Phù Hợp"}
+                        Tìm Khóa Học Phù Hợp
                         <ArrowRight size={14} />
                       </Link>
                     </div>
                   </div>
-
-                </div>
-
+                )}
               </motion.div>
             </div>
 
