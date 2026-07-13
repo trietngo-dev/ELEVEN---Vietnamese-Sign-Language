@@ -9,7 +9,8 @@ import {
   ChevronRight,
   BookOpen,
   Flame,
-  Check
+  Check,
+  GraduationCap
 } from "lucide-react";
 import { notificationsApi } from "../lib/notifications";
 import xpImg from "../assets/xp-img.png";
@@ -369,9 +370,9 @@ export default function HomePage() {
               {/* Banner (2/3 width) */}
               <motion.div
                 variants={fadeInUp}
-                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col justify-between items-start gap-6 h-full min-h-[220px]"
+                className="md:col-span-2 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 md:p-8 flex flex-col justify-between items-center gap-6 h-full min-h-[220px]"
               >
-                <div className="space-y-3 text-left">
+                <div className="space-y-3 text-center w-full flex flex-col items-center">
                   <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-[10px] font-extrabold text-[#2d6a4f] select-none">
                     Hệ Thống Học Ngôn Ngữ Ký Hiệu Việt Nam (VSL)
                   </div>
@@ -381,18 +382,18 @@ export default function HomePage() {
                   </h1>
                 </div>
                 
-                {/* Badges in a horizontal row */}
-                <div className="flex flex-row gap-3 w-full justify-start items-center">
-                  <div className="inline-flex items-center gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-5 py-3 text-xs font-bold text-[#2d6a4f] shadow-sm select-none">
+                {/* Badges in a horizontal row, equal width, centered */}
+                <div className="flex flex-row gap-4 w-full max-w-xl justify-center items-center">
+                  <div className="flex-1 flex items-center justify-center gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 px-5 py-3 text-xs font-bold text-[#2d6a4f] shadow-sm select-none">
                     <Flame size={20} className="fill-[#2d6a4f] shrink-0 text-orange-500" />
-                    <div>
+                    <div className="text-left">
                       <span className="text-lg font-black text-emerald-800 block leading-none">{loginDays}</span>
                       <span className="text-[10px] text-slate-500 font-bold mt-1 block whitespace-nowrap">đăng nhập liên tiếp</span>
                     </div>
                   </div>
-                  <div className="inline-flex items-center gap-3 rounded-2xl bg-amber-50/70 border border-amber-100 px-5 py-3 text-xs font-bold text-amber-700 shadow-sm select-none">
+                  <div className="flex-1 flex items-center justify-center gap-3 rounded-2xl bg-amber-50/70 border border-amber-100 px-5 py-3 text-xs font-bold text-amber-700 shadow-sm select-none">
                     <img src={xpImg} className="w-6 h-6 object-contain shrink-0" alt="XP" />
-                    <div>
+                    <div className="text-left">
                       <span className="text-lg font-black text-amber-800 block leading-none">{accumulatedXp}</span>
                       <span className="text-[10px] text-slate-500 font-bold mt-1 block whitespace-nowrap">XP tích lũy</span>
                     </div>
@@ -501,16 +502,20 @@ export default function HomePage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col justify-between h-full min-h-[170px] p-2">
+                  <div className="flex flex-col items-center justify-center text-center h-full min-h-[190px] py-6 space-y-4 w-full">
                     <div className="space-y-2">
-                      <h4 className="text-lg font-black text-slate-800 leading-snug">
+                      <h4 className="text-xl md:text-2xl font-black text-slate-300 uppercase tracking-wider select-none leading-none">
                         Chưa đăng ký khóa học
                       </h4>
-                      <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                      <p className="text-xs text-slate-400 font-medium max-w-md mx-auto leading-relaxed">
                         Bắt đầu hành trình chinh phục ngôn ngữ ký hiệu cùng với Eleven ngay hôm nay.
                       </p>
                     </div>
-                    <div className="flex justify-start mt-4">
+                    
+                    {/* Monochrome Icon */}
+                    <GraduationCap size={44} className="text-slate-200 stroke-[1.5]" />
+                    
+                    <div className="flex justify-center w-full">
                       <Link
                         to="/khoa-hoc"
                         className="h-11 px-6 inline-flex items-center justify-center gap-2 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-2xl shadow-sm transition-colors duration-300 w-full md:w-auto"
