@@ -474,30 +474,196 @@ export default function LessonDetailPage() {
       <div className="container mx-auto px-4 md:px-6 py-6">
 
         {/* Back Button */}
-        <div className="my-6">
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors font-bold text-sm">
-            <ArrowLeft size={16} /> Quay lại
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/60 shadow-sm text-slate-600 hover:text-[#2d6a4f] hover:border-[#2d6a4f]/30 hover:bg-emerald-50/20 transition-all duration-300 font-bold text-sm"
+          >
+            <ArrowLeft size={16} className="stroke-[2.5]" /> Quay lại
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+        {/* Top Section: Video Player & Sidebar (Aligned to have the same height on lg screens) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-stretch">
+          
+          {/* Video Player */}
+          <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
+            <video
+              src={videoUrl || videoXinChao}
+              controls
+              className="w-full h-full object-contain"
+              onEnded={() => {
+                setIsVideoWatched(true);
+              }}
+            />
+          </div>
 
-          {/* Main Content Area */}
-          <div className="flex flex-col gap-6">
-            {/* Video Player */}
-            <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
-              <video
-                src={videoUrl || videoXinChao}
-                controls
-                className="w-full h-full object-contain"
-                onEnded={() => {
-                  setIsVideoWatched(true);
-                }}
-              />
+          {/* Sidebar Area */}
+          <div className="flex flex-col justify-between h-full gap-4">
+            
+            {/* Vòng tròn tiến độ & Các bước học tập */}
+            <div className="bg-white rounded-[24px] border border-slate-100 p-4 md:p-5 shadow-sm flex flex-col items-center flex-1 justify-center min-h-0">
+              <h3 className="text-[13px] font-black text-slate-800 flex items-center gap-2 mb-3 w-full text-left">
+                <span className="text-[#3c6d44]">Tiến độ bài học</span>
+              </h3>
+
+              {/* Progress Ring */}
+              <div className="relative flex items-center justify-center w-28 h-28 mb-3 shrink-0">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="32"
+                    className="text-slate-100"
+                    strokeWidth="6"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="32"
+                    className="text-[#3c6d44] transition-all duration-500"
+                    strokeWidth="6"
+                    strokeDasharray={2 * Math.PI * 32}
+                    strokeDashoffset={2 * Math.PI * 32 - ((isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0) / 100) * 2 * Math.PI * 32}
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-xl font-black text-slate-800">{isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0}%</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tiến trình</span>
+                </div>
+              </div>
+
+              {/* Steps List */}
+              <div className="flex flex-col gap-3 w-full border-t border-slate-50 pt-3">
+                {/* Step 1 */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {isVideoWatched ? "✓" : "1"}
+                    </span>
+                    <span className={`font-semibold truncate ${isVideoWatched ? "text-slate-700" : "text-slate-400"}`}>1. Xem video giảng dạy</span>
+                  </div>
+                  <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
+                    {isVideoWatched ? "Đã xem" : "Chưa xem"}
+                  </span>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${aiScore !== null ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {aiScore !== null ? "✓" : "2"}
+                    </span>
+                    <span className={`font-semibold truncate ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra từ đã học</span>
+                  </div>
+                  <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${aiScore !== null ? "bg-[#fdf8e9] text-[#71540a]" : "bg-slate-50 text-slate-400"}`}>
+                    {aiScore !== null ? `Đạt ${Math.round(aiScore)}%` : "Chưa làm"}
+                  </span>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {isCompleted ? "✓" : "3"}
+                    </span>
+                    <span className={`font-semibold truncate ${isCompleted ? "text-slate-700" : "text-slate-400"}`}>3. Hoàn thành bài học</span>
+                  </div>
+                  <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
+                    {isCompleted ? "Hoàn thành" : "Chưa đạt"}
+                  </span>
+                </div>
+              </div>
             </div>
 
+            {/* Practice & Verification Widget */}
+            {isUserPremium ? (
+              <div className="bg-gradient-to-br from-[#f4fbf6] to-[#e8f5ec] rounded-[24px] border border-[#d4ebd9] p-4 md:p-5 relative overflow-hidden shadow-sm flex flex-col justify-between shrink-0">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                <div>
+                  <div className="flex items-center gap-2 text-[#3c6d44] mb-2 relative z-10">
+                    <Bot size={16} />
+                    <h3 className="text-[11px] font-black uppercase tracking-wider">Rèn luyện cử chỉ</h3>
+                  </div>
+                  <p className="text-[11px] text-[#3c6d44]/80 font-semibold mb-3 relative z-10 leading-relaxed">
+                    Bật camera để hệ thống nhận diện và chấm điểm động tác của bạn.
+                  </p>
+                </div>
+                <button
+                  disabled={!isVideoWatched}
+                  onClick={handleInteractionClick}
+                  className={cn(
+                    "w-full py-2.5 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
+                    isVideoWatched
+                      ? "bg-[#3c6d44] hover:bg-[#315736] hover:-translate-y-0.5 shadow-md shadow-[#3c6d44]/20 cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  )}
+                >
+                  <Bot size={14} /> Bắt đầu
+                </button>
+                {!isVideoWatched && (
+                  <p className="text-[9px] text-red-500 font-bold mt-2 text-center relative z-10 animate-pulse">
+                    Vui lòng xem hết video để mở khóa kiểm tra AI
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gradient-to-br from-[#fffdf5] to-[#fef9e6] rounded-[24px] border border-[#fbf2d0] p-4 md:p-5 relative overflow-hidden shadow-sm flex flex-col justify-between shrink-0">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                <div>
+                  <div className="flex items-center gap-2 text-amber-600 mb-2 relative z-10">
+                    <HelpCircle size={16} />
+                    <h3 className="text-[11px] font-black uppercase tracking-wider">Kiểm tra ghi nhớ</h3>
+                  </div>
+                  <p className="text-[11px] text-amber-700/80 font-semibold mb-3 relative z-10 leading-relaxed">
+                    Học viên Free: Trả lời trắc nghiệm nhanh để xác minh mức độ hiểu bài.
+                  </p>
+                </div>
+                <button
+                  disabled={!isVideoWatched}
+                  onClick={handleInteractionClick}
+                  className={cn(
+                    "w-full py-2.5 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
+                    isVideoWatched
+                      ? "bg-amber-500 hover:bg-amber-600 hover:-translate-y-0.5 shadow-md shadow-amber-500/20 cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  )}
+                >
+                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh
+                </button>
+                {!isVideoWatched && (
+                  <p className="text-[9px] text-red-500 font-bold mt-2 text-center relative z-10 animate-pulse">
+                    Vui lòng xem hết video để mở khóa trắc nghiệm
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Next Button */}
+            <button
+              disabled={!isCompleted}
+              onClick={handleContinueLearning}
+              className={`w-full py-3 rounded-2xl flex items-center justify-center font-bold transition-all shadow-md shrink-0 text-sm ${isCompleted
+                ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                }`}
+            >
+              {nextLesson ? "Từ tiếp theo" : "Hoàn thành khóa học"}
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Section: Title, Actions Row & Details Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 mt-6">
+          <div className="flex flex-col gap-6">
+            
             {/* Title & Actions Row */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4 border-t border-slate-100">
               <div>
                 <h1 className="text-4xl font-black text-slate-800 mb-3">{lesson.title}</h1>
                 <div className="flex items-center gap-3">
@@ -505,12 +671,6 @@ export default function LessonDetailPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {/* <button
-                  onClick={handleInteractionClick}
-                  className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all animate-pulse-slow"
-                >
-                  <Bot size={18} /> Tương tác với AI
-                </button> */}
                 <button
                   onClick={handleToggleSave}
                   disabled={isSaving}
@@ -529,7 +689,7 @@ export default function LessonDetailPage() {
             </div>
 
             {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4 border-t border-slate-100 pt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
               {/* Ý nghĩa */}
               <div>
                 <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-4">
@@ -567,167 +727,9 @@ export default function LessonDetailPage() {
               </div>
             </div>
           </div>
-
-          {/* Sidebar Area */}
-          <div className="flex flex-col gap-6">
-            {/* Vòng tròn tiến độ & Các bước học tập */}
-            <div className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm flex flex-col items-center">
-              <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-6 w-full text-left">
-                <span className="text-[#3c6d44]">Tiến độ bài học</span>
-              </h3>
-
-              {/* Progress Ring */}
-              <div className="relative flex items-center justify-center w-36 h-36 mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle
-                    cx="72"
-                    cy="72"
-                    r="40"
-                    className="text-slate-100"
-                    strokeWidth="8"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                  <circle
-                    cx="72"
-                    cy="72"
-                    r="40"
-                    className="text-[#3c6d44] transition-all duration-500"
-                    strokeWidth="8"
-                    strokeDasharray={2 * Math.PI * 40}
-                    strokeDashoffset={2 * Math.PI * 40 - ((isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0) / 100) * 2 * Math.PI * 40}
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                </svg>
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-2xl font-black text-slate-800">{isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0}%</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tiến trình</span>
-                </div>
-              </div>
-
-              {/* Steps List */}
-              <div className="flex flex-col gap-4 w-full border-t border-slate-50 pt-5">
-                {/* Step 1 */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
-                      {isVideoWatched ? "✓" : "1"}
-                    </span>
-                    <span className={`font-semibold ${isVideoWatched ? "text-slate-700" : "text-slate-400"}`}>1. Xem video giảng dạy</span>
-                  </div>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
-                    {isVideoWatched ? "Đã xem" : "Chưa xem"}
-                  </span>
-                </div>
-
-                {/* Step 2 */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${aiScore !== null ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
-                      {aiScore !== null ? "✓" : "2"}
-                    </span>
-                    <span className={`font-semibold ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra từ đã học</span>
-                  </div>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${aiScore !== null ? "bg-[#fdf8e9] text-[#71540a]" : "bg-slate-50 text-slate-400"}`}>
-                    {aiScore !== null ? `Đạt ${Math.round(aiScore)}%` : "Chưa làm"}
-                  </span>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
-                      {isCompleted ? "✓" : "3"}
-                    </span>
-                    <span className={`font-semibold ${isCompleted ? "text-slate-700" : "text-slate-400"}`}>3. Hoàn thành bài học</span>
-                  </div>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
-                    {isCompleted ? "Hoàn thành" : "Chưa đạt"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Practice & Verification Widget */}
-            {isUserPremium ? (
-              <div className="bg-gradient-to-br from-[#f4fbf6] to-[#e8f5ec] rounded-[32px] border border-[#d4ebd9] p-6 relative overflow-hidden shadow-sm animate-pulse-slow">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-
-                <div className="flex items-center gap-2 text-[#3c6d44] mb-3 relative z-10">
-                  <Bot size={18} />
-                  <h3 className="text-xs font-black uppercase tracking-wider">Rèn luyện cử chỉ</h3>
-                </div>
-
-                <p className="text-xs text-[#3c6d44]/80 font-semibold mb-4 relative z-10 leading-relaxed">
-                  Bật camera để hệ thống nhận diện và chấm điểm động tác của bạn.
-                </p>
-
-                <button
-                  disabled={!isVideoWatched}
-                  onClick={handleInteractionClick}
-                  className={cn(
-                    "w-full py-3 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
-                    isVideoWatched
-                      ? "bg-[#3c6d44] hover:bg-[#315736] hover:-translate-y-0.5 shadow-md shadow-[#3c6d44]/20 cursor-pointer"
-                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                  )}
-                >
-                  <Bot size={14} /> Bắt đầu
-                </button>
-                {!isVideoWatched && (
-                  <p className="text-[10px] text-red-500 font-bold mt-2.5 text-center relative z-10 animate-pulse">
-                    Vui lòng xem hết video để mở khóa kiểm tra AI
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="bg-gradient-to-br from-[#fffdf5] to-[#fef9e6] rounded-[32px] border border-[#fbf2d0] p-6 relative overflow-hidden shadow-sm">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-
-                <div className="flex items-center gap-2 text-amber-600 mb-3 relative z-10">
-                  <HelpCircle size={18} />
-                  <h3 className="text-xs font-black uppercase tracking-wider">Kiểm tra ghi nhớ</h3>
-                </div>
-
-                <p className="text-xs text-amber-700/80 font-semibold mb-4 relative z-10 leading-relaxed">
-                  Học viên Free: Trả lời câu hỏi trắc nghiệm nhanh để xác minh mức độ hiểu và hoàn thành bài giảng.
-                </p>
-
-                <button
-                  disabled={!isVideoWatched}
-                  onClick={handleInteractionClick}
-                  className={cn(
-                    "w-full py-3 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
-                    isVideoWatched
-                      ? "bg-amber-500 hover:bg-amber-600 hover:-translate-y-0.5 shadow-md shadow-amber-500/20 cursor-pointer"
-                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                  )}
-                >
-                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh
-                </button>
-                {!isVideoWatched && (
-                  <p className="text-[10px] text-red-500 font-bold mt-2.5 text-center relative z-10 animate-pulse">
-                    Vui lòng xem hết video để mở khóa trắc nghiệm
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Next Button */}
-            <button
-              disabled={!isCompleted}
-              onClick={handleContinueLearning}
-              className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold transition-all shadow-xl ${isCompleted
-                ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
-                : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                }`}
-            >
-              {nextLesson ? "Từ tiếp theo" : "Hoàn thành khóa học"}
-            </button>
-          </div>
-
+          
+          {/* Spacer Column to keep alignment with the sidebar */}
+          <div className="hidden lg:block w-[320px]" />
         </div>
       </div>
 
