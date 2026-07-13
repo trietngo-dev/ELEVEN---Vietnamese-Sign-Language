@@ -141,9 +141,6 @@ function ReviewPage() {
           <h1 className="text-[clamp(2rem,3vw,2.95rem)] font-bold leading-[1.1] text-[#172334]">
             {reviewPage.hero.title}
           </h1>
-          <p className="mx-auto mt-3 max-w-[520px] text-[#7c8790]">
-            {reviewPage.hero.description}
-          </p>
         </motion.header>
 
         {/* Support form */}

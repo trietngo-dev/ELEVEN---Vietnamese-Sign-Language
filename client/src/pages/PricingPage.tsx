@@ -215,14 +215,6 @@ export default function PricingPage() {
           >
             Nâng cấp tài khoản của bạn
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-slate-500 max-w-2xl mx-auto"
-          >
-            Mở khóa toàn bộ tiềm năng học tập ngôn ngữ ký hiệu với các gói Pro / Premium và sự hỗ trợ từ trí tuệ nhân tạo.
-          </motion.p>
 
           {/* Billing Period Selector */}
           <motion.div

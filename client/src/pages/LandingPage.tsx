@@ -737,13 +737,7 @@ function LandingPage() {
                   </span>
                 </motion.h1>
 
-                {/* Description */}
-                <motion.p
-                  variants={fadeInUp}
-                  className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-slate-500"
-                >
-                  {landing.hero.description}
-                </motion.p>
+
 
                 {/* CTA Buttons */}
                 <motion.div
@@ -907,9 +901,7 @@ function LandingPage() {
             <h2 className="relative text-[clamp(1.8rem,3vw,2.8rem)] font-bold text-white leading-tight">
               {landing.cta.title}
             </h2>
-            <p className="relative mx-auto mt-5 max-w-[560px] text-[15px] leading-relaxed text-white/75">
-              {landing.cta.description}
-            </p>
+
             <button
               onClick={() => navigate("/dang-ky")}
               className="relative mt-8 inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-[15px] font-bold text-[#3c6c44] shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"

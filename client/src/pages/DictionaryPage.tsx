@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, BookOpen, Search, Play, Clock, Loader2 } from "lucide-react";
 import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
@@ -92,6 +93,7 @@ interface LessonItem {
   estimatedMinutes: number;
   xpReward: number;
   coverMediaId?: number | null;
+  videoMediaId?: number | null;
   lessonType: string;
   status: number;
 }
@@ -101,38 +103,24 @@ function DictionaryPage() {
   const [query, setQuery] = useState("");
   const [activeLetter, setActiveLetter] = useState("A");
   const [currentPage, setCurrentPage] = useState(1);
-  const [lessons, setLessons] = useState<LessonItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Fetch all lessons from API
-  useEffect(() => {
-    const loadLessons = async () => {
-      try {
-        setIsLoading(true);
-        const authToken = tokenStorage.getToken();
-        const headers: Record<string, string> = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
+  // Fetch all lessons using TanStack Query
+  const { data: lessonsData, isLoading } = useQuery({
+    queryKey: ["dictionaryLessons"],
+    queryFn: async () => {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
 
-        const res = await fetch(
-          `${API_BASE_URL}/api/lessons?page=1&pageSize=200`,
-          { headers },
-        );
+      const res = await fetch(`${API_BASE_URL}/api/lessons?page=1&pageSize=200`, { headers });
+      if (!res.ok) throw new Error("Không thể tải danh sách bài học");
+      const data = await res.json();
+      return data.items || [];
+    }
+  });
 
-        if (res.ok) {
-          const data = await res.json();
-          setLessons(data.items || []);
-        }
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu từ điển", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadLessons();
-  }, []);
+  const lessons: LessonItem[] = lessonsData || [];
 
   // Count lessons per letter for badge display
   const letterCounts = useMemo(() => {
@@ -213,9 +201,6 @@ function DictionaryPage() {
           <h1 className="text-[clamp(1.95rem,3vw,2.85rem)] font-bold leading-[1.1] text-[#182333]">
             {dictionaryPage.hero.title}
           </h1>
-          <p className="mx-auto mt-3 max-w-[760px] text-[#79858e]">
-            {dictionaryPage.hero.description}
-          </p>
         </motion.header>
 
         {/* Search Bar */}
@@ -335,10 +320,10 @@ function DictionaryPage() {
                   >
                     {/* Card Image / Cover */}
                     <div className="relative h-[140px] overflow-hidden">
-                      {lesson.coverMediaId ? (
+                      {(lesson.coverMediaId || lesson.videoMediaId) ? (
                         <CourseImage
                           title={lesson.title}
-                          coverMediaId={lesson.coverMediaId}
+                          coverMediaId={lesson.coverMediaId || lesson.videoMediaId}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (

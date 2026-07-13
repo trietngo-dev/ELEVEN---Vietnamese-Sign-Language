@@ -657,11 +657,11 @@ export default function LessonDetailPage() {
 
                 <div className="flex items-center gap-2 text-[#3c6d44] mb-3 relative z-10">
                   <Bot size={18} />
-                  <h3 className="text-xs font-black uppercase tracking-wider">Rèn luyện cử chỉ VSL</h3>
+                  <h3 className="text-xs font-black uppercase tracking-wider">Rèn luyện cử chỉ</h3>
                 </div>
 
                 <p className="text-xs text-[#3c6d44]/80 font-semibold mb-4 relative z-10 leading-relaxed">
-                  Học viên Pro: Bật Camera AI để hệ thống nhận diện và chấm điểm động tác tay của bạn tức thời.
+                  Bật camera để hệ thống nhận diện và chấm điểm động tác của bạn.
                 </p>
 
                 <button
@@ -674,11 +674,11 @@ export default function LessonDetailPage() {
                       : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                   )}
                 >
-                  <Bot size={14} /> Kiểm tra cử chỉ với AI 🤖
+                  <Bot size={14} /> Bắt đầu
                 </button>
                 {!isVideoWatched && (
                   <p className="text-[10px] text-red-500 font-bold mt-2.5 text-center relative z-10 animate-pulse">
-                    ⚠️ Vui lòng xem hết video để mở khóa kiểm tra AI
+                    Vui lòng xem hết video để mở khóa kiểm tra AI
                   </p>
                 )}
               </div>
