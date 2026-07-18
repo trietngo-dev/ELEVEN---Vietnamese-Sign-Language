@@ -58,6 +58,30 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess, onCl
   const [progress, setProgress] = useState(0); // Progress for capturing 50 frames
   const [retryCountdown, setRetryCountdown] = useState<number | null>(null);
 
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const portrait = window.innerHeight > window.innerWidth;
+      setIsPortrait(isMobile && portrait);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isPortrait) {
+      cleanupCamera();
+      setStep("READY");
+    }
+  }, [isPortrait]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -247,8 +271,8 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess, onCl
       }
     }, 1000);
   };
-
   const startPractice = async () => {
+    if (isPortrait) return;
     setStep("INITIALIZING");
     setApiResult(null);
     frameBufferRef.current = [];
@@ -275,8 +299,8 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess, onCl
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
           facingMode: "user",
         },
       });
@@ -483,6 +507,28 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess, onCl
     triggerCountdown();
   };
 
+  if (isPortrait) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1528] p-6 text-center text-white">
+        <div className="mb-6 animate-bounce">
+          <svg className="h-16 w-16 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold mb-2">Vui lòng xoay ngang màn hình</h2>
+        <p className="text-sm text-slate-400 max-w-xs">
+          Để bắt chuyển động chính xác nhất và giao diện hiển thị đầy đủ, vui lòng xoay ngang thiết bị di động của bạn.
+        </p>
+        <button
+          onClick={handleCloseModal}
+          className="mt-6 border border-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-6 rounded-xl text-sm pointer-events-auto"
+        >
+          Đóng cửa sổ
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-[#0f172a] rounded-3xl border border-slate-800 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col font-sans text-slate-100 min-h-[550px] animate-in zoom-in-95 duration-300">
@@ -508,8 +554,8 @@ const AIPracticePopup: React.FC<AIPracticePopupProps> = ({ word, onSuccess, onCl
           {/* Render ẩn video để ref luôn tồn tại */}
           <video ref={videoRef} className="hidden" playsInline muted />
 
-          {/* Wrapper chuẩn hóa tỉ lệ khung hình khối vuông giống y hệt khi train model */}
-          <div className="relative w-full max-w-[400px] aspect-square rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-[#090d16] flex items-center justify-center">
+          {/* Wrapper chuẩn hóa tỉ lệ khung hình ngang 16:9 khớp với bộ dữ liệu gốc */}
+          <div className="relative w-full max-w-[600px] aspect-video rounded-2xl overflow-hidden border border-slate-800 shadow-inner bg-[#090d16] flex items-center justify-center">
 
             {/* Thẻ canvas vẽ và trích xuất */}
             <canvas
