@@ -58,8 +58,6 @@ class SignLanguageProcessor {
         } catch (e) {
           debugPrint("Lỗi native holistic tracking: $e");
         }
-      }
-
       _isProcessing = false;
 
       // Save raw features before spatial normalization for live skeletal visual overlay

@@ -103,6 +103,14 @@ function App() {
           <Route path="delete-account" element={<DeleteAccountPage />} />
           <Route path="delete-acount" element={<Navigate to="/delete-account" replace />} />
           <Route
+            path="dich-thuat"
+            element={
+              <ProtectedRoute>
+                <SignLanguageTracker />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="*"
             element={
               <ProtectedRoute>
