@@ -32,6 +32,9 @@ export default function LessonDetailPage() {
   const [progressId, setProgressId] = useState<number | null>(null);
   const [existingProgress, setExistingProgress] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [completedLessonIds, setCompletedLessonIds] = useState<number[]>([]);
+  const [showChapterQuizPrompt, setShowChapterQuizPrompt] = useState(false);
+  const [allLessons, setAllLessons] = useState<any[]>([]);
 
   // Free user quiz states
   const [showFreeQuiz, setShowFreeQuiz] = useState(false);
@@ -51,7 +54,7 @@ export default function LessonDetailPage() {
         const userId = user?.id || 1;
 
         // Check if the current lesson is from static mock data
-        const isMockLessonId = ["2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023"].includes(id || "");
+        const isMockLessonId = ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023"].includes(id || "");
 
         let data = null;
 
@@ -93,6 +96,25 @@ export default function LessonDetailPage() {
             ...mockCourseLessons.filter(ml => !courseLessons.some(cl => cl.id === ml.id)),
             ...courseLessons
           ].sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+
+          setAllLessons(mergedLessons);
+
+          // Fetch all completed lessons for course completion check
+          try {
+            const allProgRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers });
+            let apiCompleted: number[] = [];
+            if (allProgRes.ok) {
+              const progData = await allProgRes.json();
+              const items = progData.items || (Array.isArray(progData) ? progData : progData.items) || [];
+              apiCompleted = items.filter((p: any) => p.userId === userId && p.status === 2).map((p: any) => p.lessonId);
+            }
+            const mockCompleted = mergedLessons
+              .filter((l: any) => ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023"].includes(l.id.toString()) && localStorage.getItem(`mock_lesson_progress_${l.id}`) === "completed")
+              .map((l: any) => l.id);
+            setCompletedLessonIds([...apiCompleted, ...mockCompleted]);
+          } catch (err) {
+            console.error("Lỗi khi tải danh sách bài học đã hoàn thành", err);
+          }
 
           const currentIdx = mergedLessons.findIndex((l: any) => l.id.toString() === id);
           if (currentIdx !== -1 && currentIdx < mergedLessons.length - 1) {
@@ -140,7 +162,7 @@ export default function LessonDetailPage() {
               const mapping = lessonVocabItems.find((lv: any) => lv.lessonId === data.id);
               if (mapping) {
                 setVocabId(mapping.vocabularyId);
-                
+
                 const vocabProgRes = await fetch(`${API_BASE_URL}/api/user_vocabulary_progress?pageSize=1000`, { headers });
                 if (vocabProgRes.ok) {
                   const vocabProgData = await vocabProgRes.json();
@@ -196,12 +218,16 @@ export default function LessonDetailPage() {
   useEffect(() => {
     const completeLesson = async () => {
       if (isVideoWatched && aiScore !== null && !isCompleted && lesson) {
-        const isMockLessonId = ["2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023"].includes(id || "");
+        const isMockLessonId = ["2001", "2002", "2003", "2004", "2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012", "2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023"].includes(id || "");
 
         if (isMockLessonId) {
           localStorage.setItem(`mock_lesson_progress_${id}`, "completed");
           setIsCompleted(true);
           setShowCompletionModal(true);
+          const parsedId = parseInt(id || "0");
+          if (parsedId > 0) {
+            setCompletedLessonIds(prev => Array.from(new Set([...prev, parsedId])));
+          }
         } else {
           try {
             const authToken = tokenStorage.getToken();
@@ -225,13 +251,14 @@ export default function LessonDetailPage() {
                 bestAccuracy: aiScore,
                 bestScore: aiScore,
                 totalTimeSeconds: lesson.estimatedMinutes * 60,
-                xpEarned: lesson.xpReward || 50
+                xpEarned: 0
               })
             });
 
             if (res.ok) {
               setIsCompleted(true);
               setShowCompletionModal(true);
+              setCompletedLessonIds(prev => Array.from(new Set([...prev, lesson.id])));
             }
           } catch (error) {
             console.error("Lỗi khi cập nhật tiến độ bài học", error);
@@ -242,6 +269,36 @@ export default function LessonDetailPage() {
 
     completeLesson();
   }, [isVideoWatched, aiScore, isCompleted, lesson, user, id]);
+
+  const handleContinueLearning = () => {
+    setShowCompletionModal(false);
+
+    // 1. Kiểm tra bài tiếp theo
+    if (nextLesson) {
+      // 2. Pro user: Tự động qua bài tiếp theo. Free user: Chỉ tự động qua bài tiếp theo khi cùng moduleId
+      const isSameModule = nextLesson.moduleId === lesson.moduleId;
+      if (isUserPremium || isSameModule) {
+        setIsVideoWatched(false);
+        setAiScore(null);
+        setIsCompleted(false);
+        navigate(`/bai-hoc/${nextLesson.id}`);
+        return;
+      }
+    }
+
+    // 3. Nếu là bài cuối của chương hoặc bài tiếp theo thuộc chương khác
+    // Kiểm tra xem tất cả bài học trong chương hiện tại đã được hoàn thành hay chưa
+    const currentModuleLessons = allLessons.filter((l: any) => l.moduleId === lesson.moduleId);
+    const isAllModuleCompleted = currentModuleLessons.every((l: any) => completedLessonIds.includes(l.id) || l.id === lesson.id);
+
+    if (isAllModuleCompleted) {
+      // Hiện modal nhắc nhở làm bài kiểm tra toàn chương để qua chương tiếp theo
+      setShowChapterQuizPrompt(true);
+    } else {
+      // Nếu chưa hoàn thành các bài khác trong chương, chỉ đưa về trang chi tiết khóa học
+      navigate(`/khoa-hoc/${lesson.courseId}`);
+    }
+  };
 
   const handleToggleSave = async () => {
     if (isSaving || !lesson) return;
@@ -378,7 +435,7 @@ export default function LessonDetailPage() {
       const uniqueIncorrect = Array.from(new Set(incorrect));
       const shuffled = uniqueIncorrect.sort(() => 0.5 - Math.random()).slice(0, 3);
       const options = [correct, ...shuffled].sort(() => 0.5 - Math.random());
-      
+
       setFreeQuizOptions(options);
       setSelectedFreeOption(null);
       setFreeQuizResult(null);
@@ -394,7 +451,10 @@ export default function LessonDetailPage() {
       setIsVideoWatched(true);
       setTimeout(() => {
         setShowFreeQuiz(false);
-        setShowUpgradeModal(true);
+        const dismissed = localStorage.getItem("hide_upgrade_ai_modal");
+        if (!dismissed) {
+          setShowUpgradeModal(true);
+        }
       }, 1500);
     } else {
       setFreeQuizResult("incorrect");
@@ -411,62 +471,213 @@ export default function LessonDetailPage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-800">
-      <div className="mx-auto max-w-[1200px] px-6 py-6">
+      <div className="container mx-auto px-4 md:px-6 py-6">
 
         {/* Back Button */}
-        <div className="my-6">
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors font-bold text-sm">
-            <ArrowLeft size={16} /> Quay lại
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/60 shadow-sm text-slate-600 hover:text-[#2d6a4f] hover:border-[#2d6a4f]/30 hover:bg-emerald-50/20 transition-all duration-300 font-bold text-sm"
+          >
+            <ArrowLeft size={16} className="stroke-[2.5]" /> Quay lại
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+        {/* Top Section: Video Player & Sidebar (Aligned to have the same height on lg screens) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-stretch">
+          
+          {/* Video Player */}
+          <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
+            <video
+              src={videoUrl || videoXinChao}
+              controls
+              className="w-full h-full object-contain"
+              onEnded={() => {
+                setIsVideoWatched(true);
+              }}
+            />
+          </div>
 
-          {/* Main Content Area */}
-          <div className="flex flex-col gap-6">
-            {/* Video Player */}
-            <div className="relative w-full aspect-video rounded-[32px] overflow-hidden bg-black shadow-sm flex items-center justify-center">
-              <video
-                src={videoUrl || videoXinChao}
-                controls
-                className="w-full h-full object-contain"
-                onEnded={() => {
-                  setIsVideoWatched(true);
-                  if (!isUserPremium) {
-                    setAiScore(100);
-                  }
-                }}
-              />
+          {/* Sidebar Area */}
+          <div className="flex flex-col justify-between h-full gap-4">
+            
+            {/* Vòng tròn tiến độ & Các bước học tập */}
+            <div className="bg-white rounded-[24px] border border-slate-100 p-4 md:p-5 shadow-sm flex flex-col items-center flex-1 justify-center min-h-0">
+              <h3 className="text-[13px] font-black text-slate-800 flex items-center gap-2 mb-3 w-full text-left">
+                <span className="text-[#3c6d44]">Tiến độ bài học</span>
+              </h3>
+
+              {/* Progress Ring */}
+              <div className="relative flex items-center justify-center w-28 h-28 mb-3 shrink-0">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="32"
+                    className="text-slate-100"
+                    strokeWidth="6"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                  <circle
+                    cx="56"
+                    cy="56"
+                    r="32"
+                    className="text-[#3c6d44] transition-all duration-500"
+                    strokeWidth="6"
+                    strokeDasharray={2 * Math.PI * 32}
+                    strokeDashoffset={2 * Math.PI * 32 - ((isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0) / 100) * 2 * Math.PI * 32}
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-xl font-black text-slate-800">{isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0}%</span>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tiến trình</span>
+                </div>
+              </div>
+
+              {/* Steps List */}
+              <div className="flex flex-col gap-3 w-full border-t border-slate-50 pt-3">
+                {/* Step 1 */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {isVideoWatched ? "✓" : "1"}
+                    </span>
+                    <span className={`font-semibold truncate ${isVideoWatched ? "text-slate-700" : "text-slate-400"}`}>1. Xem video giảng dạy</span>
+                  </div>
+                  <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
+                    {isVideoWatched ? "Đã xem" : "Chưa xem"}
+                  </span>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${aiScore !== null ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {aiScore !== null ? "✓" : "2"}
+                    </span>
+                    <span className={`font-semibold truncate ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra từ đã học</span>
+                  </div>
+                  <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${aiScore !== null ? "bg-[#fdf8e9] text-[#71540a]" : "bg-slate-50 text-slate-400"}`}>
+                    {aiScore !== null ? `Đạt ${Math.round(aiScore)}%` : "Chưa làm"}
+                  </span>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-4 h-4 shrink-0 rounded-full flex items-center justify-center text-[9px] font-bold ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
+                      {isCompleted ? "✓" : "3"}
+                    </span>
+                    <span className={`font-semibold truncate ${isCompleted ? "text-slate-700" : "text-slate-400"}`}>3. Hoàn thành bài học</span>
+                  </div>
+                  <span className={`font-bold px-1.5 py-0.5 rounded text-[10px] shrink-0 ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
+                    {isCompleted ? "Hoàn thành" : "Chưa đạt"}
+                  </span>
+                </div>
+              </div>
             </div>
 
+            {/* Practice & Verification Widget */}
+            {isUserPremium ? (
+              <div className="bg-gradient-to-br from-[#f4fbf6] to-[#e8f5ec] rounded-[24px] border border-[#d4ebd9] p-4 md:p-5 relative overflow-hidden shadow-sm flex flex-col justify-between shrink-0">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                <div>
+                  <div className="flex items-center gap-2 text-[#3c6d44] mb-2 relative z-10">
+                    <Bot size={16} />
+                    <h3 className="text-[11px] font-black uppercase tracking-wider">Rèn luyện cử chỉ</h3>
+                  </div>
+                  <p className="text-[11px] text-[#3c6d44]/80 font-semibold mb-3 relative z-10 leading-relaxed">
+                    Bật camera để hệ thống nhận diện và chấm điểm động tác của bạn.
+                  </p>
+                </div>
+                <button
+                  disabled={!isVideoWatched}
+                  onClick={handleInteractionClick}
+                  className={cn(
+                    "w-full py-2.5 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
+                    isVideoWatched
+                      ? "bg-[#3c6d44] hover:bg-[#315736] hover:-translate-y-0.5 shadow-md shadow-[#3c6d44]/20 cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  )}
+                >
+                  <Bot size={14} /> Bắt đầu
+                </button>
+                {!isVideoWatched && (
+                  <p className="text-[9px] text-red-500 font-bold mt-2 text-center relative z-10 animate-pulse">
+                    Vui lòng xem hết video để mở khóa kiểm tra AI
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gradient-to-br from-[#fffdf5] to-[#fef9e6] rounded-[24px] border border-[#fbf2d0] p-4 md:p-5 relative overflow-hidden shadow-sm flex flex-col justify-between shrink-0">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+                <div>
+                  <div className="flex items-center gap-2 text-amber-600 mb-2 relative z-10">
+                    <HelpCircle size={16} />
+                    <h3 className="text-[11px] font-black uppercase tracking-wider">Kiểm tra ghi nhớ</h3>
+                  </div>
+                  <p className="text-[11px] text-amber-700/80 font-semibold mb-3 relative z-10 leading-relaxed">
+                    Học viên Free: Trả lời trắc nghiệm nhanh để xác minh mức độ hiểu bài.
+                  </p>
+                </div>
+                <button
+                  disabled={!isVideoWatched}
+                  onClick={handleInteractionClick}
+                  className={cn(
+                    "w-full py-2.5 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 relative z-10",
+                    isVideoWatched
+                      ? "bg-amber-500 hover:bg-amber-600 hover:-translate-y-0.5 shadow-md shadow-amber-500/20 cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                  )}
+                >
+                  <HelpCircle size={14} /> Làm bài trắc nghiệm nhanh
+                </button>
+                {!isVideoWatched && (
+                  <p className="text-[9px] text-red-500 font-bold mt-2 text-center relative z-10 animate-pulse">
+                    Vui lòng xem hết video để mở khóa trắc nghiệm
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Next Button */}
+            <button
+              disabled={!isCompleted}
+              onClick={handleContinueLearning}
+              className={`w-full py-3 rounded-2xl flex items-center justify-center font-bold transition-all shadow-md shrink-0 text-sm ${isCompleted
+                ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
+                : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                }`}
+            >
+              {nextLesson ? "Từ tiếp theo" : "Hoàn thành khóa học"}
+            </button>
+          </div>
+        </div>
+
+        {/* Bottom Section: Title, Actions Row & Details Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 mt-6">
+          <div className="flex flex-col gap-6">
+            
             {/* Title & Actions Row */}
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4 border-t border-slate-100">
               <div>
                 <h1 className="text-4xl font-black text-slate-800 mb-3">{lesson.title}</h1>
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-medium text-slate-400">Cấp độ: {lesson.difficultyLevel || "Cơ bản"}</span>
-                  {lesson.xpReward && (
-                    <span className="bg-[#fef3c7] text-[#71540a] px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
-                      +{lesson.xpReward} XP
-                    </span>
-                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={handleInteractionClick}
-                  className="flex items-center gap-2 bg-[#3c6d44] text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-[#3c6d44]/20 hover:bg-[#315736] transition-all animate-pulse-slow"
-                >
-                  <Bot size={18} /> Tương tác với AI
-                </button>
-                <button
                   onClick={handleToggleSave}
                   disabled={isSaving}
-                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-75 ${
-                    isSaved
-                      ? "bg-[#efca4c] text-[#4b3c14] hover:bg-[#e7c13f] shadow-[#efca4c]/20"
-                      : "bg-[#3c6d44] text-white hover:bg-[#315736] shadow-[#3c6d44]/20"
-                  }`}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-75 ${isSaved
+                    ? "bg-[#efca4c] text-[#4b3c14] hover:bg-[#e7c13f] shadow-[#efca4c]/20"
+                    : "bg-[#3c6d44] text-white hover:bg-[#315736] shadow-[#3c6d44]/20"
+                    }`}
                 >
                   <Bookmark size={18} className={isSaved ? "fill-[#4b3c14] text-[#4b3c14]" : "text-white"} />
                   {isSaved ? "Đã lưu" : "Lưu từ"}
@@ -478,7 +689,7 @@ export default function LessonDetailPage() {
             </div>
 
             {/* Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4 border-t border-slate-100 pt-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t border-slate-100 pt-6">
               {/* Ý nghĩa */}
               <div>
                 <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-4">
@@ -510,143 +721,15 @@ export default function LessonDetailPage() {
                   </li>
                   <li className="flex gap-4">
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-black">3</span>
-                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Đừng quên thực hành với Trợ lý AI để lấy XP nhé!</p>
+                    <p className="text-sm font-medium text-slate-600 leading-relaxed mt-0.5">Đừng quên thực hành sau bài học nhé!</p>
                   </li>
                 </ul>
               </div>
             </div>
           </div>
-
-          {/* Sidebar Area */}
-          <div className="flex flex-col gap-6">
-            {/* Vòng tròn tiến độ & Các bước học tập */}
-            <div className="bg-white rounded-[32px] border border-slate-100 p-6 shadow-sm flex flex-col items-center">
-              <h3 className="text-[15px] font-black text-slate-800 flex items-center gap-2 mb-6 w-full text-left">
-                <span className="text-[#3c6d44]">Tiến độ bài học</span>
-              </h3>
-
-              {/* Progress Ring */}
-              <div className="relative flex items-center justify-center w-36 h-36 mb-6">
-                <svg className="w-full h-full transform -rotate-90">
-                  <circle
-                    cx="72"
-                    cy="72"
-                    r="40"
-                    className="text-slate-100"
-                    strokeWidth="8"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                  <circle
-                    cx="72"
-                    cy="72"
-                    r="40"
-                    className="text-[#3c6d44] transition-all duration-500"
-                    strokeWidth="8"
-                    strokeDasharray={2 * Math.PI * 40}
-                    strokeDashoffset={2 * Math.PI * 40 - ((isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0) / 100) * 2 * Math.PI * 40}
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="transparent"
-                  />
-                </svg>
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-2xl font-black text-slate-800">{isCompleted ? 100 : (isVideoWatched && aiScore !== null) ? 100 : (isVideoWatched || aiScore !== null) ? 50 : 0}%</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Tiến trình</span>
-                </div>
-              </div>
-
-              {/* Steps List */}
-              <div className="flex flex-col gap-4 w-full border-t border-slate-50 pt-5">
-                {/* Step 1 */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
-                      {isVideoWatched ? "✓" : "1"}
-                    </span>
-                    <span className={`font-semibold ${isVideoWatched ? "text-slate-700" : "text-slate-400"}`}>1. Xem video giảng dạy</span>
-                  </div>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${isVideoWatched ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
-                    {isVideoWatched ? "Đã xem" : "Chưa xem"}
-                  </span>
-                </div>
-
-                {/* Step 2 */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${aiScore !== null ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
-                      {aiScore !== null ? "✓" : "2"}
-                    </span>
-                    <span className={`font-semibold ${aiScore !== null ? "text-slate-700" : "text-slate-400"}`}>2. Kiểm tra với AI</span>
-                  </div>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${aiScore !== null ? "bg-[#fdf8e9] text-[#71540a]" : "bg-slate-50 text-slate-400"}`}>
-                    {aiScore !== null ? `Đạt ${Math.round(aiScore)}%` : "Chưa làm"}
-                  </span>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-100 text-slate-400"}`}>
-                      {isCompleted ? "✓" : "3"}
-                    </span>
-                    <span className={`font-semibold ${isCompleted ? "text-slate-700" : "text-slate-400"}`}>3. Hoàn thành bài học</span>
-                  </div>
-                  <span className={`font-bold px-2 py-0.5 rounded-md ${isCompleted ? "bg-[#eef7ee] text-[#3c6d44]" : "bg-slate-50 text-slate-400"}`}>
-                    {isCompleted ? "Hoàn thành" : "Chưa đạt"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Daily Challenge */}
-            <div className="bg-[#f4fbf6] rounded-[32px] border border-[#eef7ee] p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#3c6d44]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-
-              <h3 className="text-sm font-black text-[#3c6d44] mb-2 relative z-10">Thử thách hàng ngày</h3>
-              <p className="text-xs text-[#3c6d44]/70 font-medium mb-6 relative z-10 leading-relaxed">
-                Hoàn thành 5 từ vựng giao tiếp để nhận huy hiệu mới!
-              </p>
-
-              <div className="relative z-10">
-                <div className="w-full h-2 bg-[#d4e4d8] rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-[#3c6d44] w-[60%] rounded-full"></div>
-                </div>
-                <div className="flex justify-between items-center text-[10px] font-bold text-[#3c6d44]">
-                  <span>3/5 hoàn thành</span>
-                  <span>60%</span>
-                </div>
-              </div>
-
-              <Trophy size={100} strokeWidth={1} className="absolute -bottom-6 -right-6 text-[#3c6d44]/10 transform -rotate-12 pointer-events-none" />
-            </div>
-
-            {/* Next Button */}
-            <button
-              disabled={!isCompleted}
-              onClick={() => {
-                if (nextLesson) {
-                  // Reset player completion states for the next lesson
-                  setIsVideoWatched(false);
-                  setAiScore(null);
-                  setIsCompleted(false);
-                  setShowCompletionModal(false);
-                  // Navigate to the next lesson page
-                  navigate(`/bai-hoc/${nextLesson.id}`);
-                } else {
-                  // Navigate back to course detail page
-                  navigate(`/khoa-hoc/${lesson.courseId}`);
-                }
-              }}
-              className={`w-full py-4 rounded-2xl flex items-center justify-center font-bold transition-all shadow-xl ${isCompleted
-                ? "bg-[#3c6d44] text-white hover:bg-[#315736] hover:-translate-y-0.5 shadow-[#3c6d44]/20 cursor-pointer"
-                : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
-                }`}
-            >
-              {nextLesson ? "Từ tiếp theo" : "Hoàn thành khóa học"}
-            </button>
-          </div>
-
+          
+          {/* Spacer Column to keep alignment with the sidebar */}
+          <div className="hidden lg:block w-[320px]" />
         </div>
       </div>
 
@@ -668,16 +751,13 @@ export default function LessonDetailPage() {
               Tuyệt vời! Bạn đã xem xong video và thực hành cử chỉ cực chuẩn với AI đạt <strong>{aiScore}%</strong>.
             </p>
 
-            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 relative z-10 flex flex-col items-center justify-center gap-1">
-              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Phần thưởng</span>
-              <span className="text-3xl font-black text-amber-600">+{lesson?.xpReward || 50} XP</span>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6 relative z-10 flex flex-col items-center justify-center gap-1 text-center">
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Trạng thái</span>
+              <span className="text-sm font-black text-emerald-800">Đã hoàn thành bài học này!</span>
             </div>
 
             <button
-              onClick={() => {
-                setShowCompletionModal(false);
-                navigate(-1);
-              }}
+              onClick={handleContinueLearning}
               className="w-full py-4 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center font-bold hover:bg-[#315736] transition-all shadow-xl shadow-[#3c6d44]/20 hover:-translate-y-0.5 relative z-10"
             >
               Tiếp tục học
@@ -685,6 +765,49 @@ export default function LessonDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Chapter Quiz Prompt Modal */}
+      {showChapterQuizPrompt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            <button onClick={() => setShowChapterQuizPrompt(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors">
+              <X size={20} />
+            </button>
+
+            <div className="size-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner relative z-10 animate-bounce-slow">
+              <Trophy size={40} className="text-amber-500" />
+            </div>
+
+            <h2 className="text-xl font-black text-slate-800 mb-2 relative z-10">Hoàn thành chương học!</h2>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed relative z-10">
+              Chúc mừng bạn đã hoàn thành tất cả bài giảng trong chương học này! Hãy kiểm tra toàn chương để ôn luyện và mở khóa chương học tiếp theo nhé.
+            </p>
+
+            <div className="flex flex-col gap-3 relative z-10">
+              <button
+                onClick={() => {
+                  setShowChapterQuizPrompt(false);
+                  navigate(`/khoa-hoc/${lesson.courseId}?startQuiz=${lesson.moduleId}`);
+                }}
+                className="w-full py-3 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center font-black text-xs shadow-md shadow-amber-500/20 hover:-translate-y-0.5 transition-all"
+              >
+                Làm test chương 📝
+              </button>
+              <button
+                onClick={() => {
+                  setShowChapterQuizPrompt(false);
+                  navigate(`/khoa-hoc/${lesson.courseId}`);
+                }}
+                className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs transition-all"
+              >
+                Về trang khóa học
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Practice Modal Overlay */}
       {showAI && (
         <AIPracticePopup
@@ -698,8 +821,8 @@ export default function LessonDetailPage() {
       {showFreeQuiz && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 relative overflow-hidden animate-in zoom-in-95 duration-300">
-            <button 
-              onClick={() => setShowFreeQuiz(false)} 
+            <button
+              onClick={() => setShowFreeQuiz(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
             >
               <X size={18} />
@@ -711,7 +834,19 @@ export default function LessonDetailPage() {
             </div>
 
             <h3 className="text-lg font-black text-slate-800 mb-2">Cử chỉ trong video có nghĩa là gì?</h3>
-            <p className="text-xs text-slate-500 mb-6 leading-relaxed">Chọn ý nghĩa chính xác tương ứng với cử chỉ ngôn ngữ ký hiệu bạn vừa xem.</p>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">Chọn ý nghĩa chính xác tương ứng với cử chỉ ngôn ngữ ký hiệu bạn vừa xem.</p>
+
+            {/* Lesson Video Preview */}
+            <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black mb-5 shadow-inner">
+              <video
+                src={videoUrl || videoXinChao}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
 
             {/* Options */}
             <div className="flex flex-col gap-2.5 mb-6">
@@ -780,8 +915,8 @@ export default function LessonDetailPage() {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 text-center relative overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-            <button 
-              onClick={() => setShowUpgradeModal(false)} 
+            <button
+              onClick={() => setShowUpgradeModal(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
             >
               <X size={18} />
@@ -802,15 +937,30 @@ export default function LessonDetailPage() {
                 onClick={() => setShowUpgradeModal(false)}
                 className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center font-bold hover:bg-[#315736] transition-all shadow-xl shadow-[#3c6d44]/10 hover:-translate-y-0.5"
               >
-                Nâng cấp tài khoản Pro 👑
+                Nâng cấp tài khoản Pro
               </Link>
               <button
-                onClick={() => setShowUpgradeModal(false)}
+                onClick={() => {
+                  const checkbox = document.getElementById("hide-upgrade-modal-checkbox") as HTMLInputElement;
+                  if (checkbox?.checked) {
+                    localStorage.setItem("hide_upgrade_ai_modal", "true");
+                  }
+                  setShowUpgradeModal(false);
+                }}
                 className="w-full py-3 border border-slate-200 text-slate-500 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-colors"
               >
                 Để sau, tiếp tục học Free
               </button>
             </div>
+
+            <label className="flex items-center gap-2 mt-4 cursor-pointer select-none relative z-10 justify-center">
+              <input
+                id="hide-upgrade-modal-checkbox"
+                type="checkbox"
+                className="w-4 h-4 rounded border-slate-300 text-[#3c6d44] focus:ring-[#3c6d44] accent-[#3c6d44] cursor-pointer"
+              />
+              <span className="text-[11px] text-slate-400 font-semibold">Không hiện lại thông báo này</span>
+            </label>
           </div>
         </div>
       )}

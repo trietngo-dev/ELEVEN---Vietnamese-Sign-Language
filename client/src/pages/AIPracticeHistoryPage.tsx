@@ -83,7 +83,6 @@ export default function AIPracticeHistoryPage() {
       const detailedItems: PracticeHistoryItem[] = userAIProgress.map((prog: any) => {
         const lesson = lessonItems.find((l: any) => l.id === prog.lessonId);
         const title = lesson ? lesson.title : `Bài học #${prog.lessonId}`;
-        const coverMediaId = lesson ? lesson.coverMediaId : null;
         const duration = lesson ? lesson.estimatedMinutes : 0;
 
         return {
@@ -93,7 +92,7 @@ export default function AIPracticeHistoryPage() {
           bestAccuracy: prog.bestAccuracy,
           bestScore: prog.bestScore,
           completedAt: prog.completedAt || prog.updatedAt || new Date().toISOString(),
-          lessonCoverMediaId: coverMediaId,
+          lessonCoverMediaId: lesson ? (lesson.coverMediaId || lesson.videoMediaId) : null,
           attemptsCount: prog.attemptsCount || 1,
           estimatedMinutes: duration
         };
@@ -162,17 +161,14 @@ export default function AIPracticeHistoryPage() {
           <div className="space-y-2">
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 transition-colors font-bold text-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/60 shadow-sm text-slate-600 hover:text-[#2d6a4f] hover:border-[#2d6a4f]/30 hover:bg-emerald-50/20 transition-all duration-300 font-bold text-sm mb-2"
             >
-              <ArrowLeft size={16} /> Quay lại
+              <ArrowLeft size={16} className="stroke-[2.5]" /> Quay lại
             </button>
             <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
               <Brain className="text-[#3c6d44] shrink-0" size={28} />
               Lịch sử kiểm tra AI
             </h1>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-              Bạn đã thực hiện kiểm tra AI cho {historyItems.length} từ vựng
-            </p>
           </div>
 
           {/* Search bar */}

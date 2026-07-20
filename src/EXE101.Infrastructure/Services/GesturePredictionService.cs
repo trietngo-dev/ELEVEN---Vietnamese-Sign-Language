@@ -112,6 +112,7 @@ public sealed class GesturePredictionService : IGesturePredictionService
         {
             var frameIndex = i / FeaturesPerFrame;
             var featureIndex = i % FeaturesPerFrame;
+            
             tensor[0, frameIndex, featureIndex] = features[i];
         }
 
