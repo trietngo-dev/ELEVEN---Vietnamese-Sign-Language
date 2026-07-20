@@ -23,19 +23,104 @@ public sealed class FeedbackService(
         var total = await _repository.CountAsync(cancellationToken);
         var entities = await _repository.GetPagedAsync(normalizedPage, normalizedPageSize, cancellationToken);
 
+        // Fetch User and Course details in bulk to enrich FeedbackResponse
+        var userIds = entities.Select(e => e.UserId).Distinct().ToList();
+        var users = await _dbContext.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToListAsync(cancellationToken);
+        
+        var avatarMediaIds = users.Where(u => u.AvatarMediaId.HasValue).Select(u => u.AvatarMediaId!.Value).Distinct().ToList();
+        var mediaAssets = await _dbContext.MediaAssets.AsNoTracking().Where(m => avatarMediaIds.Contains(m.Id)).ToListAsync(cancellationToken);
+
+        // Parse course IDs from Subject (e.g. "CourseId:6")
+        var courseIds = new List<long>();
+        foreach (var entity in entities)
+        {
+            if (entity.Subject != null && entity.Subject.StartsWith("CourseId:", StringComparison.OrdinalIgnoreCase))
+            {
+                var idPart = entity.Subject.Substring("CourseId:".Length);
+                if (long.TryParse(idPart, out var cid))
+                {
+                    courseIds.Add(cid);
+                }
+            }
+        }
+        courseIds = courseIds.Distinct().ToList();
+        var courses = await _dbContext.Courses.AsNoTracking().Where(c => courseIds.Contains(c.Id)).ToListAsync(cancellationToken);
+
+        var userMap = users.ToDictionary(u => u.Id);
+        var mediaMap = mediaAssets.ToDictionary(m => m.Id);
+        var courseMap = courses.ToDictionary(c => c.Id);
+
+        var items = new List<FeedbackResponse>();
+        foreach (var entity in entities)
+        {
+            var response = Map(entity);
+            if (userMap.TryGetValue(entity.UserId, out var user))
+            {
+                response.UserFullName = user.FullName;
+                if (user.AvatarMediaId.HasValue && mediaMap.TryGetValue(user.AvatarMediaId.Value, out var media))
+                {
+                    response.UserAvatarUrl = media.FileUrl;
+                }
+            }
+
+            if (entity.Subject != null && entity.Subject.StartsWith("CourseId:", StringComparison.OrdinalIgnoreCase))
+            {
+                var idPart = entity.Subject.Substring("CourseId:".Length);
+                if (long.TryParse(idPart, out var cid) && courseMap.TryGetValue(cid, out var course))
+                {
+                    response.CourseTitle = course.Title;
+                }
+            }
+            items.Add(response);
+        }
+
         return new PagedResult<FeedbackResponse>
         {
             Page = normalizedPage,
             PageSize = normalizedPageSize,
             Total = total,
-            Items = entities.Select(Map).ToList()
+            Items = items
         };
+    }
+
+    private async Task EnrichResponseAsync(FeedbackResponse response, CancellationToken cancellationToken)
+    {
+        var user = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == response.UserId, cancellationToken);
+        if (user is not null)
+        {
+            response.UserFullName = user.FullName;
+            if (user.AvatarMediaId.HasValue)
+            {
+                var media = await _dbContext.MediaAssets.AsNoTracking().FirstOrDefaultAsync(m => m.Id == user.AvatarMediaId.Value, cancellationToken);
+                if (media is not null)
+                {
+                    response.UserAvatarUrl = media.FileUrl;
+                }
+            }
+        }
+
+        if (response.Subject != null && response.Subject.StartsWith("CourseId:", StringComparison.OrdinalIgnoreCase))
+        {
+            var idPart = response.Subject.Substring("CourseId:".Length);
+            if (long.TryParse(idPart, out var cid))
+            {
+                var course = await _dbContext.Courses.AsNoTracking().FirstOrDefaultAsync(c => c.Id == cid, cancellationToken);
+                if (course is not null)
+                {
+                    response.CourseTitle = course.Title;
+                }
+            }
+        }
     }
 
     public async Task<FeedbackResponse?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var entity = await _repository.GetByIdAsync(id, cancellationToken);
-        return entity is null ? null : Map(entity);
+        if (entity is null) return null;
+
+        var response = Map(entity);
+        await EnrichResponseAsync(response, cancellationToken);
+        return response;
     }
 
     public async Task<FeedbackResponse> CreateAsync(CreateFeedbackRequest request, CancellationToken cancellationToken = default)
@@ -57,7 +142,9 @@ public sealed class FeedbackService(
         };
 
         var created = await _repository.AddAsync(entity, cancellationToken);
-        return Map(created);
+        var response = Map(created);
+        await EnrichResponseAsync(response, cancellationToken);
+        return response;
     }
 
     public async Task<FeedbackResponse?> UpdateAsync(long id, UpdateFeedbackRequest request, CancellationToken cancellationToken = default)
@@ -82,7 +169,27 @@ public sealed class FeedbackService(
         entity.UpdatedAt = DateTime.UtcNow;
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
-        return Map(updated);
+
+        // Create learner notification in database when Admin replies
+        if (!string.IsNullOrWhiteSpace(request.AdminReply))
+        {
+            var notification = new Notification
+            {
+                UserId = entity.UserId,
+                Title = "Bạn có phản hồi mới từ Admin",
+                Message = $"Phản hồi: \"{request.AdminReply}\"",
+                Type = "system",
+                IsRead = false,
+                ActionUrl = "/danh-gia",
+                CreatedAt = DateTime.UtcNow
+            };
+            _dbContext.Notifications.Add(notification);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var response = Map(updated);
+        await EnrichResponseAsync(response, cancellationToken);
+        return response;
     }
 
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)

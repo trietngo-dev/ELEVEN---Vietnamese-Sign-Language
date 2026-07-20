@@ -4,7 +4,8 @@ export const viText = {
     buttons: {
       start: "Bắt đầu",
       signIn: "Đăng nhập",
-      tryTranslator: "Thử trình dịch",
+      tryTranslator: "Thử trình dịch ngay",
+      startLearningFree: "Bắt đầu học miễn phí",
       startLearning: "Bắt đầu học",
       viewDetail: "Xem chi tiết",
       createFreeAccount: "Tạo tài khoản miễn phí",
@@ -24,21 +25,22 @@ export const viText = {
     copy: "© 2026 Eleven.",
     navAriaLabel: "Liên kết chân trang",
     links: [
-      { label: "Chính sách bảo mật", href: "#" },
-      { label: "Điều khoản dịch vụ", href: "#" },
+      { label: "Chính sách bảo mật", href: "/chinh-sach-bao-mat" },
+      { label: "Điều khoản dịch vụ", href: "/dieu-khoan" },
       { label: "Chính sách Cookie", href: "#" },
     ],
   },
   landing: {
     hero: {
-      badge: "MỚI! THỬ NGHIỆM DỊCH THUẬT THỜI GIAN THỰC",
-      title: "Làm chủ Ngôn ngữ Ký hiệu dễ dàng với",
-      titleHighlight: "Độ chính xác từ AI",
+      badge: "NỀN TẢNG HỌC NGÔN NGỮ KÝ HIỆU ỨNG DỤNG AI",
+      title: "Học Ngôn ngữ\nKý hiệu dễ dàng",
+      titleHighlight: "cùng AI",
       description:
-        "Trải nghiệm giao tiếp liền mạch với trình dịch AI cho ngôn ngữ ký hiệu Việt. Học theo tốc độ của riêng bạn với các mô-đun tương tác dành cho mọi người.",
-      imageAlt: "Minh họa phiên dịch ngôn ngữ ký hiệu",
+        "Eleven giúp bạn học, luyện tập và dịch Ngôn ngữ Ký hiệu Việt Nam với công nghệ AI tiên tiến.",
+      imageAlt: "Minh họa ngôn ngữ ký hiệu Việt Nam",
       realtimeCaption:
         'DỊCH THUẬT THỜI GIAN THỰC: "Xin chào, tôi có thể giúp gì cho bạn hôm nay?"',
+      socialProof: "Hơn 10.000+ người đang học cùng Eleven",
     },
     sections: {
       featureTitle: "Sẵn sàng phá vỡ rào cản giao tiếp?",
@@ -79,7 +81,7 @@ export const viText = {
     cta: {
       title: "Sẵn sàng phá vỡ rào cản giao tiếp?",
       description:
-        "Tham gia cùng hơn 50.000 người dùng đang sử dụng ElevenAI để kết nối với cộng đồng, gia đình và đồng nghiệp quốc tế.",
+        "Tham gia cùng cộng đồng người dùng đang sử dụng Eleven để kết nối cùng với gia đình, bạn bè và đồng nghiệp.",
     },
   },
 

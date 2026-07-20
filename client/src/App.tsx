@@ -5,8 +5,9 @@ import CoursesPage from "./pages/CoursesPage";
 import DictionaryPage from "./pages/DictionaryPage";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
 import ReviewPage from "./pages/ReviewPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 import SignLanguageTracker from "./components/SignLanguageTracker";
 
 import AdminLayout from "./components/admin/AdminLayout";
@@ -20,9 +21,14 @@ import { useAuth } from "./context/AuthContext";
 
 import HomePage from "./pages/HomePage";
 import ProfilePage from "./pages/ProfilePage";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
 import PricingPage from "./pages/PricingPage";
 import CourseDetailPage from "./pages/CourseDetailPage";
 import LessonDetailPage from "./pages/LessonDetailPage";
+import SavedWordsPage from "./pages/SavedWordsPage";
+import AIPracticeHistoryPage from "./pages/AIPracticeHistoryPage";
+import AdminFrames from "./pages/admin/AdminFrames";
+import FrameStorePage from "./pages/FrameStorePage";
 import AdminRevenue from "./pages/admin/AdminRevenue";
 import AvaterScene from "./components/AvatarScene";
 
@@ -92,6 +98,18 @@ function App() {
           <Route path="khoa-hoc" element={<CoursesPage />} />
           <Route path="tu-dien" element={<DictionaryPage />} />
           <Route path="danh-gia" element={<ReviewPage />} />
+          <Route path="dieu-khoan" element={<TermsPage />} />
+          <Route path="chinh-sach-bao-mat" element={<PrivacyPage />} />
+          <Route path="delete-account" element={<DeleteAccountPage />} />
+          <Route path="delete-acount" element={<Navigate to="/delete-account" replace />} />
+          <Route
+            path="dich-thuat"
+            element={
+              <ProtectedRoute>
+                <SignLanguageTracker />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="*"
             element={
@@ -113,6 +131,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="tu-da-luu"
+            element={
+              <ProtectedRoute>
+                <SavedWordsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="ai-history"
+            element={
+              <ProtectedRoute>
+                <AIPracticeHistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="cua-hang-khung"
+            element={
+              <ProtectedRoute>
+                <FrameStorePage />
               </ProtectedRoute>
             }
           />
@@ -163,7 +205,8 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="courses" element={<AdminCourses />} />
-          <Route path="vocabulary" element={<AdminVocabulary />} />
+           <Route path="vocabulary" element={<AdminVocabulary />} />
+          <Route path="frames" element={<AdminFrames />} />
           <Route path="feedback" element={<AdminFeedback />} />
           <Route path="revenue" element={<AdminRevenue />} />
         </Route>
@@ -180,7 +223,7 @@ function App() {
           path="dang-ky"
           element={
             <PublicRoute>
-              <RegisterPage />
+              <LoginPage />
             </PublicRoute>
           }
         />

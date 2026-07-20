@@ -61,11 +61,15 @@ public sealed class UsersController(IUserService userService) : ControllerBase
         return Ok(result);
     }
 
-    [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id:long}")]
-    public async Task<IActionResult> SoftDelete([FromRoute] long id, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Delete([FromRoute] long id, CancellationToken cancellationToken = default)
     {
-        var deleted = await userService.SoftDeleteAsync(id, cancellationToken);
+        if (!IsAdmin() && GetCurrentUserId() != id)
+        {
+            return Forbid();
+        }
+
+        var deleted = await userService.DeleteAsync(id, cancellationToken);
         if (!deleted)
         {
             return NotFound(new { message = $"User with id {id} was not found." });
@@ -101,6 +105,62 @@ public sealed class UsersController(IUserService userService) : ControllerBase
     {
         var result = await userService.LoginAsync(request, cancellationToken);
         return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("google-login")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var result = await userService.GoogleLoginAsync(request, cancellationToken);
+        return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("account-deletion/request-otp")]
+    public async Task<IActionResult> RequestAccountDeletionOtp([FromBody] RequestAccountDeletionOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        await userService.RequestAccountDeletionOtpAsync(request, cancellationToken);
+        return Ok(new AccountDeletionOtpResponse
+        {
+            Message = "If the email exists, a confirmation code has been sent."
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("account-deletion/confirm")]
+    public async Task<IActionResult> ConfirmAccountDeletion([FromBody] ConfirmAccountDeletionRequest request, CancellationToken cancellationToken = default)
+    {
+        var deleted = await userService.ConfirmAccountDeletionAsync(request, cancellationToken);
+        if (!deleted)
+        {
+            return NotFound(new { message = "User account was not found." });
+        }
+
+        return Ok(new { message = "Account deleted successfully." });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("password-reset/request-otp")]
+    public async Task<IActionResult> RequestPasswordResetOtp([FromBody] RequestPasswordResetOtpRequest request, CancellationToken cancellationToken = default)
+    {
+        await userService.RequestPasswordResetOtpAsync(request, cancellationToken);
+        return Ok(new PasswordResetOtpResponse
+        {
+            Message = "If the email exists, a password reset code has been sent."
+        });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("password-reset/confirm")]
+    public async Task<IActionResult> ConfirmPasswordReset([FromBody] ConfirmPasswordResetRequest request, CancellationToken cancellationToken = default)
+    {
+        var updated = await userService.ConfirmPasswordResetAsync(request, cancellationToken);
+        if (!updated)
+        {
+            return NotFound(new { message = "User account was not found." });
+        }
+
+        return Ok(new { message = "Password has been reset successfully." });
     }
 
     [HttpPost("{id:long}/change-password")]

@@ -3,6 +3,7 @@ using EXE101.Application.Interfaces.Services;
 using EXE101.Application.Models.Common;
 using EXE101.Application.Models.UserSubscriptions;
 using EXE101.Domain.Entities;
+using EXE101.Domain.Enums;
 using EXE101.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -77,6 +78,15 @@ public sealed class UserSubscriptionService(
 
         var updated = await _repository.UpdateAsync(entity, cancellationToken);
         return Map(updated);
+    }
+
+    public async Task<UserSubscriptionResponse?> GetActiveByUserIdAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        var entity = await _dbContext.UserSubscriptions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.Status == SubscriptionStatus.Active, cancellationToken);
+
+        return entity is null ? null : Map(entity);
     }
 
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)

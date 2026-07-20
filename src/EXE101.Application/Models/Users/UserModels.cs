@@ -80,3 +80,36 @@ public sealed class ChangeStatusRequest
 {
     public UserStatus Status { get; set; }
 }
+
+public sealed class RequestAccountDeletionOtpRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ConfirmAccountDeletionRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+}
+
+public sealed class AccountDeletionOtpResponse
+{
+    public string Message { get; set; } = string.Empty;
+}
+
+public sealed class RequestPasswordResetOtpRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ConfirmPasswordResetRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public sealed class PasswordResetOtpResponse
+{
+    public string Message { get; set; } = string.Empty;
+}

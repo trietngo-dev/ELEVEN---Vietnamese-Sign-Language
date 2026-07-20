@@ -167,6 +167,229 @@ using (var scope = app.Services.CreateScope())
 
         dbContext.SaveChanges();
     }
+
+    // Clean up duplicate lowercase plans if uppercase ones exist
+    var lowercasePro = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "pro");
+    var uppercasePro = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "PRO");
+    if (lowercasePro != null)
+    {
+        if (uppercasePro == null)
+        {
+            lowercasePro.Code = "PRO";
+            dbContext.SaveChanges();
+            uppercasePro = lowercasePro;
+        }
+        else
+        {
+            var subs = dbContext.UserSubscriptions.Where(s => s.PlanId == lowercasePro.Id).ToList();
+            foreach (var sub in subs)
+            {
+                sub.PlanId = uppercasePro.Id;
+            }
+            dbContext.SubscriptionPlans.Remove(lowercasePro);
+            dbContext.SaveChanges();
+        }
+    }
+
+    var lowercasePremium = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "premium");
+    var uppercasePremium = dbContext.SubscriptionPlans.FirstOrDefault(x => x.Code == "PREMIUM");
+    if (lowercasePremium != null)
+    {
+        if (uppercasePremium == null)
+        {
+            lowercasePremium.Code = "PREMIUM";
+            dbContext.SaveChanges();
+            uppercasePremium = lowercasePremium;
+        }
+        else
+        {
+            var subs = dbContext.UserSubscriptions.Where(s => s.PlanId == lowercasePremium.Id).ToList();
+            foreach (var sub in subs)
+            {
+                sub.PlanId = uppercasePremium.Id;
+            }
+            dbContext.SubscriptionPlans.Remove(lowercasePremium);
+            dbContext.SaveChanges();
+        }
+    }
+
+    if (!dbContext.SubscriptionPlans.Any(x => x.Code.ToUpper() == "PRO"))
+    {
+        dbContext.SubscriptionPlans.Add(new SubscriptionPlan
+        {
+            Code = "PRO",
+            Name = "Gói Chuyên nghiệp (Tháng)",
+            BillingCycle = "monthly",
+            PriceVnd = 30000,
+            DailyTranslationLimit = 99999,
+            AiPracticeLimit = 99999,
+            CourseAccessScope = "All",
+            CanSaveHistory = true,
+            CertificateEnabled = false,
+            PrioritySupport = true,
+            IsActive = true,
+            DisplayOrder = 1,
+            CreatedAt = now
+        });
+    }
+
+    if (!dbContext.SubscriptionPlans.Any(x => x.Code.ToUpper() == "PREMIUM"))
+    {
+        dbContext.SubscriptionPlans.Add(new SubscriptionPlan
+        {
+            Code = "PREMIUM",
+            Name = "Gói Cao cấp (Năm)",
+            BillingCycle = "yearly",
+            PriceVnd = 50000,
+            DailyTranslationLimit = 99999,
+            AiPracticeLimit = 99999,
+            CourseAccessScope = "All",
+            CanSaveHistory = true,
+            CertificateEnabled = true,
+            PrioritySupport = true,
+            IsActive = true,
+            DisplayOrder = 2,
+            CreatedAt = now
+        });
+    }
+
+    if (!dbContext.FeedbackCategories.Any(x => x.Name == "Course"))
+    {
+        dbContext.FeedbackCategories.Add(new FeedbackCategory
+        {
+            Name = "Course",
+            Description = "Course Ratings and Reviews",
+            IsActive = true,
+            CreatedAt = now
+        });
+    }
+
+    if (!dbContext.FeedbackCategories.Any(x => x.Name == "Support"))
+    {
+        dbContext.FeedbackCategories.Add(new FeedbackCategory
+        {
+            Name = "Support",
+            Description = "User Help and Support Desk Requests",
+            IsActive = true,
+            CreatedAt = now
+        });
+    }
+
+    if (!dbContext.VocabularyCategories.Any(x => x.Slug == "general"))
+    {
+        dbContext.VocabularyCategories.Add(new VocabularyCategory
+        {
+            Name = "General",
+            Slug = "general",
+            Description = "General vocabulary",
+            CreatedAt = now
+        });
+    }
+
+    if (!dbContext.AvatarFrames.Any())
+    {
+        dbContext.AvatarFrames.AddRange(
+            new AvatarFrame
+            {
+                Code = "FRAME_GREEN",
+                Name = "Khung Mầm Non",
+                ImageUrl = "/assets/frame_green.png",
+                XpPrice = 100,
+                IsActive = true,
+                CreatedAt = now
+            },
+            new AvatarFrame
+            {
+                Code = "FRAME_SILVER",
+                Name = "Khung Bạc Tri Thức",
+                ImageUrl = "/assets/frame_silver.png",
+                XpPrice = 500,
+                IsActive = true,
+                CreatedAt = now
+            },
+            new AvatarFrame
+            {
+                Code = "FRAME_GOLD",
+                Name = "Khung Hoàng Kim",
+                ImageUrl = "/assets/frame_gold.png",
+                XpPrice = 2000,
+                IsActive = true,
+                CreatedAt = now
+            }
+        );
+    }
+
+    if (!dbContext.Badges.Any())
+    {
+        dbContext.Badges.AddRange(
+            new Badge
+            {
+                Code = "START",
+                Name = "Khởi đầu",
+                Description = "Dành cho người mới bắt đầu học",
+                BadgeType = BadgeType.Achievement,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_7D",
+                Name = "Chuyên cần",
+                Description = "Cho 7 ngày đăng nhập liên tiếp",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_3D",
+                Name = "Kỷ lục 3 ngày",
+                Description = "Đạt streak 3 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_5D",
+                Name = "Kỷ lục 5 ngày",
+                Description = "Đạt streak 5 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_30D",
+                Name = "Kỷ lục 30 ngày",
+                Description = "Đạt streak 30 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "STREAK_365D",
+                Name = "Kỷ lục 365 ngày",
+                Description = "Đạt streak 365 ngày đăng nhập",
+                BadgeType = BadgeType.Streak,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "DETERMINED",
+                Name = "Quyết tâm",
+                Description = "Cho người học trên 3 khóa học",
+                BadgeType = BadgeType.Milestone,
+                CreatedAt = now
+            },
+            new Badge
+            {
+                Code = "COLLECTOR",
+                Name = "Nhà sưu tập",
+                Description = "Thu thập trên 5 huy hiệu",
+                BadgeType = BadgeType.Achievement,
+                CreatedAt = now
+            }
+        );
+    }
+
+    dbContext.SaveChanges();
 }
 
 // Swagger enabled in all environments for API testing on Render

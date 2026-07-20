@@ -23,7 +23,7 @@ const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000";
 const PREDICT_ENDPOINT = `${API_BASE_URL}/api/gesture/predict`;
 const TRANSLATE_SENTENCE_ENDPOINT = `${API_BASE_URL}/api/gesture/translate-sentence`;
-const CONFIDENCE_THRESHOLD = 0.7;
+const CONFIDENCE_THRESHOLD = 0.95; // Tăng độ tự tin tối thiểu lên 95% theo yêu cầu
 const HAND_SMOOTHING_ALPHA = 0.35;
 const MAX_HAND_HOLD_FRAMES = 4;
 
@@ -76,6 +76,23 @@ const SignLanguageTracker = () => {
     null,
   );
   // const [showLandmarks, setShowLandmarks] = useState(false);
+
+  const [isPortrait, setIsPortrait] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const portrait = window.innerHeight > window.innerWidth;
+      setIsPortrait(isMobile && portrait);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, []);
 
   const isInitializing = useRef(false);
   const countdownTimerRef = useRef<any>(null);
@@ -197,6 +214,27 @@ const SignLanguageTracker = () => {
     }
 
     return flatKeypoints;
+  };
+
+  const normalizeSpatial = (frame: number[]): number[] => {
+    // Tọa độ Mũi luôn nằm ở 3 số đầu tiên (index 0, 1, 2)
+    const noseX = frame[0];
+    const noseY = frame[1];
+    const noseZ = frame[2];
+
+    if (noseX === 0 && noseY === 0 && noseZ === 0) {
+      return frame;
+    }
+
+    const normFrame = [...frame];
+    for (let i = 0; i < normFrame.length; i += 3) {
+      if (normFrame[i] !== 0 || normFrame[i + 1] !== 0 || normFrame[i + 2] !== 0) {
+        normFrame[i] -= noseX;
+        normFrame[i + 1] -= noseY;
+        normFrame[i + 2] -= noseZ;
+      }
+    }
+    return normFrame;
   };
 
   const processSlidingWindow = async (
@@ -356,7 +394,7 @@ const SignLanguageTracker = () => {
   // };
 
   useEffect(() => {
-    if (isInitializing.current) return;
+    if (isPortrait) return;
     isInitializing.current = true;
     let isActive = true;
 
@@ -540,8 +578,6 @@ const SignLanguageTracker = () => {
         }
       }
 
-      canvasCtx.restore();
-
       if (isCollectingRef.current) {
         const hasLeftHand =
           results.leftHandLandmarks && results.leftHandLandmarks.length > 0;
@@ -572,7 +608,8 @@ const SignLanguageTracker = () => {
           )
         ) {
           const frameKeypoints = extractFrameKeypoints(results);
-          frameBufferRef.current.push(frameKeypoints);
+          const normalizedKeypoints = normalizeSpatial(frameKeypoints);
+          frameBufferRef.current.push(normalizedKeypoints);
 
           const currentFrames = frameBufferRef.current.length;
           setCapturedFrames(currentFrames);
@@ -610,7 +647,7 @@ const SignLanguageTracker = () => {
       stopCameraRef.current = () => {};
       holisticLandmarker?.close();
     };
-  }, []);
+  }, [isPortrait]);
 
   useEffect(() => {
     if (!didMountPathEffectRef.current) {
@@ -632,6 +669,22 @@ const SignLanguageTracker = () => {
 
   const displaySentence =
     finalSentence || "Câu hoàn chỉnh sẽ hiển thị tại đây!";
+
+  if (isPortrait) {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1528] p-6 text-center text-white">
+        <div className="mb-6 animate-bounce">
+          <svg className="h-16 w-16 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-bold mb-2">Vui lòng xoay ngang màn hình</h2>
+        <p className="text-sm text-slate-400 max-w-xs">
+          Để bắt chuyển động chính xác nhất và giao diện hiển thị đầy đủ, vui lòng xoay ngang thiết bị di động của bạn.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto grid w-full max-w-[1300px] gap-3.5">
@@ -664,8 +717,6 @@ const SignLanguageTracker = () => {
           />
 
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
-
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[clamp(280px,50vw,480px)] w-[clamp(280px,50vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-[24px] border border-dashed border-white/50 bg-white/5 drop-shadow-md" />
 
           {isCountingDown && (
             <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-black/20 backdrop-blur-[2px]">

@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using EXE101.Application.Interfaces.Services;
 using EXE101.Application.Models.UserSubscriptions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EXE101.Presentation.Controllers;
@@ -8,6 +10,26 @@ namespace EXE101.Presentation.Controllers;
 [Route("api/user_subscriptions")]
 public sealed class UserSubscriptionsController(IUserSubscriptionService service) : ControllerBase
 {
+    [HttpGet("current")]
+    public async Task<IActionResult> GetCurrentActiveSubscription(CancellationToken cancellationToken = default)
+    {
+        var idRaw = User.FindFirstValue(ClaimTypes.NameIdentifier) 
+            ?? User.FindFirstValue("sub");
+
+        if (!long.TryParse(idRaw, out var userId))
+        {
+            return Unauthorized(new { message = "User is not authenticated." });
+        }
+
+        var result = await service.GetActiveByUserIdAsync(userId, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(new { message = "No active subscription found for the current user." });
+        }
+
+        return Ok(result);
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken cancellationToken = default)
     {

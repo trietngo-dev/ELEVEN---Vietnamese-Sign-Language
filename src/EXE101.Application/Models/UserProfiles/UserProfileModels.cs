@@ -11,6 +11,7 @@ public sealed class CreateUserProfileRequest
     public string? PreferredSignVariant { get; set; }
     public int CurrentStreakDays { get; set; }
     public int TotalXp { get; set; }
+    public long? ActiveFrameId { get; set; }
 }
 
 public sealed class UpdateUserProfileRequest
@@ -23,6 +24,7 @@ public sealed class UpdateUserProfileRequest
     public string? PreferredSignVariant { get; set; }
     public int CurrentStreakDays { get; set; }
     public int TotalXp { get; set; }
+    public long? ActiveFrameId { get; set; }
 }
 
 public sealed class UserProfileResponse
@@ -36,6 +38,7 @@ public sealed class UserProfileResponse
     public string? PreferredSignVariant { get; set; }
     public int CurrentStreakDays { get; set; }
     public int TotalXp { get; set; }
+    public long? ActiveFrameId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

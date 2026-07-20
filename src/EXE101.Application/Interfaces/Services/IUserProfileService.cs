@@ -7,4 +7,5 @@ public interface IUserProfileService
     Task<UserProfileResponse> CreateAsync(CreateUserProfileRequest request, CancellationToken cancellationToken = default);
     Task<UserProfileResponse?> UpdateAsync(long userId, UpdateUserProfileRequest request, CancellationToken cancellationToken = default);
     Task<UserProfileResponse?> GetByUserIdAsync(long userId, CancellationToken cancellationToken = default);
+    Task<UserProfileResponse?> AddXpAsync(long userId, int xpToAdd, CancellationToken cancellationToken = default);
 }

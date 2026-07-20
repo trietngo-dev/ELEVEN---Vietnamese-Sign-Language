@@ -84,6 +84,82 @@ public sealed class UserBadgeService(
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default)
         => _repository.DeleteAsync(id, cancellationToken);
 
+    public async Task CheckAndAwardBadgesAsync(long userId, CancellationToken cancellationToken = default)
+    {
+        var profile = await _dbContext.UserProfiles.FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        if (profile is null) return;
+
+        var badges = await _dbContext.Badges.ToListAsync(cancellationToken);
+        if (!badges.Any()) return;
+
+        var userBadges = await _dbContext.UserBadges.Where(ub => ub.UserId == userId).ToListAsync(cancellationToken);
+
+        async Task AwardBadgeIfEligible(string badgeCode)
+        {
+            var badgeObj = badges.FirstOrDefault(b => b.Code.Equals(badgeCode, StringComparison.OrdinalIgnoreCase));
+            if (badgeObj is null) return;
+
+            var alreadyHas = userBadges.Any(ub => ub.BadgeId == badgeObj.Id);
+            if (!alreadyHas)
+            {
+                var newAward = new UserBadge
+                {
+                    UserId = userId,
+                    BadgeId = badgeObj.Id,
+                    AwardedAt = DateTime.UtcNow
+                };
+                _dbContext.UserBadges.Add(newAward);
+                userBadges.Add(newAward);
+            }
+        }
+
+        // 1. Khởi đầu (START): Account exists
+        await AwardBadgeIfEligible("START");
+
+        // 2. Chuyên cần (STREAK_7D): Login streak >= 7
+        if (profile.CurrentStreakDays >= 7)
+        {
+            await AwardBadgeIfEligible("STREAK_7D");
+        }
+
+        // 3. Kỷ lục streak
+        if (profile.CurrentStreakDays >= 3)
+        {
+            await AwardBadgeIfEligible("STREAK_3D");
+        }
+        if (profile.CurrentStreakDays >= 5)
+        {
+            await AwardBadgeIfEligible("STREAK_5D");
+        }
+        if (profile.CurrentStreakDays >= 30)
+        {
+            await AwardBadgeIfEligible("STREAK_30D");
+        }
+        if (profile.CurrentStreakDays >= 365)
+        {
+            await AwardBadgeIfEligible("STREAK_365D");
+        }
+
+        // 4. Quyết tâm (DETERMINED): Studied over 3 courses
+        var completedCoursesCount = await _dbContext.Enrollments
+            .Where(e => e.UserId == userId && e.Status == EXE101.Domain.Enums.EnrollmentStatus.Completed)
+            .CountAsync(cancellationToken);
+
+        if (completedCoursesCount >= 3)
+        {
+            await AwardBadgeIfEligible("DETERMINED");
+        }
+
+        // 5. Nhà sưu tập (COLLECTOR): Owns over 5 badges
+        var earnedCount = userBadges.Count;
+        if (earnedCount >= 5)
+        {
+            await AwardBadgeIfEligible("COLLECTOR");
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task ValidateDependenciesAsync(long userId, long badgeId, CancellationToken cancellationToken)
     {
         var userExists = await _dbContext.Users.AsNoTracking().AnyAsync(x => x.Id == userId, cancellationToken);

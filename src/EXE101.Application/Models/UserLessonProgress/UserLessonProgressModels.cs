@@ -35,6 +35,7 @@ public sealed class UserLessonProgressResponse
     public long Id { get; set; }
     public long UserId { get; set; }
     public long LessonId { get; set; }
+    public long CourseId { get; set; }
     public ProgressStatus Status { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }

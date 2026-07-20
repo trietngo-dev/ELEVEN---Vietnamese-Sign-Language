@@ -1,6 +1,7 @@
-import { ChevronLeft, ChevronRight, BookOpen, Search, Play, Clock, Zap, Loader2 } from "lucide-react";
-import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight, BookOpen, Search, Play, Clock, Loader2 } from "lucide-react";
+import { motion, type Variants } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { cn } from "../lib/utils";
 import { viText } from "../locales/vi";
@@ -8,6 +9,7 @@ import { tokenStorage } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import LoginModal from "../components/LoginModal";
 import CourseImage from "../components/CourseImage";
+import xpImg from "../assets/xp-img.png";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -67,12 +69,12 @@ const letterGradients: Record<string, string> = {
   Z: "from-orange-400/80 to-rose-300/80",
 };
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
 };
 
-const sectionStagger = {
+const sectionStagger: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
@@ -91,6 +93,7 @@ interface LessonItem {
   estimatedMinutes: number;
   xpReward: number;
   coverMediaId?: number | null;
+  videoMediaId?: number | null;
   lessonType: string;
   status: number;
 }
@@ -100,46 +103,24 @@ function DictionaryPage() {
   const [query, setQuery] = useState("");
   const [activeLetter, setActiveLetter] = useState("A");
   const [currentPage, setCurrentPage] = useState(1);
-  const [lessons, setLessons] = useState<LessonItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { isAuthenticated } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Fetch all lessons from API
-  useEffect(() => {
-    const loadLessons = async () => {
-      try {
-        setIsLoading(true);
-        const authToken = tokenStorage.getToken();
-        const headers: Record<string, string> = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
+  // Fetch all lessons using TanStack Query
+  const { data: lessonsData, isLoading } = useQuery({
+    queryKey: ["dictionaryLessons"],
+    queryFn: async () => {
+      const authToken = tokenStorage.getToken();
+      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
 
-        const res = await fetch(
-          `${API_BASE_URL}/api/lessons?page=1&pageSize=200`,
-          { headers },
-        );
+      const res = await fetch(`${API_BASE_URL}/api/lessons?page=1&pageSize=200`, { headers });
+      if (!res.ok) throw new Error("Không thể tải danh sách bài học");
+      const data = await res.json();
+      return data.items || [];
+    }
+  });
 
-        if (res.ok) {
-          const data = await res.json();
-          // Only show published lessons (status 1)
-          const published = (data.items || []).filter(
-            (l: any) =>
-              l.status === 1 ||
-              l.status === "Published" ||
-              l.status === "published" ||
-              l.status === "1",
-          );
-          setLessons(published);
-        }
-      } catch (err) {
-        console.error("Lỗi khi tải dữ liệu từ điển", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadLessons();
-  }, []);
+  const lessons: LessonItem[] = lessonsData || [];
 
   // Count lessons per letter for badge display
   const letterCounts = useMemo(() => {
@@ -208,7 +189,7 @@ function DictionaryPage() {
       initial="hidden"
       animate="show"
       variants={sectionStagger}
-      className="min-h-screen bg-[#f7f9f8] py-8 md:py-10"
+      className="min-h-screen bg-transparent py-8 md:py-10"
     >
       <div className="container">
         {/* Hero Header */}
@@ -220,9 +201,6 @@ function DictionaryPage() {
           <h1 className="text-[clamp(1.95rem,3vw,2.85rem)] font-bold leading-[1.1] text-[#182333]">
             {dictionaryPage.hero.title}
           </h1>
-          <p className="mx-auto mt-3 max-w-[760px] text-[#79858e]">
-            {dictionaryPage.hero.description}
-          </p>
         </motion.header>
 
         {/* Search Bar */}
@@ -342,10 +320,10 @@ function DictionaryPage() {
                   >
                     {/* Card Image / Cover */}
                     <div className="relative h-[140px] overflow-hidden">
-                      {lesson.coverMediaId ? (
+                      {(lesson.coverMediaId || lesson.videoMediaId) ? (
                         <CourseImage
                           title={lesson.title}
-                          coverMediaId={lesson.coverMediaId}
+                          coverMediaId={lesson.coverMediaId || lesson.videoMediaId}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
@@ -394,7 +372,7 @@ function DictionaryPage() {
                           {lesson.estimatedMinutes} phút
                         </span>
                         <span className="inline-flex items-center gap-1">
-                          <Zap className="h-3.5 w-3.5 text-amber-500" />
+                          <img src={xpImg} className="w-3.5 h-3.5 object-contain shrink-0" alt="XP" />
                           <span className="font-semibold text-amber-600">+{lesson.xpReward} XP</span>
                         </span>
                       </div>

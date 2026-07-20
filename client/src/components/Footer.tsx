@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { viText } from "../locales/vi";
 import brand from "../assets/brand.jpg";
 
@@ -24,9 +25,15 @@ function Footer() {
           <ul className="m-0 flex list-none flex-wrap items-center justify-center gap-3.5 p-0">
             {footer.links.map((link) => (
               <li key={link.label}>
-                <a href={link.href} className="text-[0.82rem] text-[#839097]">
-                  {link.label}
-                </a>
+                {link.href.startsWith("/") ? (
+                  <Link to={link.href} className="text-[0.82rem] text-[#839097] hover:text-[#29613d] transition-colors">
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a href={link.href} className="text-[0.82rem] text-[#839097] hover:text-[#29613d] transition-colors">
+                    {link.label}
+                  </a>
+                )}
               </li>
             ))}
           </ul>

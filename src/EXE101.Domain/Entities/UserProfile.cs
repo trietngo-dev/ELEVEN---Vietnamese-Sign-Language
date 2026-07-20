@@ -11,6 +11,7 @@ public sealed class UserProfile
     public string? PreferredSignVariant { get; set; }
     public int CurrentStreakDays { get; set; }
     public int TotalXp { get; set; }
+    public long? ActiveFrameId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

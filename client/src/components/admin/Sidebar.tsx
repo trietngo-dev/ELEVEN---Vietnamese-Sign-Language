@@ -4,17 +4,17 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  Languages,
   BarChart3,
   LogOut,
-  ChartNoAxesCombined
+  ChartNoAxesCombined,
+  Store
 } from 'lucide-react';
 import brand from '../../assets/brand.jpg';
 import { viText } from '../../locales/vi';
 import { useAuth } from '@/context/AuthContext';
 
 const Sidebar: React.FC = () => {
-  const { logout } = useAuth();
+  const { requestLogout } = useAuth();
 
   const { common } = viText;
   const menuItems = [
@@ -22,7 +22,7 @@ const Sidebar: React.FC = () => {
     { icon: <Users size={22} />, label: 'Người dùng', path: '/admin/users' },
     { icon: <ChartNoAxesCombined size={22} />, label: 'Doanh thu', path: '/admin/revenue' },
     { icon: <BookOpen size={22} />, label: 'Quản lý khóa học', path: '/admin/courses' },
-    { icon: <Languages size={22} />, label: 'Thư viện từ vựng', path: '/admin/vocabulary' },
+    { icon: <Store size={22} />, label: 'Cửa hàng khung', path: '/admin/frames' },
     { icon: <BarChart3 size={22} />, label: 'Phản hồi', path: '/admin/feedback' },
   ];
 
@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
             <span className="text-[10px] text-slate-500">admin@eleven.vn</span>
           </div>
         </div>
-        <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium">
+        <button onClick={requestLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium">
           <LogOut size={18} />
           <span>Đăng xuất</span>
         </button>

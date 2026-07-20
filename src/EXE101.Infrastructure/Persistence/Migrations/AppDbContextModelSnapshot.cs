@@ -114,6 +114,54 @@ namespace EXE101.Infrastructure.Persistence.Migrations
                     b.ToTable("auth_accounts", (string)null);
                 });
 
+            modelBuilder.Entity("EXE101.Domain.Entities.AvatarFrame", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("image_url");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("XpPrice")
+                        .HasColumnType("integer")
+                        .HasColumnName("xp_price");
+
+                    b.HasKey("Id")
+                        .HasName("pk_avatar_frames");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_avatar_frames_code");
+
+                    b.ToTable("avatar_frames", (string)null);
+                });
+
             modelBuilder.Entity("EXE101.Domain.Entities.Badge", b =>
                 {
                     b.Property<long>("Id")
@@ -1503,6 +1551,40 @@ namespace EXE101.Infrastructure.Persistence.Migrations
                     b.ToTable("user_activity_logs", (string)null);
                 });
 
+            modelBuilder.Entity("EXE101.Domain.Entities.UserAvatarFrame", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AvatarFrameId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("avatar_frame_id");
+
+                    b.Property<DateTime>("PurchasedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("purchased_at");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_avatar_frames");
+
+                    b.HasIndex("AvatarFrameId")
+                        .HasDatabaseName("ix_user_avatar_frames_avatar_frame_id");
+
+                    b.HasIndex("UserId", "AvatarFrameId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_avatar_frames_user_id_avatar_frame_id");
+
+                    b.ToTable("user_avatar_frames", (string)null);
+                });
+
             modelBuilder.Entity("EXE101.Domain.Entities.UserBadge", b =>
                 {
                     b.Property<long>("Id")
@@ -1616,6 +1698,10 @@ namespace EXE101.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("user_id");
 
+                    b.Property<long?>("ActiveFrameId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("active_frame_id");
+
                     b.Property<string>("Bio")
                         .HasColumnType("text")
                         .HasColumnName("bio");
@@ -1663,6 +1749,9 @@ namespace EXE101.Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId")
                         .HasName("pk_user_profiles");
+
+                    b.HasIndex("ActiveFrameId")
+                        .HasDatabaseName("ix_user_profiles_active_frame_id");
 
                     b.ToTable("user_profiles", (string)null);
                 });
@@ -2158,7 +2247,7 @@ namespace EXE101.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_lessons_courses_course_id");
 
-                    b.HasOne("EXE101.Domain.Entities.MediaAsset", null)
+                    b.HasOne("EXE101.Domain.Entities.MediaAsset", "CoverMediaAsset")
                         .WithMany()
                         .HasForeignKey("CoverMediaId")
                         .OnDelete(DeleteBehavior.SetNull)
@@ -2171,11 +2260,15 @@ namespace EXE101.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_lessons_course_modules_module_id");
 
-                    b.HasOne("EXE101.Domain.Entities.MediaAsset", null)
+                    b.HasOne("EXE101.Domain.Entities.MediaAsset", "VideoMediaAsset")
                         .WithMany()
                         .HasForeignKey("VideoMediaId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_lessons_media_assets_video_media_id");
+
+                    b.Navigation("CoverMediaAsset");
+
+                    b.Navigation("VideoMediaAsset");
                 });
 
             modelBuilder.Entity("EXE101.Domain.Entities.LessonAttempt", b =>
@@ -2355,6 +2448,23 @@ namespace EXE101.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_user_activity_logs_users_user_id");
                 });
 
+            modelBuilder.Entity("EXE101.Domain.Entities.UserAvatarFrame", b =>
+                {
+                    b.HasOne("EXE101.Domain.Entities.AvatarFrame", null)
+                        .WithMany()
+                        .HasForeignKey("AvatarFrameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_avatar_frames_avatar_frames_avatar_frame_id");
+
+                    b.HasOne("EXE101.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_avatar_frames_users_user_id");
+                });
+
             modelBuilder.Entity("EXE101.Domain.Entities.UserBadge", b =>
                 {
                     b.HasOne("EXE101.Domain.Entities.Badge", null)
@@ -2391,6 +2501,12 @@ namespace EXE101.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("EXE101.Domain.Entities.UserProfile", b =>
                 {
+                    b.HasOne("EXE101.Domain.Entities.AvatarFrame", null)
+                        .WithMany()
+                        .HasForeignKey("ActiveFrameId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_user_profiles_avatar_frames_active_frame_id");
+
                     b.HasOne("EXE101.Domain.Entities.User", null)
                         .WithOne()
                         .HasForeignKey("EXE101.Domain.Entities.UserProfile", "UserId")

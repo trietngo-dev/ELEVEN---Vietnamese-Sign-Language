@@ -32,6 +32,27 @@ export default function CourseImage({ coverMediaId, title, className }: CourseIm
 
   const defaultUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=3c6c44&color=fff&size=500`;
 
+  const isVideoUrl = url && (
+    url.toLowerCase().endsWith(".mp4") ||
+    url.toLowerCase().endsWith(".webm") ||
+    url.toLowerCase().endsWith(".ogg") ||
+    url.toLowerCase().includes("/video/") ||
+    url.toLowerCase().includes(".mp4?")
+  );
+
+  if (url && isVideoUrl && !hasError) {
+    return (
+      <video
+        src={`${url}${url.includes('?') ? '' : '#t=0.1'}`}
+        preload="metadata"
+        muted
+        playsInline
+        className={className || "w-full h-full object-cover"}
+        onError={() => setHasError(true)}
+      />
+    );
+  }
+
   return (
     <img 
       src={url && !hasError ? url : defaultUrl} 
