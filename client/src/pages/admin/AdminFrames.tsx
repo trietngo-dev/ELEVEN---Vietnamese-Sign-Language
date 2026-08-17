@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, Plus, Edit3, Trash2, Upload, X } from "lucide-react";
 import { tokenStorage } from "../../lib/auth";
 import xpImg from "../../assets/xp-img.png";
+import ConfirmModal from "../../components/ConfirmModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -156,29 +157,44 @@ const AdminFrames: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa khung ảnh này?")) return;
+  // Delete Confirm Modal State
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: number | null }>({
+    isOpen: false,
+    id: null,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = (id: number) => {
+    setDeleteConfirm({ isOpen: true, id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.id) return;
 
     try {
+      setIsDeleting(true);
       const token = tokenStorage.getToken();
       const headers: Record<string, string> = {};
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`${API_BASE_URL}/api/avatar-frames/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/avatar-frames/${deleteConfirm.id}`, {
         method: "DELETE",
         headers,
       });
 
       if (res.ok) {
-        setFrames(prev => prev.filter(f => f.id !== id));
+        setFrames(prev => prev.filter(f => f.id !== deleteConfirm.id));
+        setDeleteConfirm({ isOpen: false, id: null });
       } else {
         alert("Xóa khung ảnh thất bại");
       }
     } catch (e) {
       console.error(e);
       alert("Lỗi khi kết nối server");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -401,6 +417,19 @@ const AdminFrames: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, id: null })}
+        onConfirm={confirmDelete}
+        isLoading={isDeleting}
+        title="Xóa khung ảnh"
+        message="Bạn có chắc chắn muốn xóa khung ảnh này? Học viên sẽ không thể mua khung này nữa."
+        confirmText="Xóa ngay"
+        cancelText="Hủy"
+        variant="danger"
+      />
     </div>
   );
 };

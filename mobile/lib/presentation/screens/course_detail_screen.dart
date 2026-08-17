@@ -89,17 +89,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       final ds = context.read<CourseDataSource>();
       // 1. Get categories
       final cats = await ds.getFeedbackCategories();
-      final courseCat = cats.firstWhere((c) => c['name'] == 'Course', orElse: () => null);
+      final courseCat = cats.firstWhere(
+        (c) {
+          final name = (c['name'] ?? c['Name'] ?? '').toString().toLowerCase();
+          return name == 'course';
+        },
+        orElse: () => null,
+      );
       if (courseCat != null) {
-        _courseCategoryId = courseCat['id'] as int?;
+        _courseCategoryId = (courseCat['id'] ?? courseCat['Id']) as int?;
+      } else {
+        _courseCategoryId = 1; // Default fallback to 1 for Course category
       }
       
       // 2. Get feedbacks
       final all = await ds.getFeedbacks();
       setState(() {
         _allReviews = all.where((r) => 
-          r['categoryId'] == _courseCategoryId && 
-          r['subject'] == 'CourseId:${widget.courseId}'
+          ((r['categoryId'] ?? r['CategoryId']) == _courseCategoryId) && 
+          ((r['subject'] ?? r['Subject']) == 'CourseId:${widget.courseId}')
         ).toList();
         
         _calculateStats();
@@ -115,22 +123,28 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
 
   void _calculateStats() {
     _countAll = _allReviews.length;
-    _count5 = _allReviews.where((r) => r['rating'] == 5).length;
-    _count4 = _allReviews.where((r) => r['rating'] == 4).length;
-    _count3 = _allReviews.where((r) => r['rating'] == 3).length;
-    _count2 = _allReviews.where((r) => r['rating'] == 2).length;
-    _count1 = _allReviews.where((r) => r['rating'] == 1).length;
-    _countComment = _allReviews.where((r) => r['content'] != null && r['content'].toString().trim().isNotEmpty).length;
+    _count5 = _allReviews.where((r) => (r['rating'] ?? r['Rating']) == 5).length;
+    _count4 = _allReviews.where((r) => (r['rating'] ?? r['Rating']) == 4).length;
+    _count3 = _allReviews.where((r) => (r['rating'] ?? r['Rating']) == 3).length;
+    _count2 = _allReviews.where((r) => (r['rating'] ?? r['Rating']) == 2).length;
+    _count1 = _allReviews.where((r) => (r['rating'] ?? r['Rating']) == 1).length;
+    _countComment = _allReviews.where((r) {
+      final content = r['content'] ?? r['Content'];
+      return content != null && content.toString().trim().isNotEmpty;
+    }).length;
   }
 
   void _applyFilter() {
     if (_activeFilter == 'all') {
       _filteredReviews = _allReviews;
     } else if (_activeFilter == 'comment') {
-      _filteredReviews = _allReviews.where((r) => r['content'] != null && r['content'].toString().trim().isNotEmpty).toList();
+      _filteredReviews = _allReviews.where((r) {
+        final content = r['content'] ?? r['Content'];
+        return content != null && content.toString().trim().isNotEmpty;
+      }).toList();
     } else {
       final ratingNum = int.tryParse(_activeFilter) ?? 5;
-      _filteredReviews = _allReviews.where((r) => r['rating'] == ratingNum).toList();
+      _filteredReviews = _allReviews.where((r) => (r['rating'] ?? r['Rating']) == ratingNum).toList();
     }
   }
 
@@ -144,12 +158,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       return;
     }
 
-    if (_courseCategoryId == null) {
-      scaffoldMessenger.showSnackBar(
-        const SnackBar(content: Text('Lỗi danh mục đánh giá khóa học!'), behavior: SnackBarBehavior.floating),
-      );
-      return;
-    }
+    final categoryIdToUse = _courseCategoryId ?? 1;
 
     setState(() {
       _isLoadingReviews = true;
@@ -159,7 +168,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       final ds = context.read<CourseDataSource>();
       final success = await ds.submitFeedback(
         userId: _userId!,
-        categoryId: _courseCategoryId!,
+        categoryId: categoryIdToUse,
         rating: rating,
         subject: 'CourseId:${widget.courseId}',
         content: comment,
@@ -187,9 +196,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         });
       }
     } catch (e) {
+      final cleanMsg = e.toString().replaceAll('Exception: ', '');
       scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('Lỗi: $e'),
+          content: Text(cleanMsg),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
         ),
@@ -203,6 +213,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   // Modal Sheet for writing a review
   void _showWriteReviewBottomSheet() {
     int selectedStars = 5;
+    String enteredComment = "";
     final commentController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
@@ -281,6 +292,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     TextFormField(
                       controller: commentController,
                       maxLines: 4,
+                      onChanged: (val) {
+                        enteredComment = val;
+                      },
                       style: TextStyle(color: currentTextColor, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'Chia sẻ ý kiến đánh giá về khóa học...',
@@ -306,8 +320,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     ElevatedButton(
                       onPressed: () {
                         if (formKey.currentState!.validate()) {
+                          final String commentText = enteredComment.trim().isNotEmpty
+                              ? enteredComment.trim()
+                              : commentController.text.trim();
                           Navigator.pop(ctx);
-                          _submitReview(selectedStars, commentController.text.trim());
+                          _submitReview(selectedStars, commentText);
                         }
                       },
                       style: ElevatedButton.styleFrom(

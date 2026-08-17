@@ -16,6 +16,7 @@ import {
 import { tokenStorage } from '../../lib/auth';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
+import ConfirmModal from '../../components/ConfirmModal';
 
 interface FeedbackItem {
   id: number;
@@ -103,17 +104,31 @@ const AdminFeedback: React.FC = () => {
   }, []);
 
   const courseCategoryId = useMemo(() => {
-    return categories.find(c => c.name.toLowerCase() === 'course')?.id || null;
+    const cat = categories.find(c => {
+      const n = (c.name || '').toLowerCase();
+      return n === 'course' || n.includes('khóa học') || n.includes('khoá học');
+    });
+    return cat?.id || 1;
   }, [categories]);
 
   const supportCategoryId = useMemo(() => {
-    return categories.find(c => c.name.toLowerCase() === 'support')?.id || null;
+    const cat = categories.find(c => {
+      const n = (c.name || '').toLowerCase();
+      return n === 'support' || n.includes('hỗ trợ') || n.includes('ho tro');
+    });
+    return cat?.id || 2;
   }, [categories]);
 
   // Compute tabs
   const filteredTabFeedbacks = useMemo(() => {
     let targetCatId = activeTab === 'course' ? courseCategoryId : supportCategoryId;
-    let list = feedbacks.filter(f => f.categoryId === targetCatId);
+    let list = feedbacks.filter(f => {
+      if (activeTab === 'course') {
+        return f.categoryId === targetCatId || f.categoryId === 1 || (f.subject && f.subject.toLowerCase().startsWith('courseid:'));
+      } else {
+        return f.categoryId === targetCatId || f.categoryId === 2 || (f.subject && f.subject.toLowerCase().startsWith('support:'));
+      }
+    });
 
     // Search filter
     if (searchQuery.trim()) {
@@ -217,17 +232,27 @@ const AdminFeedback: React.FC = () => {
     }
   };
 
-  const handleDeleteFeedback = async (id: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa phản hồi này? Hành động này không thể hoàn tác.")) {
-      return;
-    }
+  // Delete Confirm Modal State
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; id: number | null }>({
+    isOpen: false,
+    id: null,
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteFeedback = (id: number) => {
+    setDeleteConfirm({ isOpen: true, id });
+  };
+
+  const confirmDeleteFeedback = async () => {
+    if (!deleteConfirm.id) return;
 
     try {
+      setIsDeleting(true);
       const authToken = tokenStorage.getToken();
       const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
-      const res = await fetch(`${API_BASE_URL}/api/feedbacks/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/feedbacks/${deleteConfirm.id}`, {
         method: "DELETE",
         headers,
       });
@@ -237,10 +262,13 @@ const AdminFeedback: React.FC = () => {
       }
 
       // Update state
-      setFeedbacks(prev => prev.filter(f => f.id !== id));
+      setFeedbacks(prev => prev.filter(f => f.id !== deleteConfirm.id));
+      setDeleteConfirm({ isOpen: false, id: null });
     } catch (err: any) {
       console.error(err);
       alert(err.message || "Lỗi kết nối mạng.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -387,27 +415,27 @@ const AdminFeedback: React.FC = () => {
       </div>
 
       {/* Feedback Table Container */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden w-full">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse table-auto">
             <thead>
-              <tr className="bg-slate-50/50 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
-                <th className="px-6 py-4">Học viên</th>
+              <tr className="bg-slate-50/70 text-slate-500 text-xs font-bold uppercase tracking-wider border-b border-slate-100">
+                <th className="px-3.5 sm:px-4 py-3.5 whitespace-nowrap">Học viên</th>
                 {activeTab === 'course' ? (
                   <>
-                    <th className="px-6 py-4">Khóa học</th>
-                    <th className="px-6 py-4">Đánh giá</th>
+                    <th className="px-3.5 sm:px-4 py-3.5 whitespace-nowrap">Khóa học</th>
+                    <th className="px-3.5 sm:px-4 py-3.5 whitespace-nowrap">Đánh giá</th>
                   </>
                 ) : (
-                  <th className="px-6 py-4">Chủ đề hỗ trợ</th>
+                  <th className="px-3.5 sm:px-4 py-3.5 whitespace-nowrap">Chủ đề hỗ trợ</th>
                 )}
-                <th className="px-6 py-4">Nội dung phản hồi</th>
-                <th className="px-6 py-4">Ngày gửi</th>
-                <th className="px-6 py-4 text-center">Trạng thái</th>
-                <th className="px-6 py-4 text-right">Thao tác</th>
+                <th className="px-3.5 sm:px-4 py-3.5">Nội dung phản hồi</th>
+                <th className="px-3.5 sm:px-4 py-3.5 whitespace-nowrap">Ngày gửi</th>
+                <th className="px-3.5 sm:px-4 py-3.5 text-center whitespace-nowrap">Trạng thái</th>
+                <th className="px-3.5 sm:px-4 py-3.5 text-right whitespace-nowrap">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
               {paginatedFeedbacks.length > 0 ? (
                 paginatedFeedbacks.map((f) => {
                   const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(f.userFullName || "User")}&background=3c6c44&color=fff`;
@@ -421,67 +449,75 @@ const AdminFeedback: React.FC = () => {
                   return (
                     <tr key={f.id} className="hover:bg-slate-50/50 transition-colors">
                       {/* Name & Avatar */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-3.5 sm:px-4 py-3">
+                        <div className="flex items-center gap-2.5">
                           <img
                             src={avatar}
                             alt={f.userFullName || "User"}
-                            className="h-8 w-8 rounded-full object-cover bg-slate-100"
+                            className="h-8 w-8 rounded-full object-cover bg-slate-100 shrink-0"
                           />
-                          <span className="text-sm font-semibold text-slate-900 max-w-[130px] truncate">{f.userFullName || "Ẩn danh"}</span>
+                          <span className="font-semibold text-slate-900 max-w-[110px] sm:max-w-[130px] truncate block" title={f.userFullName || "Ẩn danh"}>
+                            {f.userFullName || "Ẩn danh"}
+                          </span>
                         </div>
                       </td>
 
                       {activeTab === 'course' ? (
                         <>
                           {/* Course title */}
-                          <td className="px-6 py-4">
-                            <span className="text-sm font-medium text-slate-700 max-w-[150px] truncate block" title={f.courseTitle || ''}>
-                              {f.courseTitle || `Khóa học #${f.subject?.split(':')[1] || ''}`}
+                          <td className="px-3.5 sm:px-4 py-3">
+                            <span className="font-medium text-slate-700 max-w-[120px] sm:max-w-[140px] truncate block" title={f.courseTitle || ''}>
+                              {f.courseTitle || (f.subject && f.subject.includes(':') && f.subject.split(':')[1] !== '0' && f.subject.split(':')[1] !== '' ? `Khóa học #${f.subject.split(':')[1]}` : 'Khóa học')}
                             </span>
                           </td>
                           {/* Rating stars */}
-                          <td className="px-6 py-4">
+                          <td className="px-3.5 sm:px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center text-[#fed963] gap-0.5">
-                              {[...Array(f.rating)].map((_, j) => <Star key={j} size={12} fill="currentColor" />)}
-                              {[...Array(5 - f.rating)].map((_, j) => <Star key={j} size={12} className="text-slate-200" />)}
+                              {[...Array(f.rating)].map((_, j) => <Star key={j} size={13} fill="currentColor" />)}
+                              {[...Array(5 - f.rating)].map((_, j) => <Star key={j} size={13} className="text-slate-200" />)}
                             </div>
                           </td>
                         </>
                       ) : (
                         /* Topic */
-                        <td className="px-6 py-4">
-                          <span className="inline-flex px-2.5 py-1 rounded text-[11px] font-bold bg-[#eef7ef] text-[#3c6d44] max-w-[150px] truncate" title={f.subject || ''}>
+                        <td className="px-3.5 sm:px-4 py-3">
+                          <span className="inline-flex px-2.5 py-1 rounded text-[11px] font-bold bg-[#eef7ef] text-[#3c6d44] max-w-[130px] truncate" title={f.subject || ''}>
                             {f.subject || 'Khác'}
                           </span>
                         </td>
                       )}
 
                       {/* Content excerpt */}
-                      <td className="px-6 py-4 max-w-xs">
-                        <p className="text-sm text-slate-600 truncate" title={f.content}>{f.content}</p>
+                      <td className="px-3.5 sm:px-4 py-3 max-w-[160px] sm:max-w-[220px] lg:max-w-xs">
+                        <p className="text-slate-600 truncate" title={f.content || ''}>
+                          {f.content && f.content.trim() ? (
+                            f.content
+                          ) : (
+                            <span className="italic text-slate-400 font-normal">(Chỉ đánh giá số sao)</span>
+                          )}
+                        </p>
                       </td>
 
                       {/* Created date */}
-                      <td className="px-6 py-4 text-sm text-slate-500">{formattedDate}</td>
+                      <td className="px-3.5 sm:px-4 py-3 text-slate-500 whitespace-nowrap text-xs">{formattedDate}</td>
 
                       {/* Status */}
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3.5 sm:px-4 py-3 text-center whitespace-nowrap">
                         {getStatusBadge(f.status)}
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                      <td className="px-3.5 sm:px-4 py-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
                           <button 
                             onClick={() => {
                               setViewFeedback(f);
                               setShowViewModal(true);
                             }}
-                            className="p-1.5 hover:bg-[#3c6c44]/10 text-[#3c6c44] rounded transition-colors" 
+                            className="p-1.5 hover:bg-[#3c6c44]/10 text-[#3c6c44] rounded-lg transition-colors" 
                             title="Xem chi tiết"
                           >
-                            <Eye size={18} />
+                            <Eye size={16} />
                           </button>
                           <button 
                             onClick={() => {
@@ -490,17 +526,17 @@ const AdminFeedback: React.FC = () => {
                               setReplyError(null);
                               setShowReplyModal(true);
                             }}
-                            className="p-1.5 hover:bg-[#3c6c44]/10 text-[#3c6c44] rounded transition-colors" 
+                            className="p-1.5 hover:bg-[#3c6c44]/10 text-[#3c6c44] rounded-lg transition-colors" 
                             title="Phản hồi"
                           >
-                            <Reply size={18} />
+                            <Reply size={16} />
                           </button>
                           <button 
                             onClick={() => handleDeleteFeedback(f.id)}
-                            className="p-1.5 hover:bg-red-50 text-red-600 rounded transition-colors" 
+                            className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors" 
                             title="Xóa"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </td>
@@ -509,7 +545,7 @@ const AdminFeedback: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={activeTab === 'course' ? 7 : 6} className="px-6 py-12 text-center text-slate-400 italic text-sm">
+                  <td colSpan={activeTab === 'course' ? 7 : 6} className="px-4 py-12 text-center text-slate-400 italic text-sm">
                     Không tìm thấy phản hồi hoặc đánh giá nào thỏa mãn điều kiện lọc.
                   </td>
                 </tr>
@@ -714,6 +750,19 @@ const AdminFeedback: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, id: null })}
+        onConfirm={confirmDeleteFeedback}
+        isLoading={isDeleting}
+        title="Xóa phản hồi"
+        message="Bạn có chắc chắn muốn xóa phản hồi này? Hành động này không thể hoàn tác."
+        confirmText="Xóa ngay"
+        cancelText="Hủy"
+        variant="danger"
+      />
     </div>
   );
 };

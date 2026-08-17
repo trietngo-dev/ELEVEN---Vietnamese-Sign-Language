@@ -82,26 +82,26 @@ export default function LessonDetailPage() {
 
         if (data) {
           // Fetch next lesson in course
-          const allLessonsRes = await fetch(`${API_BASE_URL}/api/lessons`, { headers });
+          const allLessonsRes = await fetch(`${API_BASE_URL}/api/lessons?pageSize=1000`, { headers });
           let courseLessons: any[] = [];
           if (allLessonsRes.ok) {
             const allLesData = await allLessonsRes.json();
             const items = allLesData.items || (Array.isArray(allLesData) ? allLesData : allLesData.items) || [];
-            courseLessons = items.filter((l: any) => l.courseId === data.courseId);
+            courseLessons = items.filter((l: any) => l.courseId?.toString() === data.courseId?.toString());
           }
 
           // Merge mock lessons if this course has mocks
-          const mockCourseLessons = mockLessons.filter(l => l.courseId === data.courseId);
+          const mockCourseLessons = mockLessons.filter(l => l.courseId?.toString() === data.courseId?.toString());
           const mergedLessons = [
             ...mockCourseLessons.filter(ml => !courseLessons.some(cl => cl.id === ml.id)),
             ...courseLessons
-          ].sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+          ].sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
           setAllLessons(mergedLessons);
 
           // Fetch all completed lessons for course completion check
           try {
-            const allProgRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress`, { headers });
+            const allProgRes = await fetch(`${API_BASE_URL}/api/user_lesson_progress?pageSize=10000`, { headers });
             let apiCompleted: number[] = [];
             if (allProgRes.ok) {
               const progData = await allProgRes.json();
