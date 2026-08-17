@@ -1,13 +1,23 @@
+using System.Text.Json.Serialization;
 using EXE101.Domain.Enums;
 
 namespace EXE101.Application.Models.Feedbacks;
 
 public sealed class CreateFeedbackRequest
 {
+    [JsonPropertyName("userId")]
     public long UserId { get; set; }
+
+    [JsonPropertyName("categoryId")]
     public long CategoryId { get; set; }
+
+    [JsonPropertyName("rating")]
     public int Rating { get; set; }
+
+    [JsonPropertyName("subject")]
     public string? Subject { get; set; }
+
+    [JsonPropertyName("content")]
     public string Content { get; set; } = string.Empty;
 }
 

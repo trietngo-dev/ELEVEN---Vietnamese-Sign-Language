@@ -3,6 +3,7 @@ import { X, Loader2, Clock, ListVideo, Layers, Edit, Trash2, Plus, Check } from 
 import { tokenStorage } from "../../lib/auth";
 import EditLessonModal from "./EditLessonModal";
 import AddLessonModal from "./AddLessonModal";
+import ConfirmModal from "../../components/ConfirmModal";
 import demoVideo from "../../assets/videoCourse/W00489.mp4";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
@@ -179,50 +180,95 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
     }
   };
 
-  const handleDeleteModule = async (moduleId: number) => {
+  // Confirm Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => Promise<void>;
+    variant?: "danger" | "warning";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: async () => {},
+    variant: "danger",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteModule = (moduleId: number) => {
     const moduleLessons = lessons.filter(l => l.moduleId === moduleId);
     if (moduleLessons.length > 0) {
-      alert("Không thể xóa chương học đang chứa bài học. Vui lòng xóa hết các bài học trước.");
+      setConfirmModal({
+        isOpen: true,
+        title: "Không thể xóa chương",
+        message: "Chương học này đang chứa bài học. Vui lòng xóa hết các bài học bên trong trước khi xóa chương.",
+        variant: "warning",
+        onConfirm: async () => {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      });
       return;
     }
-    if (!window.confirm("Bạn có chắc chắn muốn xóa chương học này?")) return;
 
-    try {
-      const authToken = tokenStorage.getToken();
-      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-      const res = await fetch(`${API_BASE_URL}/api/course_modules/${moduleId}`, {
-        method: "DELETE",
-        headers
-      });
-      if (res.ok) {
-        fetchData();
-      } else {
-        alert("Lỗi khi xóa chương học");
+    setConfirmModal({
+      isOpen: true,
+      title: "Xóa chương học",
+      message: "Bạn có chắc chắn muốn xóa chương học này? Hành động này không thể hoàn tác.",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          setIsDeleting(true);
+          const authToken = tokenStorage.getToken();
+          const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+          const res = await fetch(`${API_BASE_URL}/api/course_modules/${moduleId}`, {
+            method: "DELETE",
+            headers
+          });
+          if (res.ok) {
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            fetchData();
+          } else {
+            alert("Lỗi khi xóa chương học");
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsDeleting(false);
+        }
       }
-    } catch (e) {
-      console.error(e);
-    }
+    });
   };
 
-  const handleDeleteLesson = async (lessonId: number) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bài học này?")) return;
-
-    try {
-      const authToken = tokenStorage.getToken();
-      const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-      const res = await fetch(`${API_BASE_URL}/api/lessons/${lessonId}`, {
-        method: "DELETE",
-        headers
-      });
-      if (res.ok) {
-        if (playingLessonId === lessonId) setPlayingLessonId(null);
-        fetchData();
-      } else {
-        alert("Lỗi khi xóa bài học");
+  const handleDeleteLesson = (lessonId: number) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Xóa bài học",
+      message: "Bạn có chắc chắn muốn xóa bài học này? Hành động này không thể hoàn tác.",
+      variant: "danger",
+      onConfirm: async () => {
+        try {
+          setIsDeleting(true);
+          const authToken = tokenStorage.getToken();
+          const headers: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+          const res = await fetch(`${API_BASE_URL}/api/lessons/${lessonId}`, {
+            method: "DELETE",
+            headers
+          });
+          if (res.ok) {
+            if (playingLessonId === lessonId) setPlayingLessonId(null);
+            setConfirmModal(prev => ({ ...prev, isOpen: false }));
+            fetchData();
+          } else {
+            alert("Lỗi khi xóa bài học");
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsDeleting(false);
+        }
       }
-    } catch (e) {
-      console.error(e);
-    }
+    });
   };
 
   if (!isOpen || !course) return null;
@@ -474,6 +520,19 @@ const CourseDetailModal: React.FC<CourseDetailModalProps> = ({ isOpen, onClose, 
           }}
         />
       )}
+
+      {/* Reusable Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        isLoading={isDeleting}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.variant === "warning" ? "Đã hiểu" : "Xóa ngay"}
+        cancelText="Hủy"
+        variant={confirmModal.variant || "danger"}
+      />
     </div>
   );
 }

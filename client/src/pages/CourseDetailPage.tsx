@@ -1,9 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { ArrowLeft, PlayCircle, Lock, Crown, Star, Loader2, Plus, CheckCircle2, AlertCircle, X, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, ArrowRight, PlayCircle, Lock, Crown, Star, Loader2, Plus, CheckCircle2, AlertCircle, X, HelpCircle, ChevronDown, BookOpen } from "lucide-react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import { tokenStorage } from "../lib/auth";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
+import { Button } from "../components/ui/button";
 import CourseImage from "../components/CourseImage";
 import { mockCourses, mockModules, mockLessons } from "../lib/coursesData";
 
@@ -43,21 +44,28 @@ export default function CourseDetailPage() {
   const [quizLessons, setQuizLessons] = useState<any[]>([]);
   const [quizCurrentIndex, setQuizCurrentIndex] = useState(0);
   const [quizCorrectCount, setQuizCorrectCount] = useState(0);
-  const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({});
+  const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
 
-  const isModuleExpanded = (moduleId: number) => {
-    if (expandedModules[moduleId] === undefined) {
-      return modules.length > 0 && modules[0].id === moduleId;
-    }
-    return expandedModules[moduleId];
-  };
+  const activeModule = useMemo(() => {
+    if (modules.length === 0) return null;
+    if (!selectedModuleId) return modules[0];
+    return modules.find(m => m.id === selectedModuleId) || modules[0];
+  }, [modules, selectedModuleId]);
 
-  const toggleModule = (moduleId: number) => {
-    setExpandedModules(prev => ({
-      ...prev,
-      [moduleId]: !prev[moduleId]
-    }));
-  };
+  const activeModuleLessons = useMemo(() => {
+    if (!activeModule) return [];
+    return lessons.filter(l => l.moduleId === activeModule.id);
+  }, [lessons, activeModule]);
+
+  const isSelectedModuleLessonsCompleted = useMemo(() => {
+    if (!activeModuleLessons || activeModuleLessons.length === 0) return false;
+    return activeModuleLessons.every(l => completedLessonIds.includes(l.id));
+  }, [activeModuleLessons, completedLessonIds]);
+
+  const canTakeQuizForActive = useMemo(() => {
+    if (!activeModule || isUserPremium) return false;
+    return isSelectedModuleLessonsCompleted && !completedQuizModuleIds.includes(activeModule.id);
+  }, [activeModule, isUserPremium, isSelectedModuleLessonsCompleted, completedQuizModuleIds]);
 
   // Load completed quiz module IDs from localStorage
   useEffect(() => {
@@ -78,8 +86,8 @@ export default function CourseDetailPage() {
 
         const [courseRes, modulesRes, lessonsRes, catRes, reviewsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/courses/${id}`, { headers }),
-          fetch(`${API_BASE_URL}/api/course_modules`, { headers }),
-          fetch(`${API_BASE_URL}/api/lessons`, { headers }),
+          fetch(`${API_BASE_URL}/api/course_modules?pageSize=1000`, { headers }),
+          fetch(`${API_BASE_URL}/api/lessons?pageSize=1000`, { headers }),
           fetch(`${API_BASE_URL}/api/feedback_categories?pageSize=100`, { headers }),
           fetch(`${API_BASE_URL}/api/feedbacks?pageSize=1000`, { headers })
         ]);
@@ -92,41 +100,47 @@ export default function CourseDetailPage() {
           currentCourse = await courseRes.json();
         }
 
-        // Check if the current course is from static mock data
-        const isMockCourse = ["101", "102", "103", "104", "105"].includes(id || "") || id === "6";
+        if (modulesRes.ok) {
+          const modData = await modulesRes.json();
+          const items = modData.items || (Array.isArray(modData) ? modData : modData.items) || [];
+          currentModules = items.filter((m: any) => m.courseId?.toString() === id?.toString());
+        }
 
-        if (isMockCourse) {
-          const mockC = mockCourses.find(c => c.id.toString() === id);
+        if (lessonsRes.ok) {
+          const lesData = await lessonsRes.json();
+          const items = lesData.items || (Array.isArray(lesData) ? lesData : lesData.items) || [];
+          currentLessons = items.filter((l: any) => l.courseId?.toString() === id?.toString());
+        }
+
+        // If no modules/lessons found in API for this course, fallback to mock data if exists
+        if (currentModules.length === 0 && currentLessons.length === 0) {
+          const mockC = mockCourses.find(c => c.id.toString() === id?.toString());
           if (mockC) {
             currentCourse = {
-              ...currentCourse,
-              ...mockC
+              ...mockC,
+              ...currentCourse
             };
-          }
-          currentModules = mockModules.filter(m => m.courseId.toString() === id);
-          currentLessons = mockLessons.filter(l => l.courseId.toString() === id);
-        } else {
-          if (modulesRes.ok) {
-            const modData = await modulesRes.json();
-            const items = modData.items || (Array.isArray(modData) ? modData : modData.items) || [];
-            currentModules = items.filter((m: any) => m.courseId.toString() === id);
-          }
-          if (lessonsRes.ok) {
-            const lesData = await lessonsRes.json();
-            const items = lesData.items || (Array.isArray(lesData) ? lesData : lesData.items) || [];
-            currentLessons = items.filter((l: any) => l.courseId.toString() === id);
+            currentModules = mockModules.filter(m => m.courseId.toString() === id?.toString());
+            currentLessons = mockLessons.filter(l => l.courseId.toString() === id?.toString());
           }
         }
 
+        const sortedMods = currentModules.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0));
         setCourse(currentCourse);
-        setModules(currentModules.sort((a: any, b: any) => a.sortOrder - b.sortOrder));
-        setLessons(currentLessons.sort((a: any, b: any) => a.sortOrder - b.sortOrder));
+        setModules(sortedMods);
+        setLessons(currentLessons.sort((a: any, b: any) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+        if (sortedMods.length > 0) {
+          setSelectedModuleId((prev) => (prev !== null && sortedMods.some(m => m.id === prev) ? prev : sortedMods[0].id));
+        }
 
         if (catRes.ok) {
           const catData = await catRes.json();
-          const courseCat = (catData.items || []).find((c: any) => c.name.toLowerCase() === "course");
+          const items = catData.items || (Array.isArray(catData) ? catData : []);
+          const courseCat = items.find((c: any) => (c.name || c.Name || "").toLowerCase() === "course");
           if (courseCat) {
-            setCourseCategoryId(courseCat.id);
+            setCourseCategoryId(courseCat.id || courseCat.Id);
+          } else {
+            setCourseCategoryId(1);
           }
         }
         if (reviewsRes.ok) {
@@ -262,13 +276,14 @@ export default function CourseDetailPage() {
       }
 
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+      const categoryIdToUse = courseCategoryId || 1;
 
       const res = await fetch(`${API_BASE_URL}/api/feedbacks`, {
         method: "POST",
         headers,
         body: JSON.stringify({
           userId: user.id,
-          categoryId: courseCategoryId,
+          categoryId: categoryIdToUse,
           rating: newRating,
           subject: `CourseId:${id}`,
           content: newComment.trim(),
@@ -294,8 +309,8 @@ export default function CourseDetailPage() {
   };
 
   const generateQuizOptions = (correctTitle: string) => {
-    const incorrect = mockLessons
-      .filter(l => l.title !== correctTitle)
+    const incorrect = [...lessons, ...mockLessons]
+      .filter(l => l.title && l.title !== correctTitle)
       .map(l => l.title);
     const uniqueIncorrect = Array.from(new Set(incorrect));
     const shuffled = uniqueIncorrect.sort(() => 0.5 - Math.random()).slice(0, 3);
@@ -379,250 +394,380 @@ export default function CourseDetailPage() {
   const canStartLearning = !isPremiumCourse || isUserPremium;
 
   return (
-    <div className="min-h-screen bg-white text-slate-800">
-      <div className="container mx-auto px-4 md:px-6 py-10">
+    <div className="min-h-screen bg-transparent text-slate-800">
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8 md:space-y-10">
 
         {/* Top Bar: Back Button + Premium Notice */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <button
             onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/60 shadow-sm text-slate-600 hover:text-[#2d6a4f] hover:border-[#2d6a4f]/30 hover:bg-emerald-50/20 transition-all duration-300 font-bold text-sm"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white border border-slate-200/80 shadow-sm text-slate-700 hover:text-[#2d6a4f] hover:border-emerald-300 hover:bg-emerald-50/30 transition-all duration-200 font-bold text-sm"
           >
-            <ArrowLeft size={16} className="stroke-[2.5]" /> Quay lại
+            <ArrowLeft size={18} /> Quay lại
           </button>
 
           {isPremiumCourse && !canStartLearning && (
-            <div className="flex-1 flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-[#fcf8ea] border border-[#efe7cf] md:justify-between">
+            <div className="flex-1 flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 md:justify-between shadow-sm">
               <div className="flex items-start gap-3 flex-1 min-w-0">
-                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f6ebb7] text-[#b7861f]" aria-hidden="true">
+                <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-200/80 text-amber-800" aria-hidden="true">
                   <Crown className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-[0.95rem] font-bold text-[#3a403f]">Đây là khóa học dành cho tài khoản Pro</p>
-                  <p className="text-sm text-[#86908c]">Nâng cấp tài khoản Pro để truy cập toàn bộ nội dung khóa học này.</p>
+                  <p className="text-sm font-black text-amber-900">Đây là khóa học dành cho tài khoản Pro</p>
+                  <p className="text-xs text-amber-700 font-medium">Nâng cấp tài khoản Pro để truy cập toàn bộ nội dung khóa học này.</p>
                 </div>
               </div>
-              <Link to="/nang-cap" className="flex-shrink-0 h-9 px-5 rounded-lg bg-[#efca4c] text-[0.8rem] font-bold text-[#4b3c14] hover:bg-[#e7c13f] transition-colors inline-flex items-center">
+              <Link to="/nang-cap" className="flex-shrink-0 h-9 px-5 rounded-xl bg-amber-500 hover:bg-amber-600 text-xs font-bold text-white transition-colors inline-flex items-center shadow-sm">
                 Nâng cấp ngay
               </Link>
             </div>
           )}
         </div>
 
-        {/* Hero & Progress Section */}
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_340px] items-stretch gap-10 mb-16">
+        {/* Hero & Progress Section (White Card Grid) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] items-stretch gap-8">
           {/* Left: Course Info Banner */}
-          <div className="relative rounded-3xl overflow-hidden shadow-md bg-slate-100 min-h-[320px] md:min-h-0 flex-1">
+          <div className="relative rounded-[32px] overflow-hidden shadow-sm bg-slate-100 min-h-[320px] lg:min-h-[420px] flex-1 border border-slate-200/80">
             <CourseImage
               title={course.title}
               coverMediaId={course.coverMediaId}
               className="w-full h-full object-cover absolute inset-0"
             />
             {/* Dark gradient overlay for a premium look */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+            <div className="absolute bottom-6 left-6 right-6 text-white">
+              <span className="inline-block px-3 py-1 text-xs font-black uppercase tracking-wider bg-emerald-600/90 text-white rounded-full mb-2 backdrop-blur-sm">
+                {course.level || "Cơ bản"}
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black leading-tight drop-shadow-sm">
+                {course.title}
+              </h2>
+            </div>
           </div>
 
           {/* Right: Progress Card */}
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8 h-fit flex flex-col justify-between md:min-h-[400px]">
+          <div className="bg-white rounded-[32px] border border-emerald-100/90 shadow-[0_8px_30px_rgba(35,48,57,0.04)] p-6 sm:p-8 flex flex-col justify-between">
             <div>
               {/* Level badge + Star Rating */}
               <div className="flex items-center justify-between mb-4">
-                <span className="inline-block px-3 py-1 text-[10px] font-extrabold text-[#2d6a4f] bg-[#eef7ee] rounded-full uppercase tracking-widest border border-emerald-100/30">
+                <span className="inline-block px-3.5 py-1 text-xs font-black text-[#2d6a4f] bg-[#eef7ee] rounded-full uppercase tracking-widest border border-emerald-200/50">
                   {course.level || "Cơ bản"}
                 </span>
                 {averageRating > 0 && (
-                  <span className="flex items-center gap-1.5 text-[#d97706] font-bold text-xs bg-[#fffbeb] px-2.5 py-0.5 rounded-full border border-[#fef3c7]">
-                    <Star size={11} fill="currentColor" className="text-[#fbbf24] fill-[#fbbf24]" /> {averageRating} / 5
+                  <span className="flex items-center gap-1.5 text-[#d97706] font-bold text-xs bg-[#fffbeb] px-3 py-1 rounded-full border border-[#fef3c7]">
+                    <Star size={13} className="text-[#fbbf24] fill-[#fbbf24]" /> {averageRating} / 5
                   </span>
                 )}
               </div>
 
               {/* Course Title inside Card */}
-              <h1 className="text-2xl font-black text-slate-800 mb-6 leading-tight tracking-tight">
+              <h1 className="text-2xl font-black text-slate-800 mb-5 leading-tight tracking-tight">
                 {course.title}
               </h1>
 
-              <div className="mb-6 block">
+              <div className="mb-5 block">
                 <div className="flex justify-between items-end mb-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hoàn thành ({completedLessonsCount}/{lessons.length})</span>
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tiến độ ({completedLessonsCount}/{lessons.length})</span>
                   <span className="text-2xl font-black text-slate-800">{progressPercentage}%</span>
                 </div>
                 <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#fed963] rounded-full transition-all duration-1000" style={{ width: `${progressPercentage}%` }}></div>
+                  <div className="h-full bg-emerald-600 rounded-full transition-all duration-700" style={{ width: `${progressPercentage}%` }} />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-2 gap-4 mb-5 p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Bài học</p>
-                  <p className="text-[15px] font-bold text-slate-800">{lessons.length}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Số bài học</p>
+                  <p className="text-base font-black text-slate-800">{lessons.length} bài</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thời gian</p>
-                  <p className="text-[15px] font-bold text-slate-800">{formatHours(totalTimeMinutes)}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Thời lượng</p>
+                  <p className="text-base font-black text-slate-800">{formatHours(totalTimeMinutes)}</p>
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-5 mt-5 mb-6">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Mô tả khóa học</p>
-                <p className="text-slate-500 leading-relaxed text-[13px] font-medium whitespace-pre-line">
-                  {course.description || course.summary || "Chưa có mô tả."}
+              <div className="border-t border-slate-100 pt-4 mb-5">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1.5">Mô tả khóa học</p>
+                <p className="text-slate-600 leading-relaxed text-xs font-medium whitespace-pre-line">
+                  {course.description || course.summary || "Khóa học chất lượng cao về ngôn ngữ ký hiệu Việt Nam."}
                 </p>
               </div>
             </div>
 
             {nextLessonId ? (
               canStartLearning ? (
-                <Link to={`/bai-hoc/${nextLessonId}`} className="w-full py-3.5 rounded-2xl bg-[#3c6d44] text-white flex items-center justify-center gap-2 font-bold hover:bg-[#315736] transition-all shadow-lg shadow-[#3c6d44]/20 hover:-translate-y-0.5 mt-2">
-                  <PlayCircle size={18} /> {completedLessonsCount > 0 ? "Học tiếp" : "Bắt đầu học"}
+                <Link to={`/bai-hoc/${nextLessonId}`} className="w-full h-12 rounded-2xl bg-[#3c6d44] hover:bg-[#315736] text-white flex items-center justify-center gap-2 font-bold text-sm transition-all shadow-md shadow-[#3c6d44]/20 hover:-translate-y-0.5">
+                  <PlayCircle size={20} /> {completedLessonsCount > 0 ? "Học tiếp" : "Bắt đầu học"}
                 </Link>
               ) : (
-                <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold cursor-not-allowed mt-2">
+                <button disabled className="w-full h-12 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold text-sm cursor-not-allowed">
                   <Lock size={16} /> Yêu cầu tài khoản Pro
                 </button>
               )
             ) : (
-              <button disabled className="w-full py-3.5 rounded-2xl bg-slate-200 text-slate-500 flex items-center justify-center gap-2 font-bold cursor-not-allowed mt-2">
+              <button disabled className="w-full h-12 rounded-2xl bg-slate-200 text-slate-400 flex items-center justify-center gap-2 font-bold text-sm cursor-not-allowed">
                 Chưa có bài học
               </button>
             )}
           </div>
         </div>
 
-        {/* Curriculum Section */}
-        <div>
-          <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-4">
-            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Nội dung khóa học</h2>
-            <span className="text-sm font-semibold text-slate-500">{modules.length} Học phần • {lessons.length} Bài giảng</span>
+        {/* ─── Curriculum Section (Wrapped in White Box Container) ─── */}
+        <div className="bg-white rounded-[32px] border border-emerald-100/90 shadow-[0_8px_30px_rgba(35,48,57,0.04)] p-6 sm:p-8 md:p-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-slate-100 gap-3">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <BookOpen size={22} />
+                </span>
+                Nội dung chương trình học
+              </h2>
+              <p className="text-sm text-slate-500 font-medium mt-1">
+                Bấm chọn một chương bên dưới để xem danh sách các bài học chi tiết.
+              </p>
+            </div>
+            <span className="text-xs sm:text-sm font-bold text-slate-600 bg-slate-100 px-4 py-2 rounded-full self-start sm:self-auto border border-slate-200">
+              {modules.length} Chương • {lessons.length} Bài học
+            </span>
           </div>
 
-          <div className="space-y-6">
-            {modules.map((module, mIdx) => {
-              const moduleLessons = lessons.filter(l => l.moduleId === module.id);
+          {modules.length === 0 ? (
+            <div className="border border-dashed border-slate-200 rounded-3xl p-12 flex flex-col items-center justify-center text-center bg-slate-50/50">
+              <BookOpen size={36} className="text-slate-300 mb-3" />
+              <p className="text-base font-bold text-slate-600">Khóa học này đang được cập nhật nội dung</p>
+              <p className="text-xs text-slate-400 mt-1">Vui lòng quay lại sau để đón nhận các bài học mới.</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {/* ─── Chapter Cards Grid (Horizontal Row) ─── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {modules.map((module, mIdx) => {
+                  const moduleLessons = lessons.filter(l => l.moduleId === module.id);
+                  const isSelected = selectedModuleId === module.id;
 
-              // Progression & premium lock check
-              const isPremiumLocked = course.isPremium && !module.isPreview && !isUserPremium;
-              const isFreeProgressLocked = !isUserPremium && mIdx > 0 && !completedQuizModuleIds.includes(modules[mIdx - 1].id);
-              const isLocked = isPremiumLocked || isFreeProgressLocked;
+                  // Progression & premium lock check
+                  const isPremiumLocked = course.isPremium && !module.isPreview && !isUserPremium;
+                  const isFreeProgressLocked = !isUserPremium && mIdx > 0 && !completedQuizModuleIds.includes(modules[mIdx - 1].id);
+                  const isLocked = isPremiumLocked || isFreeProgressLocked;
 
-              const isModuleLessonsCompleted = moduleLessons.length > 0 && moduleLessons.every(l => completedLessonIds.includes(l.id));
-              const canTakeQuiz = !isUserPremium && isModuleLessonsCompleted && !completedQuizModuleIds.includes(module.id);
-              const expanded = isModuleExpanded(module.id);
+                  const isModuleCompleted = moduleLessons.length > 0 && moduleLessons.every(l => completedLessonIds.includes(l.id));
+                  const isQuizDone = completedQuizModuleIds.includes(module.id);
+                  const moduleDuration = moduleLessons.reduce((sum, l) => sum + (l.estimatedMinutes || 0), 0);
 
-              return (
-                <div key={module.id} className={cn("transition-all duration-300", isLocked && "opacity-75 select-none")}>
-                  {/* Module Header Pill */}
-                  <div
-                    onClick={() => !isLocked && toggleModule(module.id)}
-                    className={cn(
-                      "flex justify-between items-center p-5 rounded-[22px] border border-slate-100 bg-slate-50/50 mb-3 transition-all select-none",
-                      !isLocked && "cursor-pointer hover:bg-slate-100/50 hover:shadow-sm"
-                    )}
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isLocked ? "bg-slate-200 text-slate-400" : "bg-[#f4fbf6] text-[#3c6d44] border border-emerald-100/20"}`}>{mIdx + 1}</span>
+                  return (
+                    <div
+                      key={module.id}
+                      onClick={() => !isLocked && setSelectedModuleId(module.id)}
+                      className={cn(
+                        "rounded-2xl border p-5 transition-all duration-200 flex flex-col justify-between relative cursor-pointer group",
+                        isSelected
+                          ? "border-[#2d6a4f] bg-emerald-50/30 shadow-md ring-2 ring-[#2d6a4f]/20"
+                          : "border-slate-200/90 bg-white hover:border-emerald-300 hover:shadow-sm",
+                        isLocked && "opacity-75 bg-slate-50 cursor-not-allowed hover:border-slate-200"
+                      )}
+                    >
                       <div>
-                        <h3 className="text-[17px] md:text-xl font-black text-slate-800 leading-snug">{module.title}</h3>
-                        {completedQuizModuleIds.includes(module.id) && (
-                          <span className="inline-flex mt-1.5 text-[9px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-md font-bold items-center gap-0.5 border border-emerald-100">
-                            ✓ Đã kiểm tra chương
+                        {/* Top Badges */}
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider border",
+                            isSelected
+                              ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          )}>
+                            Chương {mIdx + 1}
                           </span>
-                        )}
+
+                          {isLocked ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                              <Lock size={12} /> Khóa
+                            </span>
+                          ) : isQuizDone ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              <CheckCircle2 size={12} /> Đã test
+                            </span>
+                          ) : isModuleCompleted ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                              <CheckCircle2 size={12} /> Hoàn thành
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-50 px-2.5 py-0.5 rounded-full border border-slate-200">
+                              Sẵn sàng
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Title */}
+                        <h3 className={cn(
+                          "text-lg font-black leading-snug line-clamp-2 min-h-[3rem]",
+                          isSelected ? "text-[#2d6a4f]" : "text-slate-800 group-hover:text-[#2d6a4f]"
+                        )}>
+                          {module.title}
+                        </h3>
+
+                        {/* Stats */}
+                        <p className="text-xs font-semibold text-slate-400 mt-2">
+                          {moduleLessons.length} bài học • {moduleDuration} phút
+                        </p>
+                      </div>
+
+                      {/* Select CTA Button */}
+                      <div className="mt-4 pt-3 border-t border-slate-100/80">
+                        <button
+                          type="button"
+                          disabled={isLocked}
+                          className={cn(
+                            "w-full h-9 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5",
+                            isLocked
+                              ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                              : isSelected
+                              ? "bg-[#2d6a4f] text-white shadow-sm"
+                              : "bg-slate-50 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200"
+                          )}
+                        >
+                          {isLocked ? (
+                            <>
+                              <Lock size={12} /> Đang khóa chương
+                            </>
+                          ) : isSelected ? (
+                            <>
+                              <span>Đang xem bài học</span>
+                              <CheckCircle2 size={14} />
+                            </>
+                          ) : (
+                            <>
+                              <span>Xem bài học</span>
+                              <ChevronDown size={14} />
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {isPremiumLocked && (
-                        <Link to="/nang-cap" onClick={(e) => e.stopPropagation()} className="text-[9px] font-bold uppercase tracking-widest bg-[#efe7cf] text-[#71540a] px-3 py-1 rounded-full flex items-center gap-1 border border-[#efe7cf]/50">
-                          <Crown size={10} /> Yêu cầu Pro
-                        </Link>
-                      )}
-                      {isFreeProgressLocked && !isPremiumLocked && (
-                        <span className="text-[9px] font-bold uppercase tracking-widest bg-slate-100 text-slate-400 px-3 py-1 rounded-full flex items-center gap-1 border border-slate-200">
-                          <Lock size={10} /> Đang khóa học phần
+                  );
+                })}
+              </div>
+
+              {/* ─── Selected Chapter's Lesson Cards ─── */}
+              {activeModule && (
+                <div className="p-6 sm:p-8 rounded-2xl bg-slate-50/80 border border-slate-200/80 animate-in fade-in duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 mb-6 border-b border-slate-200/80 gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-wider text-[#2d6a4f] bg-emerald-100/70 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                          Chi tiết bài học
                         </span>
-                      )}
-                      {canTakeQuiz && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startQuiz(module, moduleLessons);
-                          }}
-                          className="text-[9px] font-bold uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white px-3 py-1 rounded-full shadow-md transition-all animate-pulse"
-                        >
-                          Làm test chương 📝
-                        </button>
-                      )}
-                      {!isLocked && (
-                        expanded ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />
-                      )}
+                        <span className="text-xs font-bold text-slate-500">
+                          {activeModuleLessons.length} bài học
+                        </span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black text-slate-800 mt-1">
+                        {activeModule.title}
+                      </h3>
                     </div>
+
+                    {/* Chapter Quiz Trigger Button if eligible */}
+                    {canTakeQuizForActive && (
+                      <button
+                        onClick={() => startQuiz(activeModule, activeModuleLessons)}
+                        className="text-xs font-black uppercase tracking-wider bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl shadow-md transition-all animate-pulse flex items-center gap-1.5 self-start sm:self-auto"
+                      >
+                        <span>Làm bài kiểm tra chương 📝</span>
+                      </button>
+                    )}
                   </div>
 
-                  {expanded && !isLocked && (
-                    <div className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm flex flex-col divide-y divide-slate-50 mb-6 animate-in fade-in duration-200">
-                      {moduleLessons.length > 0 ? moduleLessons.map((lesson) => {
+                  {activeModuleLessons.length === 0 ? (
+                    <div className="py-10 text-center text-slate-400 text-sm font-medium">
+                      Chưa có bài học nào trong chương này.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {activeModuleLessons.map((lesson) => {
                         const isLessonCompleted = completedLessonIds.includes(lesson.id);
+                        const isLocked = (course.isPremium && !activeModule.isPreview && !isUserPremium);
+
                         return (
-                          <div key={lesson.id} className={cn("p-5 flex items-center justify-between transition-colors", isLocked ? "bg-slate-50/20" : "hover:bg-slate-50/50")}>
-                            <div className="flex items-center gap-4">
-                              {isLocked ? (
-                                <Lock size={20} className="text-slate-300 flex-shrink-0 ml-1" />
-                              ) : isLessonCompleted ? (
-                                <CheckCircle2 size={24} className="text-emerald-500 flex-shrink-0" aria-hidden="true" />
-                              ) : (
-                                <PlayCircle size={24} className="text-[#d9aa17] flex-shrink-0" />
-                              )}
-                              <div>
-                                <h4 className={`font-black text-base md:text-lg ${isLocked ? "text-slate-400" : "text-slate-800"}`}>
-                                  {lesson.title}
-                                  {isLessonCompleted && (
-                                    <span className="ml-2 text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-100/50 px-2 py-0.5 rounded-md">Đã học</span>
+                          <div
+                            key={lesson.id}
+                            className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center gap-2">
+                                  {isLocked ? (
+                                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center">
+                                      <Lock size={16} />
+                                    </div>
+                                  ) : isLessonCompleted ? (
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                      <CheckCircle2 size={18} />
+                                    </div>
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#2d6a4f] flex items-center justify-center">
+                                      <PlayCircle size={18} />
+                                    </div>
                                   )}
-                                </h4>
-                                <p className="text-xs text-slate-400 mt-1">
-                                  {lesson.estimatedMinutes ? `${lesson.estimatedMinutes} phút` : "0 phút"} • {isLocked ? "Đang khóa" : isLessonCompleted ? "Đã học" : "Sẵn sàng"}
-                                </p>
-                              </div>
-                            </div>
-                            {isLocked ? (
-                              <Lock size={16} className="text-slate-300 mr-2" />
-                            ) : (
-                              <Link
-                                to={`/bai-hoc/${lesson.id}`}
-                                className={cn(
-                                  "px-5 py-2 rounded-xl text-[13px] font-bold shadow-sm transition-all min-w-[90px] text-center",
-                                  isLessonCompleted
-                                    ? "bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200/60"
-                                    : "bg-[#3c6d44] text-white hover:bg-[#315736]"
+                                  <span className="text-xs font-bold text-slate-400">
+                                    {lesson.estimatedMinutes ? `${lesson.estimatedMinutes} phút` : "5 phút"}
+                                  </span>
+                                </div>
+
+                                {isLessonCompleted && (
+                                  <span className="text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                                    Đã học
+                                  </span>
                                 )}
-                              >
-                                {isLessonCompleted ? "Học lại" : "Học"}
-                              </Link>
-                            )}
+                              </div>
+
+                              <h4 className="text-base font-black text-slate-800 leading-snug line-clamp-2 min-h-[2.75rem]" title={lesson.title}>
+                                {lesson.title}
+                              </h4>
+
+                              <p className="text-xs text-slate-500 line-clamp-2 mt-1.5 leading-relaxed">
+                                {lesson.shortDescription || "Bài học ngôn ngữ ký hiệu sinh động, trực quan."}
+                              </p>
+                            </div>
+
+                            <div className="mt-5 pt-3 border-t border-slate-100">
+                              {isLocked ? (
+                                <button disabled className="w-full h-9 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold cursor-not-allowed flex items-center justify-center gap-1">
+                                  <Lock size={13} /> Khóa
+                                </button>
+                              ) : (
+                                <Link
+                                  to={`/bai-hoc/${lesson.id}`}
+                                  className="w-full block"
+                                >
+                                  <Button
+                                    className={cn(
+                                      "w-full h-9 rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-1.5",
+                                      isLessonCompleted
+                                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                                        : "bg-[#3c6c44] hover:bg-[#325a38] text-white"
+                                    )}
+                                  >
+                                    <span>{isLessonCompleted ? "Học lại" : "Vào học"}</span>
+                                    <ArrowRight size={14} />
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
                           </div>
                         );
-                      }) : (
-                        <div className="p-5 text-sm text-slate-500 italic text-center">Chưa có bài học nào trong học phần này.</div>
-                      )}
+                      })}
                     </div>
                   )}
                 </div>
-              );
-            })}
-
-            {modules.length === 0 && (
-              <div className="border border-dashed border-slate-200 rounded-3xl p-8 flex items-center justify-center text-center bg-slate-50/50">
-                <p className="text-sm font-medium text-slate-400">Khóa học này đang được cập nhật nội dung</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Ratings & Reviews Section */}
-        <div className="mt-16 border-t border-slate-100 pt-10">
+        {/* ─── Ratings & Reviews Section (Wrapped in White Box Container) ─── */}
+        <div className="bg-white rounded-[32px] border border-emerald-100/90 shadow-[0_8px_30px_rgba(35,48,57,0.04)] p-6 sm:p-8 md:p-10">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <div>
-              <h2 className="text-2xl font-black text-slate-800">Đánh giá từ học viên</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-800">Đánh giá từ học viên</h2>
               <p className="text-sm text-slate-500 mt-1">Ý kiến và đóng góp thực tế từ những người đã trải nghiệm khóa học này.</p>
             </div>
             {user && (

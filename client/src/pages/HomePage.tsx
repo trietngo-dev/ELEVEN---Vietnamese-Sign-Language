@@ -352,7 +352,7 @@ export default function HomePage() {
         }
       `}</style>
 
-      <div className="container mx-auto px-4 md:px-6 space-y-12">
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
 
         {/* ─── GRID CHÍNH 2 CỘT (TRÊN) ─── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
@@ -360,7 +360,7 @@ export default function HomePage() {
           {/* CỘT TRÁI (40% width ~ 5 cols): Video Cử chỉ Ngôn Ngữ Ký Hiệu VSL */}
           <motion.div
             variants={fadeInUp}
-            className="lg:col-span-5 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 flex flex-col justify-between h-[650px] relative overflow-hidden group"
+            className="lg:col-span-5 bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.03)] p-6 flex flex-col justify-between h-full relative overflow-hidden group"
           >
             {/* Soft decorative background glow */}
             <div className="absolute top-0 left-0 w-32 h-32 rounded-full bg-emerald-500/5 blur-[50px] pointer-events-none" />
@@ -572,10 +572,10 @@ export default function HomePage() {
         {/* ─── ROW 3: LEARNING ROADMAP (LỘ TRÌNH HỌC TẬP) ─── */}
         <div className="space-y-6 pt-4">
           <div>
-            <h2 className="text-xl font-black text-slate-800">Lộ Trình Học Tập VSL</h2>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-800">Lộ Trình Học Tập VSL</h2>
           </div>
 
-          <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.02)] p-8 relative overflow-hidden">
+          <div className="bg-white rounded-[32px] border border-slate-100 shadow-[0_15px_30px_rgba(24,35,51,0.02)] p-8 md:p-10 relative overflow-hidden">
             
             {/* Background connection path lines (dynamic) */}
             <div className="absolute top-1/2 left-20 right-20 h-1 bg-slate-100 -translate-y-8 hidden md:block z-0" />
@@ -591,22 +591,22 @@ export default function HomePage() {
               {/* Milestone 1: Cơ bản */}
               <div className="flex flex-col items-center text-center space-y-4">
                 {levelStatus["Cơ bản"] === "completed" && (
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
-                    <Check size={22} className="stroke-[3]" />
+                  <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                    <Check size={26} className="stroke-[3]" />
                   </div>
                 )}
                 {levelStatus["Cơ bản"] === "in_progress" && (
-                  <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
-                    <Clock size={20} className="stroke-[3]" />
+                  <div className="w-16 h-16 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                    <Clock size={24} className="stroke-[3]" />
                   </div>
                 )}
                 {levelStatus["Cơ bản"] === "not_started" && (
-                  <div className="w-14 h-14 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
-                    <BookOpen size={20} className="stroke-[2.5]" />
+                  <div className="w-16 h-16 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
+                    <BookOpen size={24} className="stroke-[2.5]" />
                   </div>
                 )}
-                <div className="space-y-1">
-                  <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${
+                <div className="space-y-2">
+                  <span className={`text-xs font-black uppercase border px-3 py-1 rounded-full ${
                     levelStatus["Cơ bản"] === "completed" ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
                     levelStatus["Cơ bản"] === "in_progress" ? "bg-emerald-50 border-emerald-100 text-[#2d6a4f]" :
                     "bg-slate-50 border-slate-200 text-slate-500"
@@ -614,35 +614,35 @@ export default function HomePage() {
                     {levelStatus["Cơ bản"] === "completed" ? "Hoàn thành" :
                      levelStatus["Cơ bản"] === "in_progress" ? "Đang học" : "Chưa học"}
                   </span>
-                  <h4 className="text-sm font-bold text-slate-800 mt-1">Cơ bản</h4>
-                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Làm quen với bảng chữ cái, số đếm và chủ đề chào hỏi giao tiếp thông thường.</p>
+                  <h4 className="text-xl font-black text-slate-800 mt-2">Cơ bản</h4>
+                  <p className="text-sm text-slate-500 max-w-[260px] leading-relaxed font-medium">Làm quen với bảng chữ cái, số đếm và chủ đề chào hỏi giao tiếp thông thường.</p>
                 </div>
               </div>
 
               {/* Milestone 2: Trung cấp */}
               <div className="flex flex-col items-center text-center space-y-4">
                 {levelStatus["Trung cấp"] === "completed" && (
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
-                    <Check size={22} className="stroke-[3]" />
+                  <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                    <Check size={26} className="stroke-[3]" />
                   </div>
                 )}
                 {levelStatus["Trung cấp"] === "in_progress" && (
-                  <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
-                    <Clock size={20} className="stroke-[3]" />
+                  <div className="w-16 h-16 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                    <Clock size={24} className="stroke-[3]" />
                   </div>
                 )}
                 {levelStatus["Trung cấp"] === "not_started" && (
-                  <div className="w-14 h-14 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
-                    <BookOpen size={20} className="stroke-[2.5]" />
+                  <div className="w-16 h-16 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
+                    <BookOpen size={24} className="stroke-[2.5]" />
                   </div>
                 )}
                 {levelStatus["Trung cấp"] === "locked" && (
-                  <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
-                    <Clock size={20} className="stroke-[2.5]" />
+                  <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
+                    <Clock size={24} className="stroke-[2.5]" />
                   </div>
                 )}
-                <div className="space-y-1">
-                  <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${
+                <div className="space-y-2">
+                  <span className={`text-xs font-black uppercase border px-3 py-1 rounded-full ${
                     levelStatus["Trung cấp"] === "completed" ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
                     levelStatus["Trung cấp"] === "in_progress" ? "bg-emerald-50 border-emerald-100 text-[#2d6a4f]" :
                     levelStatus["Trung cấp"] === "not_started" ? "bg-slate-50 border-slate-200 text-[#2d6a4f]" :
@@ -652,35 +652,35 @@ export default function HomePage() {
                      levelStatus["Trung cấp"] === "in_progress" ? "Đang học" :
                      levelStatus["Trung cấp"] === "not_started" ? "Sẵn sàng" : "Chưa mở khóa"}
                   </span>
-                  <h4 className={`text-sm font-bold mt-1 ${levelStatus["Trung cấp"] === "locked" ? "text-slate-400" : "text-slate-800"}`}>Trung cấp</h4>
-                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Rèn luyện từ vựng và mẫu câu về địa lý, hành chính, cảm xúc và các thói quen sinh hoạt.</p>
+                  <h4 className={`text-xl font-black mt-2 ${levelStatus["Trung cấp"] === "locked" ? "text-slate-400" : "text-slate-800"}`}>Trung cấp</h4>
+                  <p className="text-sm text-slate-500 max-w-[260px] leading-relaxed font-medium">Rèn luyện từ vựng và mẫu câu về địa lý, hành chính, cảm xúc và các thói quen sinh hoạt.</p>
                 </div>
               </div>
 
               {/* Milestone 3: Nâng cao */}
               <div className="flex flex-col items-center text-center space-y-4">
                 {levelStatus["Nâng cao"] === "completed" && (
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
-                    <Check size={22} className="stroke-[3]" />
+                  <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(16,185,129,0.3)] z-10">
+                    <Check size={26} className="stroke-[3]" />
                   </div>
                 )}
                 {levelStatus["Nâng cao"] === "in_progress" && (
-                  <div className="w-14 h-14 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
-                    <Clock size={20} className="stroke-[3]" />
+                  <div className="w-16 h-16 rounded-full bg-[#2d6a4f] text-white flex items-center justify-center border-4 border-white shadow-[0_0_15px_rgba(45,106,79,0.3)] z-10 animate-pulse">
+                    <Clock size={24} className="stroke-[3]" />
                   </div>
                 )}
                 {levelStatus["Nâng cao"] === "not_started" && (
-                  <div className="w-14 h-14 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
-                    <BookOpen size={20} className="stroke-[2.5]" />
+                  <div className="w-16 h-16 rounded-full bg-slate-50 text-[#2d6a4f] flex items-center justify-center border-4 border-white border-dashed shadow-sm z-10 hover:bg-emerald-50/50 transition-colors duration-300">
+                    <BookOpen size={24} className="stroke-[2.5]" />
                   </div>
                 )}
                 {levelStatus["Nâng cao"] === "locked" && (
-                  <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
-                    <BookOpen size={20} className="stroke-[2.5]" />
+                  <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center border-4 border-white shadow-sm z-10">
+                    <BookOpen size={24} className="stroke-[2.5]" />
                   </div>
                 )}
-                <div className="space-y-1">
-                  <span className={`text-[8px] font-black uppercase border px-2 py-0.5 rounded-full ${
+                <div className="space-y-2">
+                  <span className={`text-xs font-black uppercase border px-3 py-1 rounded-full ${
                     levelStatus["Nâng cao"] === "completed" ? "bg-emerald-50 border-emerald-100 text-emerald-600" :
                     levelStatus["Nâng cao"] === "in_progress" ? "bg-emerald-50 border-emerald-100 text-[#2d6a4f]" :
                     levelStatus["Nâng cao"] === "not_started" ? "bg-slate-50 border-slate-200 text-[#2d6a4f]" :
@@ -690,8 +690,8 @@ export default function HomePage() {
                      levelStatus["Nâng cao"] === "in_progress" ? "Đang học" :
                      levelStatus["Nâng cao"] === "not_started" ? "Sẵn sàng" : "Chưa mở khóa"}
                   </span>
-                  <h4 className={`text-sm font-bold mt-1 ${levelStatus["Nâng cao"] === "locked" ? "text-slate-400" : "text-slate-800"}`}>Nâng cao</h4>
-                  <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed">Mở rộng vốn từ vựng về các sự kiện xã hội, lễ hội truyền thống, cùng các thuật ngữ kinh tế & thương mại.</p>
+                  <h4 className={`text-xl font-black mt-2 ${levelStatus["Nâng cao"] === "locked" ? "text-slate-400" : "text-slate-800"}`}>Nâng cao</h4>
+                  <p className="text-sm text-slate-500 max-w-[260px] leading-relaxed font-medium">Mở rộng vốn từ vựng về các sự kiện xã hội, lễ hội truyền thống, cùng các thuật ngữ kinh tế & thương mại.</p>
                 </div>
               </div>
 
@@ -703,13 +703,13 @@ export default function HomePage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-slate-800">Bài học gần đây</h2>
+              <h2 className="text-2xl md:text-3xl font-black text-slate-800">Bài học gần đây</h2>
             </div>
             <Link
               to="/khoa-hoc"
-              className="text-xs font-bold text-[#2d6a4f] hover:underline flex items-center gap-0.5"
+              className="text-sm font-bold text-[#2d6a4f] hover:underline flex items-center gap-1"
             >
-              Xem tất cả <ChevronRight size={14} />
+              Xem tất cả <ChevronRight size={16} />
             </Link>
           </div>
 
@@ -726,24 +726,24 @@ export default function HomePage() {
                 >
                   <motion.div
                     variants={fadeInUp}
-                    className="relative bg-white rounded-3xl border border-slate-100 p-6 flex flex-col justify-between shadow-[0_8px_20px_rgba(24,35,51,0.02)] hover:shadow-[0_12px_25px_rgba(24,35,51,0.04)] h-full min-h-[170px]"
+                    className="relative bg-white rounded-3xl border border-slate-100 p-6 sm:p-7 flex flex-col justify-between shadow-[0_8px_20px_rgba(24,35,51,0.02)] hover:shadow-[0_12px_25px_rgba(24,35,51,0.04)] h-full min-h-[190px]"
                   >
-                    <span className="absolute top-5 right-5 text-[9px] font-bold text-slate-400">{item.time}</span>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100/30">
-                        <Clock size={16} className="text-[#2d6a4f]" />
+                    <span className="absolute top-6 right-6 text-xs font-bold text-slate-400">{item.time}</span>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0 border border-emerald-100/30">
+                        <Clock size={20} className="text-[#2d6a4f]" />
                       </div>
                       <div>
-                        <p className="text-[8px] font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
-                        <h4 className="text-sm font-bold text-slate-800 mt-1.5 leading-snug line-clamp-1">{item.title}</h4>
+                        <p className="text-xs font-bold text-slate-400 tracking-wider uppercase leading-none">Hoàn thành bài học</p>
+                        <h4 className="text-base sm:text-lg font-black text-slate-800 mt-2 leading-snug line-clamp-1">{item.title}</h4>
                       </div>
                     </div>
-                    <div className="mt-5 pt-4 border-t border-slate-50 flex items-center justify-between text-xs font-bold">
+                    <div className="mt-6 pt-4 border-t border-slate-50 flex items-center justify-between text-sm font-bold">
                       <div className="flex items-center gap-1.5 text-emerald-600">
-                        <Check size={14} className="stroke-[3]" />
+                        <Check size={16} className="stroke-[3]" />
                         <span>Độ chính xác {item.accuracy}</span>
                       </div>
-                      <span className="text-[10px] font-extrabold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full">+50 XP</span>
+                      <span className="text-xs font-extrabold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-full">+50 XP</span>
                     </div>
                   </motion.div>
                 </Link>
@@ -754,12 +754,12 @@ export default function HomePage() {
               variants={fadeInUp}
               className="bg-white rounded-3xl border border-slate-100 p-8 flex flex-col items-center text-center justify-center shadow-[0_8px_20px_rgba(24,35,51,0.015)]"
             >
-              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-3 text-slate-400">
-                <BookOpen size={20} />
+              <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-3 text-slate-400">
+                <BookOpen size={24} />
               </div>
-              <p className="text-sm font-bold text-slate-700">Chưa tham gia luyện tập bài học nào</p>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm">Hãy bắt đầu bài học đầu tiên của bạn để theo dõi tiến độ học tập và rèn luyện ngôn ngữ ký hiệu nhé!</p>
-              <Link to="/khoa-hoc" className="mt-4 px-5 py-2.5 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-xs font-bold rounded-xl transition-all duration-300 shadow-sm">
+              <p className="text-base font-bold text-slate-700">Chưa tham gia luyện tập bài học nào</p>
+              <p className="text-sm text-slate-500 mt-1 max-w-sm">Hãy bắt đầu bài học đầu tiên của bạn để theo dõi tiến độ học tập và rèn luyện ngôn ngữ ký hiệu nhé!</p>
+              <Link to="/khoa-hoc" className="mt-4 px-6 py-2.5 bg-[#2d6a4f] hover:bg-[#255c43] text-white text-sm font-bold rounded-xl transition-all duration-300 shadow-sm">
                 Học ngay
               </Link>
             </motion.div>

@@ -191,7 +191,7 @@ function DictionaryPage() {
       variants={sectionStagger}
       className="min-h-screen bg-transparent py-8 md:py-10"
     >
-      <div className="container">
+      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero Header */}
         <motion.header
           variants={fadeInUp}

@@ -125,17 +125,28 @@ public sealed class FeedbackService(
 
     public async Task<FeedbackResponse> CreateAsync(CreateFeedbackRequest request, CancellationToken cancellationToken = default)
     {
-        await ValidateDependenciesAsync(request.UserId, request.CategoryId, null, cancellationToken);
+        var categoryId = request.CategoryId;
+        if (categoryId <= 0 || !await _dbContext.FeedbackCategories.AsNoTracking().AnyAsync(x => x.Id == categoryId, cancellationToken))
+        {
+            var defaultCourseCat = await _dbContext.FeedbackCategories.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Name.ToLower() == "course", cancellationToken);
+            if (defaultCourseCat != null)
+            {
+                categoryId = defaultCourseCat.Id;
+            }
+        }
+
+        await ValidateDependenciesAsync(request.UserId, categoryId, null, cancellationToken);
         ValidateContent(request.Rating, request.Content);
 
         var now = DateTime.UtcNow;
         var entity = new Feedback
         {
             UserId = request.UserId,
-            CategoryId = request.CategoryId,
+            CategoryId = categoryId,
             Rating = request.Rating,
-            Subject = request.Subject,
-            Content = request.Content.Trim(),
+            Subject = string.IsNullOrWhiteSpace(request.Subject) ? "Course" : request.Subject.Trim(),
+            Content = request.Content?.Trim() ?? string.Empty,
             Status = FeedbackStatus.New,
             CreatedAt = now,
             UpdatedAt = now
@@ -161,7 +172,7 @@ public sealed class FeedbackService(
         entity.CategoryId = request.CategoryId;
         entity.Rating = request.Rating;
         entity.Subject = request.Subject;
-        entity.Content = request.Content.Trim();
+        entity.Content = request.Content?.Trim() ?? string.Empty;
         entity.Status = request.Status;
         entity.AdminReply = request.AdminReply;
         entity.RespondedBy = request.RespondedBy;
@@ -219,16 +230,11 @@ public sealed class FeedbackService(
         }
     }
 
-    private static void ValidateContent(int rating, string content)
+    private static void ValidateContent(int rating, string? content)
     {
         if (rating < 1 || rating > 5)
         {
             throw new InvalidOperationException("Rating must be in range 1-5.");
-        }
-
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new InvalidOperationException("Content is required.");
         }
     }
 

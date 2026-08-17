@@ -9,6 +9,7 @@ import { useAuth } from "../context/AuthContext";
 import { LogOut, Bell, Crown, BookOpen, Clock, Trash2, Square, CheckSquare, X, Bookmark, Store } from "lucide-react";
 import { tokenStorage } from "../lib/auth";
 import { notificationsApi, type NotificationItem } from "../lib/notifications";
+import ConfirmModal from "./ConfirmModal";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
 
@@ -297,31 +298,33 @@ function Navbar() {
             : "absolute top-0 left-0 right-0 bg-transparent border-none"
           : "sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-100/50 shadow-sm shadow-slate-100/10"
       )}>
-        <div className="container relative flex min-h-[72px] items-center justify-between gap-6 py-2">
-          {/* Brand */}
-          <NavLink
-            to={
-              isAuthenticated
-                ? user?.role === "admin"
-                  ? "/admin/dashboard"
-                  : "/home-page"
-                : "/"
-            }
-            className="inline-flex items-center gap-2.5 shrink-0 animate-fade-in"
-            aria-label={navbar.brandAriaLabel}
-          >
-            <img
-              src={brand}
-              alt={common.brandName}
-              className="h-10 w-10 shrink-0 rounded-lg object-cover"
-            />
-            <span className="text-xl font-bold text-[#29613d]">
-              {common.brandName}
-            </span>
-          </NavLink>
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex min-h-[72px] items-center justify-between gap-4 py-2">
+          {/* Brand / Logo (Sát trái) */}
+          <div className="flex items-center justify-start flex-1 min-w-0">
+            <NavLink
+              to={
+                isAuthenticated
+                  ? user?.role === "admin"
+                    ? "/admin/dashboard"
+                    : "/home-page"
+                  : "/"
+              }
+              className="inline-flex items-center gap-2.5 shrink-0 animate-fade-in"
+              aria-label={navbar.brandAriaLabel}
+            >
+              <img
+                src={brand}
+                alt={common.brandName}
+                className="h-10 w-10 shrink-0 rounded-lg object-cover"
+              />
+              <span className="text-xl font-bold text-[#29613d]">
+                {common.brandName}
+              </span>
+            </NavLink>
+          </div>
 
-          {/* Navigation */}
-          <nav aria-label={navbar.navAriaLabel} className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          {/* Navigation (Ở giữa) */}
+          <nav aria-label={navbar.navAriaLabel} className="hidden md:flex items-center justify-center shrink-0">
             <ul className="m-0 flex list-none items-center gap-8 p-0">
               {navbar.items
                 .filter(item => isAuthenticated || item.to !== "/tu-dien")
@@ -347,8 +350,8 @@ function Navbar() {
             </ul>
           </nav>
 
-          {/* Auth & Notifications */}
-          <div className="inline-flex items-center gap-3">
+          {/* Auth & Notifications (Sát phải) */}
+          <div className="flex items-center justify-end gap-3 flex-1 min-w-0">
             {isAuthenticated ? (
               <div className="flex items-center gap-3 sm:gap-4 relative" ref={popoverRef}>
 
@@ -362,9 +365,9 @@ function Navbar() {
                     )}
                     title="Thông báo"
                   >
-                    <Bell className="h-5 w-5" />
+                    <Bell size={18} />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white leading-none animate-pulse">
+                      <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white leading-none animate-pulse">
                         {unreadCount}
                       </span>
                     )}
@@ -490,7 +493,7 @@ function Navbar() {
                   }
                   title="Từ đã lưu"
                 >
-                  <Bookmark className="h-5 w-5" />
+                  <Bookmark size={18} />
                   {savedCount > 0 && (
                     <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold text-white leading-none shadow-sm select-none">
                       {savedCount}
@@ -509,7 +512,7 @@ function Navbar() {
                   }
                   title="Đổi khung ngay!"
                 >
-                  <Store className="h-5 w-5" />
+                  <Store size={18} />
                 </NavLink>
 
                 {/* User details */}
@@ -547,7 +550,7 @@ function Navbar() {
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
                   title="Đăng xuất"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut size={18} />
                 </button>
 
               </div>
@@ -610,39 +613,20 @@ function Navbar() {
         document.body
       )}
 
-      {confirmModal.isOpen && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-[24px] max-w-[400px] w-full p-6 md:p-8 shadow-2xl border border-slate-100 flex flex-col relative animate-in fade-in zoom-in-95 duration-150 text-center items-center">
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-100/30 mb-4">
-              <Trash2 className="h-5 w-5 text-red-600 animate-pulse" />
-            </div>
-
-            <h3 className="text-base font-bold text-slate-800 mb-2">{confirmModal.title}</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6 font-medium">
-              {confirmModal.message}
-            </p>
-
-            <div className="flex gap-3 w-full justify-center">
-              <button
-                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
-                className="flex-1 px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-bold text-xs transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => {
-                  confirmModal.onConfirm();
-                  setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                }}
-                className="flex-1 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
-              >
-                Xác nhận
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Reusable Confirm Modal for Notifications */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={async () => {
+          confirmModal.onConfirm();
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Xác nhận"
+        cancelText="Hủy"
+        variant="danger"
+      />
     </>
   );
 }
