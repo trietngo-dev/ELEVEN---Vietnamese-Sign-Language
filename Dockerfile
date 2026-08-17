@@ -36,7 +36,10 @@ COPY --from=build /app/SignLanguageAI/AIModels/ ./SignLanguageAI/AIModels/
 # Render assigns a dynamic PORT via environment variable
 ENV ASPNETCORE_URLS=http://+:10000
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
 
 EXPOSE 10000
 
 ENTRYPOINT ["dotnet", "EXE101.Presentation.dll"]
+
